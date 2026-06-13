@@ -1,121 +1,87 @@
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import Game from './components/Game'
+import GameMenu from './components/GameMenu'
+import GameLayout from './components/GameLayout'
+import Home from './components/Home'
+import { useGameLogic } from './hooks/useGameLogic'
+import { useGameStorage } from './hooks/useGameStorage'
+import { GameProvider } from './context/GameContext'
+import { ThemeProvider } from './context/ThemeContext'
+import type { BoardType } from './utils/gameLogic'
 
 function App() {
-  const [count, setCount] = useState(0)
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/menu" element={<GameMenuWrapper />} />
+          <Route path="/game/:size/:type/:playerSide/:slot" element={<GamePageWrapper />} />
+          <Route path="/game/load/:slot" element={<LoadGameWrapper />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
+  )
+}
+
+function GameMenuWrapper() {
+  const navigate = useNavigate()
+  const [, setPlayAs] = useState<'player1' | 'player2'>('player1')
+
+  const handleStartGame = (
+    size: 5 | 6 | 7 | 8 | 9,
+    type: BoardType,
+    playerSide: 'player1' | 'player2',
+    slot: number,
+  ) => {
+    navigate(`/game/${size}/${type}/${playerSide}/${slot}`)
+  }
+
+  const handleLoadGame = (slot: number) => {
+    navigate(`/game/load/${slot}`)
+  }
+
+  return <GameMenu onStartGame={handleStartGame} onLoadGame={handleLoadGame} onPlayAsChange={setPlayAs} />
+}
+
+function GamePageWrapper() {
+  const { size: sizeParam, type: typeParam, playerSide: playerSideParam } = useParams()
+  const size = parseInt(sizeParam || '5') as 5 | 6 | 7 | 8 | 9
+  const type = (typeParam || 'yinyang') as BoardType
+  const playerSide = (playerSideParam || 'player1') as 'player1' | 'player2'
+
+  const gameLogic = useGameLogic(size, type, playerSide, true) // true = new game, don't load old state
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <GameLayout>
+      <GameProvider value={gameLogic}>
+        <Game gridSize={size} />
+      </GameProvider>
+    </GameLayout>
+  )
+}
 
-      <div className="ticks"></div>
+function LoadGameWrapper() {
+  const { slot: slotParam } = useParams()
+  const slot = parseInt(slotParam || '1')
+  const { loadGame } = useGameStorage()
+  const savedState = loadGame(slot)
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  if (!savedState) {
+    return <div>No save found in slot {slot}</div>
+  }
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+  const gameLogic = useGameLogic(savedState.gridSize, savedState.boardType, savedState.playerSide)
+  gameLogic.loadGameState(savedState)
+
+  return (
+    <GameLayout>
+      <GameProvider value={gameLogic}>
+        {/* Pass the same slot so moves continue saving to it */}
+        <Game gridSize={savedState.gridSize} />
+      </GameProvider>
+    </GameLayout>
   )
 }
 
