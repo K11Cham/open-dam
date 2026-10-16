@@ -1,0 +1,296 @@
+/* Atelier — minimalist. Structural differences from the other themes: the
+   board draws hairline rules instead of alternating cell fills, chrome is
+   full-bleed rather than floating, and every control loses its box in favour
+   of a rule. All scoped to [data-theme='atelier']. */
+
+[data-theme='atelier'] .at-piece {
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 200ms ease;
+}
+[data-theme='atelier'] .at-piece.is-p1 {
+  background: var(--dam-p1);
+}
+[data-theme='atelier'] .at-piece.is-p2 {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--dam-p2-edge);
+}
+[data-theme='atelier'] .at-piece.is-selected {
+  box-shadow: 0 0 0 1px var(--dam-ink), 0 0 0 5px var(--dam-bg), 0 0 0 6px var(--dam-ink);
+}
+[data-theme='atelier'] .at-piece.is-p2.is-selected {
+  box-shadow: inset 0 0 0 2px var(--dam-p2-edge), 0 0 0 1px var(--dam-ink),
+    0 0 0 5px var(--dam-bg), 0 0 0 6px var(--dam-ink);
+}
+[data-theme='atelier'] .at-piece-crown {
+  width: 44%;
+  height: 44%;
+  border-radius: 999px;
+  border: 1.5px solid var(--dam-crown);
+}
+[data-theme='atelier'] .at-piece.is-p1 .at-piece-crown {
+  border-color: var(--dam-crown);
+}
+
+[data-theme='atelier'] .at-ring,
+[data-theme='atelier'] .at-cross,
+[data-theme='atelier'] .at-selected-frame,
+[data-theme='atelier'] .at-last-move {
+  position: absolute;
+  pointer-events: none;
+}
+[data-theme='atelier'] .at-ring {
+  width: 34%;
+  height: 34%;
+  border-radius: 999px;
+  border: 1px solid var(--dam-target);
+  animation: at-fade 0.24s ease-out both;
+}
+[data-theme='atelier'] .at-ring.is-chain {
+  border-width: 1.5px;
+  border-color: var(--dam-offender);
+  animation: at-fade 0.24s ease-out both, at-breathe 2s ease-in-out infinite 0.24s;
+}
+[data-theme='atelier'] .at-cross {
+  width: 32%;
+  height: 32%;
+  animation: at-fade 0.24s ease-out both;
+}
+[data-theme='atelier'] .at-cross::before,
+[data-theme='atelier'] .at-cross::after {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 1px;
+  background: var(--dam-capture-target);
+}
+[data-theme='atelier'] .at-cross::after {
+  transform: rotate(90deg);
+}
+[data-theme='atelier'] .at-selected-frame {
+  inset: 3px;
+  border: 1px solid var(--dam-ink);
+}
+[data-theme='atelier'] .at-last-move {
+  inset: 0;
+  background: var(--dam-surface-2);
+}
+
+@keyframes at-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes at-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* Board: hairline rules, no outer chrome. */
+[data-theme='atelier'] .at-board-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--dam-board-bg);
+  border: 1px solid var(--dam-border);
+}
+[data-theme='atelier'] .dam-cell {
+  border-right: 1px solid var(--dam-cell-line);
+  border-bottom: 1px solid var(--dam-cell-line);
+}
+[data-theme='atelier'] .dam-cell:nth-child(n) {
+  border-top: none;
+  border-left: none;
+}
+
+[data-theme='atelier'] .at-end-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+[data-theme='atelier'] .at-end-ring {
+  position: absolute;
+  width: 18%;
+  height: 18%;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  border: 1px solid var(--dam-ink);
+}
+[data-theme='atelier'] .at-end-ring.is-winner {
+  border-width: 1.5px;
+}
+[data-theme='atelier'] .at-end-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform-origin: left center;
+}
+
+/* ── Chrome: full-bleed bars, rules instead of boxes ───────────────────── */
+
+[data-theme='atelier'] .dam-navbar {
+  border-bottom: 1px solid var(--dam-border-soft);
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  border-radius: 0;
+  padding-left: clamp(16px, 5vw, 56px);
+  padding-right: clamp(16px, 5vw, 56px);
+}
+[data-theme='atelier'] .dam-navbar .dam-wordmark {
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+[data-theme='atelier'] .dam-panel {
+  border: 1px solid var(--dam-border-soft);
+  border-radius: 2px;
+}
+
+[data-theme='atelier'] .dam-button {
+  border: none;
+  border-bottom: 1px solid var(--dam-border);
+  border-radius: 0;
+  background: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 10px 2px;
+  transition: opacity 180ms ease, border-color 180ms ease;
+}
+[data-theme='atelier'] .dam-button:hover:not(:disabled) {
+  opacity: 0.55;
+}
+[data-theme='atelier'] .dam-button:active:not(:disabled) {
+  opacity: 0.35;
+}
+[data-theme='atelier'] .dam-button.is-primary {
+  background: var(--dam-ink);
+  color: var(--dam-ink-inverse);
+  padding: 12px 24px;
+  border-bottom: none;
+}
+[data-theme='atelier'] .dam-icon-button {
+  border: none;
+  background: transparent;
+}
+
+[data-theme='atelier'] .dam-player-bar {
+  border: none;
+  border-top: 1px solid var(--dam-border-soft);
+  border-bottom: 1px solid var(--dam-border-soft);
+  background: transparent;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+[data-theme='atelier'] .dam-player-bar.is-active .dam-player-name::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 1px;
+  background: var(--dam-ink);
+  vertical-align: middle;
+  margin-right: 8px;
+}
+[data-theme='atelier'] .dam-player-dot {
+  border-radius: 0;
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme='atelier'] .dam-clock {
+  border: none;
+  background: transparent;
+  font-family: var(--dam-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  font-size: 15px;
+}
+
+/* Side panel: right-aligned monospace ledger, hairline separators, no pills. */
+[data-theme='atelier'] .dam-side-panel {
+  border-left: 1px solid var(--dam-border-soft);
+  background: var(--dam-bg);
+}
+[data-theme='atelier'] .dam-side-panel-header {
+  border-bottom: 1px solid var(--dam-border-soft);
+  background: transparent;
+  letter-spacing: 0.22em;
+  font-size: 10px;
+}
+[data-theme='atelier'] .dam-move-row {
+  border-bottom: 1px solid var(--dam-border-soft);
+  margin: 0;
+  padding: 7px 16px;
+  border-radius: 0;
+}
+[data-theme='atelier'] .dam-move-cell {
+  background: transparent !important;
+  text-align: right;
+  font-family: var(--dam-font-mono);
+  font-size: 11px;
+  padding: 0;
+}
+[data-theme='atelier'] .dam-move-index {
+  color: var(--dam-ink-muted);
+  font-family: var(--dam-font-mono);
+  font-size: 11px;
+}
+
+[data-theme='atelier'] .dam-sidenav {
+  border-right: 1px solid var(--dam-border-soft);
+  box-shadow: none;
+}
+[data-theme='atelier'] .dam-sidenav-link {
+  border-radius: 0;
+  border-left: 1px solid transparent;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+[data-theme='atelier'] .dam-sidenav-link.is-active {
+  border-left-color: var(--dam-ink);
+  background: var(--dam-surface-2);
+}
+
+[data-theme='atelier'] .dam-app {
+  background: var(--dam-bg);
+}
+
+[data-theme='atelier'] .dam-tag {
+  border: 1px solid var(--dam-border-soft);
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+}
+
+[data-theme='atelier'] .dam-hero-title {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+[data-theme='atelier'] .dam-game-over-modal {
+  border: 1px solid var(--dam-border-soft);
+  border-radius: 2px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
+}
+[data-theme='atelier'] .dam-outcome-badge {
+  border: 1px solid var(--dam-ink);
+  border-radius: 0;
+}
+[data-theme='atelier'] .dam-modal-player-card {
+  border-radius: 0;
+  border: 1px solid var(--dam-border-soft);
+}
+[data-theme='atelier'] .dam-winner-tag {
+  border-radius: 0;
+}
+

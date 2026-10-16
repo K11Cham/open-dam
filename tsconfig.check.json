@@ -1,0 +1,16 @@
+{
+  "// note": "Standalone config for `npm run check:engine`. Compiles the pure engine plus its check harness to CommonJS so node can run it without a test runner or a loader.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "ignoreDeprecations": "6.0",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": ".enginecheck",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": ["src/game/**/*.ts", "src/ai/**/*.ts", "scripts/*.ts"]
+}
