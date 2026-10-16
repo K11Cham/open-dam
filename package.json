@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:engine": "tsc -p tsconfig.check.json && node -e \"require('fs').writeFileSync('.enginecheck/package.json','{\\\"type\\\":\\\"commonjs\\\"}')\" && node .enginecheck/scripts/engine-check.js",
+    "check:ai": "npm run check:engine --silent >/dev/null && node .enginecheck/scripts/ai-smoke.js"
   },
   "dependencies": {
     "framer-motion": "^12.40.0",
