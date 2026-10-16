@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Grandstander:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700;900&display=swap');
+@import "tailwindcss";
+@import "./styles/app.css";
+
+/*
+  Global base only. Every colour, border and shadow decision now lives in a
+  theme (src/themes/*), applied as `--dam-*` custom properties on <html> by
+  ThemeContext. The previous version of this file hardcoded the neobrutalist
+  palette globally, which is why that look leaked into every "theme".
+*/
+
+@layer base {
+  html {
+    min-height: 100%;
+    background: var(--dam-bg, #F5F4F0);
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    min-height: 100svh;
+    font-family: var(--dam-font-body, system-ui, sans-serif);
+    color: var(--dam-ink, #111111);
+    background: var(--dam-bg, #F5F4F0);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  button { font-family: inherit; }
+}
