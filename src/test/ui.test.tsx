@@ -5,8 +5,10 @@ import { describe, expect, test } from 'vitest'
 import { AppProviders, AppRoutes } from '../App'
 import BoardView from '../components/board/BoardView'
 import { ConfirmDialog } from '../components/ui/Dialog'
-import { createInitialState } from '../game/engine'
+import { createInitialState, resign } from '../game/engine'
 import type { Coord } from '../game/types'
+import { STORAGE_KEYS, storage } from '../services/storage'
+import { THEMES, THEME_KEYS } from '../themes/registry'
 
 const renderAt = (path: string) =>
   render(
@@ -215,5 +217,40 @@ describe('after a game', () => {
     await user.click(await screen.findByRole('button', { name: 'Rematch' }))
     await waitFor(() => expect(screen.getByText('No moves yet.')).toBeInTheDocument())
     expect(square('d3')).toHaveAccessibleName(/d3, Red piece/)
+  })
+})
+
+describe('themes', () => {
+  test.each(THEME_KEYS)('%s draws pieces, kings, square marks and the end of a game', (key) => {
+    storage.set(STORAGE_KEYS.theme, key)
+    const start = createInitialState({ boardSize: 5 })
+    // Crown one piece of each side, then end the game, so every part of the theme is drawn.
+    const board = start.board.map((row) =>
+      row.map((piece) => (piece && piece.id.endsWith('0') ? { ...piece, isKing: true } : piece)),
+    )
+    const position = { ...resign(start, 'player2').state, board }
+    render(
+      <AppProviders>
+        <BoardView
+          position={position}
+          orientation="player1"
+          selected={{ row: 1, col: 1 }}
+          destinations={{ slides: [{ row: 2, col: 2 }], captures: [{ row: 2, col: 3 }] }}
+          offenderIds={new Set([board[0][0]!.id])}
+          animations={[]}
+          promotedIds={[]}
+          lastMove={null}
+          interactive
+          canDragFrom={() => true}
+          onSquare={() => {}}
+          onDrop={() => {}}
+          perspective="player1"
+          sideNames={{ player1: THEMES[key].sides.player1.name, player2: THEMES[key].sides.player2.name }}
+          label="Test board"
+        />
+      </AppProviders>,
+    )
+    expect(document.documentElement.dataset.theme).toBe(key)
+    expect(square('a1')).toHaveAccessibleName(new RegExp(`a1, ${THEMES[key].sides.player1.name}`))
   })
 })

@@ -35,7 +35,8 @@ The full rules, with example boards, are on the **Learn** page.
 - Play online between two browser tabs (preview; a server comes next).
 - Pick a board from 5×5 to 9×9, a clock, and house rules.
 - Review finished games move by move; study positions on the analysis board.
-- Choose between three themes: Neobrutalist Pop, Atelier and Carnival.
+- Choose between four themes: Neobrutalist Pop, Atelier, Carnival, and Sand, a 3D board drawn in the sand with stones
+  against sticks.
 - Play with the keyboard or a screen reader.
 
 ## Running it

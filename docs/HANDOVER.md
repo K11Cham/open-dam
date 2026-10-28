@@ -27,7 +27,7 @@ docs/WALKTHROUGH.md. The live work list is the handover board
 the ArtifactData tool to read and update it). Take rows in this order: doing,
 then todo work rows by phase and order, then todo verify rows. Set a row to
 doing before you start it, run npm run verify before each commit, check UI in
-the browser at desktop and 375px in all three themes, commit each finished row
+the browser at desktop and 375px in all four themes, commit each finished row
 on its own, and mark it done with the commit hash and what you checked. Use
 your own judgement instead of asking. Before you stop, leave the tree clean and
 add an entry to the shift log in docs/HANDOVER.md.
@@ -107,6 +107,15 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-28 (Sand theme)
+
+- New theme **Sand** (`src/themes/sand`), from the owner's idea of a grid drawn
+  in the sand with sticks and stones. The board is tilted in CSS 3D and pieces
+  are stacks of thin layers lifted with `translateZ`; see "A 3D theme" in Part 8
+  of WALKTHROUGH.md. `BoardView` now measures the board with `offsetWidth`, so
+  a tilted board does not throw travelling pieces off course.
+- A UI test renders every theme with kings, square marks and a finished game.
 
 ### 2026-10-28 (tier order)
 
