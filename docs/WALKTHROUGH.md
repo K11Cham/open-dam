@@ -476,14 +476,35 @@ the `<html>` element and sets `data-theme="<key>"`.
 - `src/themes/<theme>/theme.css` adds that theme's signature, scoped to
   `[data-theme='<theme>']`: hard offset shadows and pressing buttons in
   Neobrutalist, hairlines and spaced capitals in Atelier, pill buttons and
-  separated tiles in Carnival.
+  separated tiles in Carnival, a tilted 3D board in Sand.
 
 ### Parts
 
 Some differences can't be done with CSS alone, so a theme also provides React
-components (`parts.tsx`): `Piece` (a flat disc, an open ring, or a painted
-festival token), `CellDecor` (how legal moves are marked), `BoardFrame`,
+components (`parts.tsx`): `Piece` (a flat disc, an open ring, a painted
+festival token, or a 3D stone or stick), `CellDecor` (how legal moves are marked), `BoardFrame`,
 and `EndSequence` (the end-of-game animation on the board).
+
+### A 3D theme: Sand
+
+Sand draws the board the way the game is played outdoors: a grid scratched
+into sand, stones against sticks. It is 3D with plain CSS, no WebGL:
+
+- `BoardFrame` tilts the board (`perspective(...) rotateX(30deg)`). Every box
+  between it and a piece's layers sets `transform-style: preserve-3d`, and
+  none of them may use `overflow`, `opacity`, `filter` or a mask, which would
+  flatten the scene.
+- A piece is a stack of thin layers, each lifted with `translateZ`. Layers
+  that narrow towards the top make a stone's dome; a stick's layers are widest
+  in the middle, like a round twig. A king is a second stone on top, or a
+  second stick laid across.
+- Layer height, `--sd-step`, is set from the board's width with container
+  units (`cqw`), so pieces keep their proportions on every screen. Away from
+  the board (player cards, the analysis palette), a piece tilts itself.
+- The browser hit-tests the tilted squares correctly, so clicks, taps and
+  drags need no special handling. `BoardView` measures the board with
+  `offsetWidth` (layout size, which a tilt does not change) to place
+  travelling pieces.
 
 ### Side names
 

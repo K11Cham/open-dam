@@ -1,0 +1,397 @@
+/*
+  Sand. A grid drawn with a stick in the sand, stones against sticks, seen
+  at a tilt in real 3D. Daylight colours, indigo like dyed cloth for the
+  accent, and marks on the board drawn as if with a finger.
+  Signature move: the board and pieces have depth — pieces are stacks of
+  thin layers lifted with translateZ, and they rise off the sand when you
+  point at them.
+*/
+
+[data-theme='sand'] {
+  /* Height of one piece layer away from the board (player cards, palette). */
+  --sd-step: 1.3px;
+}
+
+/* ── Chrome ──────────────────────────────────────────────────────────────── */
+
+[data-theme='sand'] .topbar__inner {
+  border-radius: 999px;
+  border: var(--dam-border-width) solid var(--dam-border-soft);
+  box-shadow: var(--dam-shadow);
+  padding: 4px 8px 4px 12px;
+}
+
+[data-theme='sand'] .navlink {
+  border-radius: 999px;
+}
+
+[data-theme='sand'] .navlink.is-active {
+  background: var(--dam-accent);
+  color: var(--dam-accent-ink);
+}
+
+/* Buttons sit on the sand: a soft lip below, and they press in. */
+[data-theme='sand'] .btn {
+  border-radius: var(--dam-radius);
+  box-shadow: 0 2px 0 rgb(91 70 48 / 0.28);
+  font-weight: 650;
+  transition:
+    transform 110ms ease,
+    box-shadow 110ms ease,
+    background-color 110ms ease;
+}
+
+[data-theme='sand'] .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 rgb(91 70 48 / 0.28);
+}
+
+[data-theme='sand'] .btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 rgb(91 70 48 / 0.28);
+}
+
+[data-theme='sand'] .btn--ghost,
+[data-theme='sand'] .btn--icon {
+  box-shadow: none;
+}
+
+[data-theme='sand'] .btn--ghost:hover:not(:disabled),
+[data-theme='sand'] .btn--icon:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+[data-theme='sand'] .seg {
+  border-radius: 999px;
+  padding: 3px;
+  background: var(--dam-surface-2);
+}
+
+[data-theme='sand'] .seg__option {
+  border-radius: 999px;
+}
+
+[data-theme='sand'] .seg__option.is-active {
+  background: var(--dam-accent);
+  color: var(--dam-accent-ink);
+}
+
+[data-theme='sand'] .choice.is-active,
+[data-theme='sand'] .palette__tool.is-active {
+  border-color: var(--dam-accent);
+  box-shadow: 0 0 0 2px var(--dam-accent);
+}
+
+[data-theme='sand'] .switch__track.is-on {
+  background: var(--dam-accent);
+  border-color: var(--dam-accent);
+}
+
+[data-theme='sand'] .player-card.is-turn {
+  box-shadow:
+    0 0 0 2px var(--dam-accent),
+    var(--dam-shadow);
+}
+
+[data-theme='sand'] .clock.is-running,
+[data-theme='sand'] .moves__cell.is-current {
+  background: var(--dam-accent);
+  color: var(--dam-accent-ink);
+}
+
+[data-theme='sand'] .tag--turn {
+  background: var(--dam-accent);
+  color: var(--dam-accent-ink);
+}
+
+[data-theme='sand'] .card--link:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--dam-shadow-lg);
+}
+
+[data-theme='sand'] .eyebrow {
+  color: var(--dam-accent);
+}
+
+/* Previews: the grid as lines, and sticks drawn long and thin. */
+[data-theme='sand'] .thumb__cell {
+  stroke: var(--dam-cell-line);
+  stroke-width: 0.7;
+  stroke-opacity: 0.55;
+}
+
+[data-theme='sand'] .thumb__piece--p2 {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(-35deg) scale(1.25, 0.4);
+}
+
+/* ── Board: a tilted patch of sand ───────────────────────────────────────── */
+
+[data-theme='sand'] .sd-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  /* Lets the 3D sizes below follow the board's width (cqw). */
+  container-type: inline-size;
+}
+
+/* Scaled down so the near edge, which perspective enlarges, stays inside the square. */
+[data-theme='sand'] .sd-table {
+  --sd-step: calc(100cqw / var(--sd-size) * 0.024);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: perspective(260cqw) rotateX(30deg) scale(0.86);
+}
+
+/*
+  Every box between the tilted table and a piece's layers keeps the 3D space,
+  otherwise the pieces would be flattened onto the board. None of these may
+  get overflow, opacity, filter or a mask, which would flatten them again.
+*/
+[data-theme='sand'] .board,
+[data-theme='sand'] .cell,
+[data-theme='sand'] .piece-slot,
+[data-theme='sand'] .board__anim-layer,
+[data-theme='sand'] .board__anim-piece {
+  transform-style: preserve-3d;
+}
+
+[data-theme='sand'] .sd-sand {
+  position: absolute;
+  inset: -5%;
+  border-radius: 22px;
+  background-color: var(--dam-board-bg);
+  background-image: var(--dam-bg-pattern);
+  box-shadow: 0 0 26px 14px var(--dam-board-bg);
+  pointer-events: none;
+}
+
+[data-theme='sand'] .sd-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+[data-theme='sand'] .sd-lines path {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Each groove has a light lip where the sand was pushed up beside it. */
+[data-theme='sand'] .sd-lines__lip {
+  transform: translate(0.3px, 0.4px);
+}
+
+[data-theme='sand'] .sd-lines__lip path {
+  stroke: rgb(255 248 232 / 0.8);
+  stroke-width: 2px;
+}
+
+[data-theme='sand'] .sd-lines__groove path {
+  stroke: var(--dam-cell-line);
+  stroke-opacity: 0.85;
+  stroke-width: 2.5px;
+}
+
+[data-theme='sand'] .board.is-interactive .cell:hover {
+  background: rgb(255 248 232 / 0.22);
+}
+
+[data-theme='sand'] .coord {
+  color: var(--dam-cell-line);
+}
+
+/* ── Pieces ──────────────────────────────────────────────────────────────── */
+
+[data-theme='sand'] .sd-piece {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+/* Away from the board a piece tilts itself, so it still reads as 3D. */
+[data-theme='sand'] .sd-token {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: perspective(240px) rotateX(42deg) rotateZ(var(--sd-turn));
+}
+
+[data-theme='sand'] .board .sd-token {
+  transform: rotateZ(var(--sd-turn));
+}
+
+[data-theme='sand'] .sd-body {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: translate 160ms ease;
+}
+
+/* Pointing at a piece you can move, or choosing it, lifts it off the sand. */
+[data-theme='sand'] .board.is-interactive .piece-slot.is-pressable:hover .sd-body,
+[data-theme='sand'] .sd-piece.is-selected .sd-body {
+  translate: 0 0 calc(var(--sd-step) * 5);
+}
+
+[data-theme='sand'] .sd-piece.is-offender .sd-body {
+  animation: sd-rock 1s ease-in-out infinite;
+}
+
+@keyframes sd-rock {
+  0%,
+  100% {
+    rotate: z -5deg;
+  }
+  50% {
+    rotate: z 5deg;
+  }
+}
+
+[data-theme='sand'] .sd-layer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) translateZ(calc(var(--sd-z) * var(--sd-step)));
+}
+
+[data-theme='sand'] .sd-shadow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 96%;
+  height: 96%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(70 45 15 / 0.45), rgb(70 45 15 / 0.16) 65%, transparent);
+  transform: translate(-46%, -44%);
+}
+
+[data-theme='sand'] .sd-shadow.is-long {
+  width: 104%;
+  height: 36%;
+}
+
+/* A stone's top: sunlight on one side, fading into a soft grain. */
+[data-theme='sand'] .sd-pebble.is-top {
+  background-image:
+    radial-gradient(ellipse at 36% 32%, rgb(255 255 255 / 0.3), transparent 60%),
+    radial-gradient(ellipse at 70% 70%, rgb(0 0 0 / 0.12), transparent 55%), var(--dam-bg-pattern);
+  background-size:
+    auto,
+    auto,
+    60px 60px;
+}
+
+/* The stone's sides: each layer's rim catches a little less light than the one above. */
+[data-theme='sand'] .sd-pebble:not(.is-top) {
+  box-shadow: inset 0 -1px 2px rgb(0 0 0 / 0.18);
+}
+
+[data-theme='sand'] .sd-twig {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+[data-theme='sand'] .sd-twig.is-cross {
+  transform: rotateZ(90deg);
+}
+
+[data-theme='sand'] .sd-stick {
+  border-radius: 18% / 50%;
+}
+
+/* A stick's top: pale cut ends, a shine along its length, and bark lines. */
+[data-theme='sand'] .sd-stick.is-top {
+  background-image:
+    linear-gradient(90deg, #ecd3a6 0 5%, transparent 5% 95%, #ecd3a6 95%),
+    linear-gradient(180deg, transparent 12%, rgb(255 236 200 / 0.42) 32%, transparent 55%),
+    repeating-linear-gradient(90deg, transparent 0 8px, rgb(60 30 10 / 0.16) 8px 9px, transparent 9px 17px);
+}
+
+/* ── Marks in the sand ───────────────────────────────────────────────────── */
+
+[data-theme='sand'] .sd-smoothed,
+[data-theme='sand'] .sd-ring,
+[data-theme='sand'] .sd-poke,
+[data-theme='sand'] .sd-cross {
+  position: absolute;
+  pointer-events: none;
+}
+
+[data-theme='sand'] .sd-smoothed {
+  inset: 6%;
+  border-radius: 42%;
+  background: radial-gradient(closest-side, rgb(255 248 230 / 0.6), transparent);
+}
+
+[data-theme='sand'] .sd-ring {
+  inset: 4%;
+  border-radius: 48% 52% 50% 50%;
+  border: 2.5px solid var(--dam-highlight);
+  box-shadow: 0 1px 0 rgb(255 248 232 / 0.75);
+}
+
+/* A finger poke: dark in the hollow, light on the rim. */
+[data-theme='sand'] .sd-poke {
+  width: 24%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, var(--dam-target) 0 38%, transparent 70%);
+  box-shadow: 0 1.5px 0 rgb(255 248 232 / 0.85);
+}
+
+[data-theme='sand'] .sd-cross {
+  width: 44%;
+  aspect-ratio: 1;
+  background:
+    linear-gradient(45deg, transparent 42%, var(--dam-capture-target) 42% 58%, transparent 58%),
+    linear-gradient(-45deg, transparent 42%, var(--dam-capture-target) 42% 58%, transparent 58%);
+}
+
+[data-theme='sand'] .sd-cross.is-chain {
+  width: 54%;
+  animation: sd-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes sd-pulse {
+  50% {
+    scale: 0.82;
+  }
+}
+
+/* ── End of game: rings drawn around the survivors ───────────────────────── */
+
+[data-theme='sand'] .sd-end-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  overflow: visible;
+  pointer-events: none;
+}
+
+[data-theme='sand'] .sd-end-ring {
+  fill: none;
+  stroke: var(--dam-ink-muted);
+  stroke-width: 0.04;
+  stroke-linecap: round;
+}
+
+[data-theme='sand'] .sd-end-ring.is-winner {
+  stroke: var(--dam-cell-line);
+  stroke-width: 0.07;
+}
+
+[data-theme='sand'] .sd-end-ring.is-good {
+  stroke: var(--dam-accent);
+}

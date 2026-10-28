@@ -90,7 +90,9 @@ export default function BoardView({
     const element = boardRef.current
     if (!element) return
     const measure = () => {
-      const width = element.getBoundingClientRect().width
+      // Layout width, not the drawn width: a theme may tilt the board in 3D, which changes how wide it
+      // looks but not the space the squares and travelling pieces are positioned in.
+      const width = element.offsetWidth
       setMetrics({ cell: (width - theme.boardGap * (size - 1)) / size, gap: theme.boardGap })
     }
     measure()

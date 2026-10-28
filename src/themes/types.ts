@@ -17,7 +17,7 @@ import type { Coord, GameStatus, PieceData, PlayerId } from '../game/types'
  * scoped to `[data-theme="<key>"]` so one theme can never leak into another.
  */
 
-export type ThemeKey = 'neobrutalist' | 'atelier' | 'carnival'
+export type ThemeKey = 'neobrutalist' | 'atelier' | 'carnival' | 'sand'
 
 /** Semantic token set. Components use these, never raw colours. */
 export interface ThemeTokens {
