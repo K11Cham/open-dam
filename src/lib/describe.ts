@@ -93,15 +93,18 @@ export function spokenMove(record: MoveRecord, names: Names): string {
 export function noticeText(notice: MatchNotice, names: Names, local: PlayerId[]): string | null {
   const isMine = (player: PlayerId) => local.length === 1 && local[0] === player
   const what = (kind: 'undo' | 'draw') => (kind === 'undo' ? 'take-back' : 'draw')
+  const request = (kind: 'undo' | 'draw') => (kind === 'undo' ? 'take-back request' : 'draw offer')
+  // Name who answered, so "declined" is never anonymous.
+  const other = (player: PlayerId): PlayerId => (player === 'player1' ? 'player2' : 'player1')
   switch (notice.type) {
     case 'offer-made':
       if (isMine(notice.by)) return notice.kind === 'undo' ? 'Take-back requested.' : 'Draw offered.'
       return notice.kind === 'undo' ? `${names[notice.by]} asks to take back a move.` : `${names[notice.by]} offers a draw.`
     case 'offer-accepted':
-      return isMine(notice.by) ? `Your ${what(notice.kind)} was accepted.` : null
+      return isMine(notice.by) ? `${names[other(notice.by)]} accepted your ${request(notice.kind)}.` : null
     case 'offer-declined':
       return isMine(notice.by)
-        ? `Your ${what(notice.kind)} was declined.`
+        ? `${names[other(notice.by)]} declined your ${request(notice.kind)}.`
         : `${names[notice.by]}'s ${what(notice.kind)} was declined.`
     case 'offer-cancelled':
       return isMine(notice.by) ? null : `${names[notice.by]} withdrew the ${what(notice.kind)} offer.`
@@ -111,3 +114,6 @@ export function noticeText(notice: MatchNotice, names: Names, local: PlayerId[])
 }
 
 export const timeControlLabel = (settings: RuleSettings) => settings.timeControl?.label ?? 'Untimed'
+
+/** "1 move", "3 moves": a count with its noun in the right number. */
+export const countOf = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`

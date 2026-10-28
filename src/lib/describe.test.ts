@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { makeSettings } from '../game/settings'
 import type { MoveRecord } from '../game/types'
 import { DEFAULT_SETUP, recordFromSetup, setupFromParams, setupToParams } from '../match/setup'
-import { outcomeReason, outcomeTitle, spokenMove } from './describe'
+import { noticeText, outcomeReason, outcomeTitle, spokenMove } from './describe'
 
 const names = { player1: 'Red', player2: 'Blue' }
 const record = (notation: string, kind: MoveRecord['kind'] = 'move'): MoveRecord => ({
@@ -68,5 +68,23 @@ describe('game setup links', () => {
     const rec = recordFromSetup({ ...DEFAULT_SETUP, opponent: 'doff', side: 'player2' })
     expect(rec.config.seats.player1.kind).toBe('ai')
     expect(rec.config.seats.player2.kind).toBe('human')
+  })
+})
+
+describe('offer notices', () => {
+  const seats = { player1: 'You', player2: 'Seriñ' }
+  test('an answer to your offer names who answered', () => {
+    expect(noticeText({ type: 'offer-declined', kind: 'draw', by: 'player1' }, seats, ['player1'])).toBe(
+      'Seriñ declined your draw offer.',
+    )
+    expect(noticeText({ type: 'offer-accepted', kind: 'undo', by: 'player1' }, seats, ['player1'])).toBe(
+      'Seriñ accepted your take-back request.',
+    )
+  })
+
+  test('in pass and play the offer is described by side', () => {
+    expect(noticeText({ type: 'offer-declined', kind: 'draw', by: 'player2' }, names, ['player1', 'player2'])).toBe(
+      "Blue's draw was declined.",
+    )
   })
 })

@@ -1364,6 +1364,15 @@
   justify-content: center;
 }
 
+/* Pressing a movable piece. The scale property leaves framer-motion's inline transform (hover) alone. */
+.piece-slot.is-pressable {
+  transition: scale 120ms ease;
+}
+
+.piece-slot.is-pressable:active {
+  scale: var(--tap-scale, 0.94);
+}
+
 .board.is-interactive .piece-slot {
   cursor: grab;
 }
@@ -2081,4 +2090,12 @@
   text-align: right;
   font-family: var(--dam-font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 480px) {
+  /* Five columns fit a phone once the cell padding tightens. */
+  .table th,
+  .table td {
+    padding: var(--space-2) 6px;
+  }
 }

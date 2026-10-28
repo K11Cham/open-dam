@@ -40,10 +40,17 @@ function Review({ record }: { record: MatchRecord }) {
   )
 }
 
-/** `/review/:id` — step through a finished game saved on this device. */
+/**
+ * `/review/:id` — step through a finished game saved on this device. Keyed by
+ * the id so going from one review to another reads the right game.
+ */
 export default function ReviewPage() {
-  usePageTitle('Review')
   const { id = '' } = useParams()
+  return <ArchivedGame key={id} id={id} />
+}
+
+function ArchivedGame({ id }: { id: string }) {
+  usePageTitle('Review')
   const [archived] = useState(() => findArchived(id))
 
   if (!archived) {

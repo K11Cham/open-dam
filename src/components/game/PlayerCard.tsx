@@ -3,6 +3,7 @@ import { useThemeParts } from '../../context/useTheme'
 import { countPieces } from '../../game/board'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
+import { countOf } from '../../lib/describe'
 import { undoTargetIndex } from '../../match/reducer'
 import { Button } from '../ui/Button'
 import ClockDisplay from './ClockDisplay'
@@ -50,7 +51,7 @@ export default function PlayerCard({ controller, player, local, isYou, thinking,
           <span className="player-card__name">{isYou ? 'You' : names[player]}</span>
           <span className="player-card__meta">
             {isYou ? `${names[player]} · ` : ''}
-            {pieces} {pieces === 1 ? 'piece' : 'pieces'}
+            {countOf(pieces, 'piece')}
             {kings > 0 ? `, ${kings} ${kings === 1 ? 'king' : 'kings'}` : ''}
           </span>
         </span>

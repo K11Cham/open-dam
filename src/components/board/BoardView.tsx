@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import type { CSSProperties, KeyboardEvent } from 'react'
 import { useTheme, useThemeParts } from '../../context/useTheme'
 import type { Destinations } from '../../game/engine'
 import { coordToNotation } from '../../game/notation'
@@ -241,11 +241,13 @@ export default function BoardView({
 
                     {piece && !travelling.has(k) && draggedKey !== k && (
                       <motion.div
-                        className="piece-slot"
+                        // The press effect is CSS (:active), not framer-motion's whileTap: whileTap makes
+                        // the element focusable, which turned every movable piece into its own Tab stop.
+                        className={interactive && canDragFrom(coord) ? 'piece-slot is-pressable' : 'piece-slot'}
+                        style={{ '--tap-scale': theme.motion.tapScale } as CSSProperties}
                         whileHover={
                           interactive && !isTouch && canDragFrom(coord) ? { scale: theme.motion.hoverScale } : undefined
                         }
-                        whileTap={interactive && canDragFrom(coord) ? { scale: theme.motion.tapScale } : undefined}
                         transition={{ duration: 0.12 }}
                       >
                         <Piece
