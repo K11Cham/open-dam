@@ -235,32 +235,69 @@ The AI uses **negamax with alpha-beta pruning**, the classic game-tree search:
 
 Things specific to Dam:
 
-- **Chains don't alternate turns.** A capture that can continue keeps the same
-  player on move, so a child's score is only negated if the turn actually
-  changed.
+- **Chains don't alternate turns, and cost no depth.** A capture that can
+  continue keeps the same player on move, so a child's score is only negated if
+  the turn actually changed. Each chain leg is searched at the same depth: a
+  chain is one decision, and it always ends because every leg removes a piece.
+  Without this, a three-leg chain used up three plies of lookahead and the
+  engine could not see a sacrifice that sets one up.
 - **Calls are taken greedily.** Calling is free material and doesn't use your
   turn, so the search always takes the most valuable call instead of branching.
-- **Quiescence.** At the bottom of the search it keeps looking at captures until
-  things are quiet, so it doesn't stop mid-exchange.
-- **Iterative deepening.** It searches depth 1, then 2, then 3… until the time
-  budget runs out, always keeping the last complete answer.
+- **Skipping a capture is not free.** At the bottom of the search
+  (quiescence) it keeps looking at captures until things are quiet. The side to
+  move may normally "stand pat" there, but in Dam standing pat while a capture
+  is on the board means declining it, and the piece gets called. The search
+  charges for that (`declineCost`), which is what lets it see the sacrifice
+  that says "take this, or lose that piece".
+- **Forced replies are looked at deeper**, like check extensions in chess,
+  within a per-line budget.
+- **Iterative deepening, a transposition table and move ordering.** It
+  searches depth 1, then 2, then 3… until the time budget runs out. Positions
+  already scored are remembered by a Zobrist hash (`hash.ts`), and moves that
+  caused cut-offs before are tried first.
 
 ### How it scores a position: `evaluate.ts`
 
 Material (kings are worth more on bigger boards), mobility, advancement
 (scaled by the promotion rule), holding your back row, the cost of being
-callable, capture threats, king activity, and two corrections: small material
-edges don't convert near the end (because of auto-king and the one-each draw),
-and an advantage is worth less as the draw counters run down.
+callable, capture threats, king activity, corrections for drawish endings and
+running draw counters, and **lone-king technique**.
+
+Four rules decide almost every ending, and the evaluation has to know them:
+
+1. **A last piece is crowned automatically.** Taking the opponent's
+   second-to-last piece gives their last one a free crown, so "winning a king"
+   can be an even trade.
+2. **One piece each with nothing to capture is a draw.** Winning means total
+   elimination, so a one-piece lead at the end is usually not enough.
+3. **A lone king that can capture must.** If it declines, its last piece is
+   called and it loses. So the hunter can force its move: offer a piece where
+   every landing square is covered, and it has to take and be taken (the
+   kill-or-be-called sacrifice). `loneKingPressure` counts the lone king's safe
+   squares, and when a capture is on offer, only its safe landings.
+4. **Men cannot hunt.** They never move backward, and the lone king guards
+   their whole crowning row; the only safe crowning squares are ones it cannot
+   jump, usually corners. `promotionPush` rewards getting a man there. With a
+   king, the technique is to take away the lone king's safe squares, ending
+   with it in a corner and kings on the two edges that meet there.
 
 ### How tiers differ: `difficulty.ts`
 
-Tiers differ in what they _know_, not just how deep they look. Novice counts
-pieces only, looks one move ahead and plays a random move a third of the time.
-Club adds mobility, tempo and threats. Expert uses the full evaluation. Master
-uses sharpened weights, searches deeper and never errs on purpose. Club and
-Expert make "near miss" mistakes: when they slip, they pick a move that scored
-almost as well, the way a person misjudges rather than throws a piece away.
+Five opponents, named in Wolof, differ in what they _know_, in the order a
+person learns it:
+
+| Tier      | What it knows                                                                             |
+| --------- | ----------------------------------------------------------------------------------------- |
+| **Döff**  | Counts pieces, looks one move ahead, often forgets to call.                               |
+| **Ndö**   | Sees your reply, but not that a capture it skips will be called.                          |
+| **Khàlé** | Knows the calling rule cold; reads short exchanges. No deep sacrifices, no endgame plan.  |
+| **Màam**  | Deep search, every chain, sacrifices that win kings, lone-king hunting. Rare small slips. |
+| **Seriñ** | Everything, deepest, forced-reply extensions, full technique, no deliberate errors.       |
+
+The weaker tiers make "near miss" mistakes: when they slip, they pick a move
+that scored almost as well, the way a person misjudges rather than throws a
+piece away. Old tier ids (`novice`, `club`, `expert`, `master`) in saved games
+and links map to their successors through `normalizeDifficultyId`.
 
 ### Other decisions: `opponent.ts`
 
@@ -269,20 +306,31 @@ undo would return to) or a draw (accepts when not clearly ahead).
 
 ### Off the main thread: `client.ts` and `search.worker.ts`
 
-The search can take over a second. Running it on the page's main thread would
-freeze clicks and animations, so `searchAsync` sends the position to a Web
-Worker (a background thread) and waits for the answer. If workers aren't
+The search can take a couple of seconds. Running it on the page's main thread
+would freeze clicks and animations, so `searchAsync` sends the position to a
+Web Worker (a background thread) and waits for the answer. If workers aren't
 available it falls back to running inline.
 
-### A bug worth understanding
+### Two bugs worth understanding
 
-During the overhaul, Master drew Novice six times out of six. The cause: when a
-search reached a finished game, it scored it from the _root player's_ point of
-view instead of the side to move. Since negamax negates scores as turns pass,
-a winning capture that handed the turn over came back with the wrong sign, so
-Master avoided its own wins. The fix (`terminalScore(state, ply)`) is three
-lines; finding it took tracing one game move by move. It's a good illustration
-of why "who is this score for?" is the key question in any negamax code.
+**Whose score is this?** The old Master once drew Novice six games out of six.
+When the search reached a finished game it scored it from the _root player's_
+point of view instead of the side to move, so a winning capture that handed the
+turn over came back with the wrong sign. Always ask who a negamax score is for.
+
+**Credit, not blame.** The first lone-king term scored the hunter _down_ for
+every square the lone king could still reach. Reducing the opponent to one
+piece then looked worse than leaving them two, so the engine stopped taking
+winning captures and lost twelve games out of twelve to the old engine. It was
+found by switching each new feature off in turn. A replayed game then showed a
+second mistake: the engine sacrificed a man to win a king without realising the
+opponent's last man would be crowned for free, and reached a dead draw with two
+men against a king. The term now only adds credit for progress, and only counts
+in full when the hunter has a king.
+
+To study a game yourself, `RED=serin BLUE=maam SEED=3 FROM=6 npm run replay`
+prints every ply with the board and the engine's score. Find the move where the
+score went wrong, then ask which rule the evaluation did not understand.
 
 ---
 
@@ -456,14 +504,14 @@ honour the same setting through `<MotionConfig reducedMotion="user">` in
 
 | Route                  | Page               | Notes                                                                                                   |
 | ---------------------- | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| `/`                    | `HomePage`         | Continue card when a game is saved; quick play links; recent games.                                     |
-| `/play`                | `NewGamePage`      | Opponent cards, your side, rules (house rules under a disclosure). Asks before discarding a saved game. |
+| `/`                    | `HomePage`         | Live demo game; Continue card; quick play with board previews; recent games.                            |
+| `/play`                | `NewGamePage`      | Opponent cards, your side, rules; house rules as a summary with an edit dialog. Asks before discarding. |
 | `/match/new?…`         | `NewMatchFromLink` | Builds a game from a link, then redirects to `/match/:id`.                                              |
-| `/match/:id`           | `MatchPage`        | Loads the saved game; hosts it; attaches the AI and saving.                                             |
+| `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.        |
 | `/online/:id`          | `OnlinePage`       | Hosts (creator tab) or joins (`?seat=`).                                                                |
 | `/review/:id`          | `ReviewPage`       | A finished game, read-only, steppable.                                                                  |
 | `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eight chapters with example boards.                                                  |
-| `/analysis`            | `AnalysisPage`     | Set up and explore positions.                                                                           |
+| `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                   |
 | `/leaderboards`        | `LeaderboardsPage` | Sample data until there is a server.                                                                    |
 
 The match screen (`components/game/MatchScreen.tsx`) is composed of:
@@ -489,28 +537,30 @@ replays every example.
 
 ## Part 10 — Tools and tests
 
-| Command             | What it runs                              |
-| ------------------- | ----------------------------------------- |
-| `npm run dev`       | Vite dev server with hot reload           |
-| `npm test`          | Vitest: ~150 tests in a few seconds       |
-| `npm run typecheck` | TypeScript in strict mode                 |
-| `npm run lint`      | ESLint                                    |
-| `npm run format`    | Prettier                                  |
-| `npm run verify`    | All of the above, then a production build |
-| `npm run check:ai`  | Tier-vs-tier matches (about two minutes)  |
+| Command                  | What it runs                              |
+| ------------------------ | ----------------------------------------- |
+| `npm run dev`            | Vite dev server with hot reload           |
+| `npm test`               | Vitest: ~160 tests in a few seconds       |
+| `npm run typecheck`      | TypeScript in strict mode                 |
+| `npm run lint`           | ESLint                                    |
+| `npm run format`         | Prettier                                  |
+| `npm run verify`         | All of the above, then a production build |
+| `npm run check:ai`       | Tier-vs-tier matches (several minutes)    |
+| `npm run check:endgames` | Endgame conversion from random starts     |
+| `npm run replay`         | Print one computer game ply by ply        |
 
 Where the tests are and what they protect:
 
-| File                                  | Protects                                                                                                          |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `src/game/engine.test.ts`             | Every rule branch                                                                                                 |
-| `src/ai/ai.test.ts`                   | Legal play for every tier, basic tactics, time budget, offer decisions                                            |
-| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                              |
-| `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                                |
-| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal                                                                                   |
-| `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                 |
-| `src/test/ui.test.tsx`                | The real screens: keyboard board, AI pieces not selectable, resign confirmation, saved game on Home, dialog focus |
-| `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                  |
+| File                                  | Protects                                                                                                         |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src/game/engine.test.ts`             | Every rule branch                                                                                                |
+| `src/ai/ai.test.ts`                   | Legal play for every tier, sacrifices, lone-king finishes, missed calls, time budget, offers                     |
+| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                             |
+| `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                               |
+| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal                                                                                  |
+| `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                |
+| `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs |
+| `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                 |
 
 CI (`.github/workflows/ci.yml`) runs `verify` on every push and pull request.
 
@@ -535,7 +585,8 @@ every screen in it.
 
 **Add an AI tier.** Add an entry to `DIFFICULTIES` in `ai/difficulty.ts` and
 its id to `DIFFICULTY_IDS`. It appears on New game and Home automatically.
-Add it to the matches in `scripts/ai-strength.test.ts`.
+Add it to the matches in `scripts/ai-strength.test.ts`. If you rename one, map the
+old id in `normalizeDifficultyId` so saved games and links keep working.
 
 **Add a page.** Create it in `src/pages`, wrap it in `AppShell`, call
 `usePageTitle`, add a `<Route>` in `AppRoutes` (`src/App.tsx`, lazily if it's
