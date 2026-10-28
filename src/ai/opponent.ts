@@ -1,6 +1,7 @@
-import { opponentOf } from '../game/board'
 import type { EngineState, PlayerId } from '../game/types'
-import type { OfferDecision } from '../hooks/useMatchOffers'
+
+/** How the AI answers an offer. */
+export type OfferDecision = 'accept' | 'decline'
 import type { Difficulty } from './difficulty'
 import { evaluate } from './evaluate'
 
@@ -51,12 +52,6 @@ export function decideDrawOffer(
   if (score <= difficulty.drawAcceptWithin) return 'accept'
   return 'decline'
 }
-
-/** Human-readable side label for the AI's bar. */
-export const aiSideLabel = (aiSide: PlayerId): string =>
-  aiSide === 'player1' ? 'Red' : 'Blue'
-
-export const humanSideOf = (aiSide: PlayerId): PlayerId => opponentOf(aiSide)
 
 /** Simulated thinking time, so a one-ply reply does not land instantly. */
 export const thinkingDelay = (difficulty: Difficulty, random: () => number): number => {

@@ -8,14 +8,15 @@ import {
   promotionRow,
   serializePosition,
 } from './board'
-import { classifyMove, getCaptures, getCapturesFrom, hasAnyLegalMove } from './moves'
-import { DRAW_NOTATION, formatCall, formatMove, formatResign } from './notation'
+import { classifyMove, getCaptures, getCapturesFrom, getSimpleMoves, hasAnyLegalMove } from './moves'
+import { DRAW_NOTATION, formatCall, formatMove, formatResign, formatTimeout } from './notation'
 import { makeSettings, resolvePromotionPolicy } from './settings'
 import type {
   Board,
   Coord,
   DrawReason,
   EngineResult,
+  EngineAction,
   EngineState,
   GameEvent,
   MoveRecord,
@@ -24,6 +25,7 @@ import type {
   PlayerId,
   ResolvedPromotionPolicy,
   RuleSettings,
+  WinReason,
 } from './types'
 
 // ---------------------------------------------------------------------------
@@ -53,14 +55,6 @@ export const createInitialState = (
     positionCounts: { [serializePosition(board, 'player1')]: 1 },
     pliesSinceCapture: 0,
     isFirstMove: true,
-    clock: settings.timeControl
-      ? {
-          player1Ms: settings.timeControl.initialMs,
-          player2Ms: settings.timeControl.initialMs,
-          running: null,
-          lastTickAt: null,
-        }
-      : null,
     nextPieceId,
   }
   return state
@@ -74,7 +68,6 @@ export const createAnalysisState = (partialSettings: Partial<RuleSettings> = {})
     board: state.board.map((row) => row.map(() => null)),
     positionCounts: {},
     isFirstMove: false,
-    clock: null,
   }
 }
 
@@ -122,9 +115,11 @@ const reachedPromotionRow = (piece: PieceData, to: Coord, gridSize: number): boo
  * game has a real non-termination hole. Both are settings-driven, so anyone who
  * wants the narrower rule set can switch them off in the pre-game panel.
  */
-const evaluateStatus = (state: EngineState): { reason: DrawReason | null; winner: PlayerId | null } => {
-  if (countPieces(state.board, 'player1') === 0) return { reason: null, winner: 'player2' }
-  if (countPieces(state.board, 'player2') === 0) return { reason: null, winner: 'player1' }
+const evaluateStatus = (
+  state: EngineState,
+): { reason: DrawReason | null; winner: PlayerId | null; winReason?: WinReason } => {
+  if (countPieces(state.board, 'player1') === 0) return { reason: null, winner: 'player2', winReason: 'no-pieces' }
+  if (countPieces(state.board, 'player2') === 0) return { reason: null, winner: 'player1', winReason: 'no-pieces' }
 
   const p1 = countPieces(state.board, 'player1')
   const p2 = countPieces(state.board, 'player2')
@@ -135,6 +130,17 @@ const evaluateStatus = (state: EngineState): { reason: DrawReason | null; winner
     if (!anyCapture && state.offenders.length === 0) {
       return { reason: 'one-each-stalemate', winner: null }
     }
+  }
+
+  // Blocked: the side to move has no legal move and no call that might free
+  // one. A pending call is checked again after it is made, because a call does
+  // not end the turn and settles status like any other action.
+  if (
+    !state.chain.active &&
+    state.offenders.length === 0 &&
+    !hasAnyLegalMove(state.board, state.currentPlayer)
+  ) {
+    return { reason: null, winner: opponentOf(state.currentPlayer), winReason: 'no-moves' }
   }
 
   const { draw } = state.settings
@@ -150,10 +156,10 @@ const evaluateStatus = (state: EngineState): { reason: DrawReason | null; winner
 
 const settleStatus = (state: EngineState, events: GameEvent[]): EngineState => {
   if (state.status.kind !== 'playing') return state
-  const { reason, winner } = evaluateStatus(state)
+  const { reason, winner, winReason = 'no-pieces' } = evaluateStatus(state)
   if (winner) {
-    events.push({ type: 'win', winner, reason: 'no-pieces' })
-    return { ...state, status: { kind: 'win', winner, reason: 'no-pieces' } }
+    events.push({ type: 'win', winner, reason: winReason })
+    return { ...state, status: { kind: 'win', winner, reason: winReason } }
   }
   if (reason) {
     events.push({ type: 'tie', reason })
@@ -313,8 +319,13 @@ const endTurn = (
   } else if (!moverCaptured) {
     offenders = offendersFromSkippedCapture(boardAtTurnStart, mover)
   }
-  // Only keep offenders whose piece is still on the board.
-  offenders = offenders.filter((o) => findPiece(state.board, o.pieceId) !== null)
+  // Re-locate each offender on the board as it stands now: the piece that
+  // passed up a capture may be the very piece that just moved. Offenders that
+  // are no longer on the board are dropped.
+  offenders = offenders.flatMap((o) => {
+    const at = findPiece(state.board, o.pieceId)
+    return at ? [{ ...o, at }] : []
+  })
 
   if (offenders.length > 0) {
     events.push({ type: 'call-available', caller: next, offenders })
@@ -499,7 +510,7 @@ export const applyMove = (state: EngineState, from: Coord, to: Coord): EngineRes
   const record: Omit<MoveRecord, 'ply'> = {
     player: mover,
     notation: formatMove({
-      from: state.chain.active && state.chain.legs.length > 0 ? from : from,
+      from,
       to,
       gridSize,
       isCapture: true,
@@ -667,7 +678,47 @@ export const flagTimeout = (state: EngineState, player: PlayerId): EngineResult 
   if (state.status.kind !== 'playing') return reject(state, 'The game is over.')
   const winner = opponentOf(player)
   const events: GameEvent[] = [{ type: 'win', winner, reason: 'timeout' }]
-  return ok({ ...state, status: { kind: 'win', winner, reason: 'timeout' } }, events)
+  return ok(
+    {
+      ...state,
+      status: { kind: 'win', winner, reason: 'timeout' },
+      chain: { active: false, at: null, pendingPromotionPieceId: null, legs: [] },
+      offenders: [],
+      moves: pushMoveRecord(state, {
+        player,
+        notation: formatTimeout(player),
+        from: null,
+        to: null,
+        kind: 'timeout',
+        capturedIds: [],
+        promoted: false,
+        continuesChain: false,
+      }),
+    },
+    events,
+  )
+}
+
+/**
+ * The single entry point for every player action. The match layer, the AI and
+ * any network peer all speak `EngineAction`, so this is the one function a
+ * server would need to run to stay authoritative over the rules.
+ */
+export const applyAction = (state: EngineState, action: EngineAction): EngineResult => {
+  switch (action.type) {
+    case 'move':
+      return applyMove(state, action.from, action.to)
+    case 'end-chain':
+      return declineChain(state)
+    case 'call':
+      return applyCall(state, action.pieceId)
+    case 'resign':
+      return resign(state, action.player)
+    case 'agree-draw':
+      return agreeDraw(state)
+    case 'timeout':
+      return flagTimeout(state, action.player)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -713,6 +764,30 @@ export const destinationsFor = (state: EngineState, from: Coord): Destinations =
 
 export const canCall = (state: EngineState): boolean =>
   state.status.kind === 'playing' && !state.chain.active && state.offenders.length > 0
+
+/**
+ * Every legal action for the side to move. Resign and draw are left out —
+ * they are always available and are not "moves" a search should consider.
+ */
+export const legalActions = (state: EngineState): EngineAction[] => {
+  if (state.status.kind !== 'playing') return []
+  const player = state.currentPlayer
+  const out: EngineAction[] = []
+  if (canCall(state)) {
+    if (state.settings.call.scope === 'all' || state.offenders.length === 1) out.push({ type: 'call' })
+    else for (const o of state.offenders) out.push({ type: 'call', pieceId: o.pieceId })
+  }
+  if (state.chain.active && state.chain.at) {
+    for (const c of getCapturesFrom(state.board, player, state.chain.at)) {
+      out.push({ type: 'move', from: c.from, to: c.to })
+    }
+    out.push({ type: 'end-chain' })
+    return out
+  }
+  for (const c of getCaptures(state.board, player)) out.push({ type: 'move', from: c.from, to: c.to })
+  for (const m of getSimpleMoves(state.board, player)) out.push({ type: 'move', from: m.from, to: m.to })
+  return out
+}
 
 export const isOffenderSquare = (state: EngineState, row: number, col: number): boolean => {
   const piece = state.board[row]?.[col]

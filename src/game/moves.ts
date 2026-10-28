@@ -161,7 +161,8 @@ export const classifyMove = (b: Board, player: PlayerId, from: Coord, to: Coord)
   const piece = b[from.row]?.[from.col]
   if (!piece) return { kind: 'illegal', reason: 'No piece on that square.' }
   if (piece.player !== player) return { kind: 'illegal', reason: 'That is not your piece.' }
-  if (b[to.row]?.[to.col] !== null) return { kind: 'illegal', reason: 'Destination is occupied.' }
+  if (!inBounds(b, to.row, to.col)) return { kind: 'illegal', reason: 'That square is off the board.' }
+  if (b[to.row][to.col] !== null) return { kind: 'illegal', reason: 'Destination is occupied.' }
 
   const rowDiff = to.row - from.row
   const colDiff = to.col - from.col
