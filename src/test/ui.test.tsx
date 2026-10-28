@@ -72,7 +72,7 @@ describe('board', () => {
 
 describe('playing against the computer', () => {
   test('the human cannot select the computer’s pieces', async () => {
-    renderAt('/match/new?vs=club&side=player1&size=5')
+    renderAt('/match/new?vs=khale&side=player1&size=5')
     await screen.findByRole('grid')
     tap(square('a5')) // a Blue (computer) piece
     expect(square('a5')).not.toHaveAccessibleName(/selected/)
@@ -82,18 +82,18 @@ describe('playing against the computer', () => {
   })
 
   test('a move is played, then the computer replies', async () => {
-    renderAt('/match/new?vs=novice&side=player1&size=5')
+    renderAt('/match/new?vs=doff&side=player1&size=5')
     await screen.findByRole('grid')
     tap(square('c2'))
     fireEvent.click(square('c3'))
     expect(screen.getByRole('heading', { name: /thinking/i })).toBeInTheDocument()
-    // Novice thinks for under a second; the search falls back to the main thread in tests.
+    // Döff thinks for under a second; the search falls back to the main thread in tests.
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Your move' })).toBeInTheDocument(), { timeout: 4000 })
   })
 
   test('resigning asks first', async () => {
     const user = userEvent.setup()
-    renderAt('/match/new?vs=club&side=player1&size=5')
+    renderAt('/match/new?vs=khale&side=player1&size=5')
     await screen.findByRole('grid')
     await user.click(screen.getByRole('button', { name: 'Resign' }))
     const dialog = screen.getByRole('dialog', { name: 'Resign this game?' })
@@ -149,5 +149,46 @@ describe('learn', () => {
     renderAt('/learn/chains')
     expect(await screen.findByRole('heading', { name: 'Chain captures', level: 2 })).toBeInTheDocument()
     expect(screen.getAllByRole('grid').length).toBeGreaterThan(0)
+  })
+})
+
+describe('new game', () => {
+  test('house rules are summarised, edited in a dialog, and can be reset', async () => {
+    const user = userEvent.setup()
+    renderAt('/play')
+    await screen.findByRole('heading', { name: 'New game' })
+    expect(screen.getByText('Standard')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Change' }))
+    const dialog = screen.getByRole('dialog', { name: 'House rules' })
+    await user.click(within(dialog).getByRole('switch', { name: /threefold repetition/ }))
+    expect(screen.queryByText('Standard')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Use standard rules' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByText('Standard')).toBeInTheDocument()
+  })
+
+  test('the five computer opponents are offered', async () => {
+    renderAt('/play')
+    await screen.findByRole('heading', { name: 'New game' })
+    for (const name of ['Döff', 'Ndö', 'Khàlé', 'Màam', 'Seriñ']) expect(screen.getByText(name)).toBeInTheDocument()
+  })
+})
+
+describe('analysis', () => {
+  test('moves played are listed and can be stepped back through', async () => {
+    const user = userEvent.setup()
+    renderAt('/analysis')
+    await user.click(await screen.findByRole('button', { name: 'Starting position' }))
+    tap(square('d3'))
+    fireEvent.click(square('c3'))
+    tap(square('b3'))
+    fireEvent.click(square('d3'))
+    const list = screen.getByRole('region', { name: 'Moves' })
+    expect(within(list).getByRole('button', { name: /d3 to c3/ })).toBeInTheDocument()
+    expect(within(list).getByRole('button', { name: /b3 jumps to d3/ })).toBeInTheDocument()
+    await user.click(within(list).getByRole('button', { name: /d3 to c3/ }))
+    expect(square('d3')).toHaveAccessibleName(/d3, empty/)
+    expect(within(list).getByText('1 / 2')).toBeInTheDocument()
   })
 })

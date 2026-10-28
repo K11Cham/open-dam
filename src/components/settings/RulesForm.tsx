@@ -1,12 +1,16 @@
-import { ChevronDown } from 'lucide-react'
+import { RotateCcw, SlidersHorizontal } from 'lucide-react'
+import { useId, useState } from 'react'
 import {
   CALL_SCOPE_LABELS,
+  DEFAULT_SETTINGS,
   PROMOTION_POLICY_BLURBS,
   PROMOTION_POLICY_LABELS,
   TIME_CONTROLS,
   boardTypeForSize,
 } from '../../game/settings'
 import type { BoardSize, CallScope, PromotionPolicy, RuleSettings } from '../../game/types'
+import { Button } from '../ui/Button'
+import { Dialog } from '../ui/Dialog'
 import Segmented from '../ui/Segmented'
 import Switch from '../ui/Switch'
 
@@ -20,14 +24,46 @@ interface RulesFormProps {
   online?: boolean
 }
 
+/** The house rules in force, one short line each, for the summary on the form. */
+const houseRulesSummary = (settings: RuleSettings): string[] => {
+  const { draw } = settings
+  const draws = [
+    draw.threefoldRepetition ? 'threefold repetition' : null,
+    draw.pliesWithoutCapture ? `${draw.pliesWithoutCapture / 2} moves each without a capture` : null,
+  ].filter(Boolean)
+  return [
+    `Crowning mid-chain: ${PROMOTION_POLICY_LABELS[settings.promotionPolicy].toLowerCase()}`,
+    `A call removes: ${CALL_SCOPE_LABELS[settings.call.scope].toLowerCase()}`,
+    settings.call.abandonedChainCallable ? 'Stopping a chain early can be called' : 'Stopping a chain early is safe',
+    draws.length > 0 ? `Drawn on ${draws.join(' or ')}` : 'No automatic draws',
+  ]
+}
+
+const isStandard = (settings: RuleSettings): boolean =>
+  settings.promotionPolicy === DEFAULT_SETTINGS.promotionPolicy &&
+  settings.call.scope === DEFAULT_SETTINGS.call.scope &&
+  settings.call.abandonedChainCallable === DEFAULT_SETTINGS.call.abandonedChainCallable &&
+  settings.draw.threefoldRepetition === DEFAULT_SETTINGS.draw.threefoldRepetition &&
+  settings.draw.pliesWithoutCapture === DEFAULT_SETTINGS.draw.pliesWithoutCapture
+
 /**
- * The rule settings for a new game. Board and clock are always visible; the
- * variant rules (crowning mid-chain, what a call takes, draw rules) sit under
- * "House rules", because most players will never change them.
+ * The rule settings for a new game. Board and clock are edited in place; the
+ * variant rules (crowning mid-chain, what a call takes, draw rules) are shown
+ * as a short summary and edited in a dialog, because most players never change
+ * them and a long expanding section would push the rest of the page around.
  */
 export default function RulesForm({ settings, onChange, online = false }: RulesFormProps) {
+  const [editing, setEditing] = useState(false)
+  const headingId = useId()
   const patch = (next: Partial<RuleSettings>) => onChange({ ...settings, ...next })
   const policies = online ? [...POLICIES, 'match-opponent' as const] : POLICIES
+  const standard = isStandard(settings)
+  const resetHouseRules = () =>
+    patch({
+      promotionPolicy: DEFAULT_SETTINGS.promotionPolicy,
+      call: { ...DEFAULT_SETTINGS.call },
+      draw: { ...DEFAULT_SETTINGS.draw },
+    })
 
   return (
     <div className="form-stack">
@@ -68,12 +104,40 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
       />
       <p className="field__help">Minutes each + seconds added per move.</p>
 
-      <details className="disclosure">
-        <summary className="disclosure__summary">
-          <span>House rules</span>
-          <ChevronDown size={16} aria-hidden className="disclosure__chevron" />
-        </summary>
-        <div className="disclosure__body form-stack">
+      <div className="house-rules">
+        <div className="house-rules__head">
+          <h3 className="house-rules__title" id={headingId}>
+            House rules
+          </h3>
+          {standard && <span className="tag">Standard</span>}
+          <Button variant="ghost" size="sm" icon={<SlidersHorizontal size={16} />} onClick={() => setEditing(true)}>
+            Change
+          </Button>
+        </div>
+        <ul className="house-rules__list" aria-labelledby={headingId}>
+          {houseRulesSummary(settings).map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      </div>
+
+      <Dialog
+        open={editing}
+        onClose={() => setEditing(false)}
+        title="House rules"
+        description="Variants people play in different places. The standard rules suit most games."
+        footer={
+          <>
+            <Button variant="ghost" icon={<RotateCcw size={16} />} disabled={standard} onClick={resetHouseRules}>
+              Use standard rules
+            </Button>
+            <Button variant="primary" onClick={() => setEditing(false)} data-autofocus>
+              Done
+            </Button>
+          </>
+        }
+      >
+        <div className="form-stack">
           <Segmented
             label="Crowning in the middle of a chain"
             wrap
@@ -123,7 +187,7 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
             ends.
           </p>
         </div>
-      </details>
+      </Dialog>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { ArrowLeftRight, Eraser, Megaphone, Redo2, RotateCcw, SkipForward, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 import BoardView from '../components/board/BoardView'
+import MoveList from '../components/game/MoveList'
 import AppShell from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
@@ -163,6 +164,10 @@ export default function AnalysisPage() {
                 onChange={board.setTurn}
               />
             </Panel>
+
+            <div className="analysis__moves">
+              <MoveList controller={{ ...board.moveList, names: sideNames }} />
+            </div>
 
             <Panel as="section" aria-labelledby="tools-h">
               <h2 id="tools-h" className="panel__title">

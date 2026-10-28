@@ -431,8 +431,8 @@ the `<html>` element and sets `data-theme="<key>"`.
 ### Parts
 
 Some differences can't be done with CSS alone, so a theme also provides React
-components (`parts.tsx`): `Piece` (a flat disc, an open ring, or a drawn
-character with a face), `CellDecor` (how legal moves are marked), `BoardFrame`,
+components (`parts.tsx`): `Piece` (a flat disc, an open ring, or a painted
+festival token), `CellDecor` (how legal moves are marked), `BoardFrame`,
 and `EndSequence` (the end-of-game animation on the board).
 
 ### Side names

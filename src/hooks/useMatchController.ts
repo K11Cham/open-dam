@@ -278,6 +278,7 @@ export function useMatchController({
     goTo,
     indexAfterPly,
     moveRows,
+    totalMoves: position.moves.length,
   }
 }
 

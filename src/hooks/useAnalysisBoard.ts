@@ -2,12 +2,22 @@ import { useCallback, useMemo, useState } from 'react'
 import { applyAction, canCall, createInitialState, destinationsFor } from '../game/engine'
 import type { Destinations } from '../game/engine'
 import { makeEmptyBoard } from '../game/board'
+import { toMoveRows } from '../game/notation'
 import { boardTypeForSize } from '../game/settings'
 import type { BoardSize, Coord, EngineAction, EngineState, GameEvent, GameStatus, PieceData, PlayerId } from '../game/types'
 
 const PLAYING: GameStatus = { kind: 'playing' }
 const NO_DESTINATIONS: Destinations = { slides: [], captures: [] }
 const same = (a: Coord | null, b: Coord | null) => !!a && !!b && a.row === b.row && a.col === b.col
+
+/**
+ * Whether `later` was reached by playing on from `earlier`. Editing the
+ * position (placing pieces, changing the side to move, loading a code) starts
+ * a new line with an empty move list, while playing only ever keeps or grows
+ * it: a move or call adds a record, and ending a chain rewrites the last one.
+ */
+const continues = (earlier: EngineState, later: EngineState) =>
+  later.moves.length > 0 && later.moves.length >= earlier.moves.length
 
 /** An empty board of the given size, ready for setting up a position. */
 export const emptyAnalysisPosition = (size: BoardSize): EngineState => {
@@ -90,6 +100,7 @@ export function useAnalysisBoard(onEvents: (events: GameEvent[]) => void, notify
         offenders: [],
         chain: { active: false, at: null, pendingPromotionPieceId: null, legs: [] },
         positionCounts: {},
+        moves: [],
       })
       setVerdict(PLAYING)
       setSelected(null)
@@ -99,7 +110,7 @@ export function useAnalysisBoard(onEvents: (events: GameEvent[]) => void, notify
 
   const load = useCallback(
     (next: EngineState) => {
-      commit({ ...next, status: PLAYING })
+      commit({ ...next, status: PLAYING, moves: [] })
       setVerdict(PLAYING)
       setSelected(null)
     },
@@ -112,6 +123,7 @@ export function useAnalysisBoard(onEvents: (events: GameEvent[]) => void, notify
         ...position,
         currentPlayer: player,
         offenders: [],
+        moves: [],
         chain: { active: false, at: null, pendingPromotionPieceId: null, legs: [] },
       })
       setSelected(null)
@@ -136,7 +148,50 @@ export function useAnalysisBoard(onEvents: (events: GameEvent[]) => void, notify
     setSelected(null)
   }, [future, position])
 
+  // The line being studied: the stretch of history around the current
+  // position that was reached by playing moves, including any redo steps.
+  const timeline = useMemo(() => [...past, position, ...future], [past, position, future])
+  const current = past.length
+  const line = useMemo(() => {
+    let start = current
+    while (start > 0 && continues(timeline[start - 1], timeline[start])) start--
+    let end = current
+    while (end < timeline.length - 1 && continues(timeline[end], timeline[end + 1])) end++
+    return { start, end }
+  }, [timeline, current])
+
+  const jumpTo = useCallback(
+    (index: number) => {
+      if (index === current || index < 0 || index >= timeline.length) return
+      setPast(timeline.slice(0, index))
+      setPosition(timeline[index])
+      setFuture(timeline.slice(index + 1))
+      setSelected(null)
+      setVerdict(PLAYING)
+    },
+    [timeline, current],
+  )
+
+  const lineMoves = timeline[line.end].moves
+  const moveList = {
+    moveRows: toMoveRows(lineMoves),
+    viewIndex: position.moves.length,
+    lastIndex: lineMoves.length,
+    totalMoves: lineMoves.length,
+    reviewing: current < line.end,
+    indexAfterPly: (ply: number) => ply + 1,
+    goTo: (count: number | null) => {
+      if (count === null) return jumpTo(line.end)
+      // The last state in the line with that many moves (ending a chain does
+      // not add a move, so two states can share a count).
+      for (let i = line.end; i >= line.start; i--) {
+        if (timeline[i].moves.length <= Math.max(0, count)) return jumpTo(i)
+      }
+    },
+  }
+
   return {
+    moveList,
     position,
     selected,
     destinations,
