@@ -2,6 +2,36 @@
 
 How to pick up work on Open Dam, whether you are a person or an agent.
 
+## Current state (2026-10-28)
+
+- `feat/overhaul` builds and `npm run verify` passes (about 150 tests). The
+  overhaul's work rows are done except **w23** (the analysis page has no move
+  list yet) and the future server rows **w25** and **w26**.
+- Most remaining rows are browser checks: **v04–v12**. The notes on each row say
+  what has already been checked and what is left.
+- Nothing has been pushed and `main` is untouched.
+
+## Starting a new session
+
+Open a new Claude Code session in this folder and paste this:
+
+```text
+Continue the Open Dam overhaul. Work only on branch feat/overhaul; never push,
+never touch main, never force anything, never delete branches or tags.
+Read docs/HANDOVER.md first and follow it, then codebase.md and
+docs/WALKTHROUGH.md. The live work list is the handover board
+(https://claude.ai/artifact/8EzQNkWbb4L61sxHUrT9LA, collection "items"; load
+the ArtifactData tool to read and update it). Take rows in this order: doing,
+then todo work rows by phase and order, then todo verify rows. Set a row to
+doing before you start it, run npm run verify before each commit, check UI in
+the browser at desktop and 375px in all three themes, commit each finished row
+on its own, and mark it done with the commit hash and what you checked. Use
+your own judgement instead of asking. Before you stop, leave the tree clean and
+add an entry to the shift log in docs/HANDOVER.md.
+```
+
+The scheduled shifts (below) use a longer version of the same instructions.
+
 ## Where the work is tracked
 
 The **handover board** is the live work list:
@@ -74,6 +104,16 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-28 (handover)
+
+- **No code changes.** Added "Current state" and a paste-ready prompt for
+  starting a new session to this file. The board matches the state above.
+- **Scheduler:** the 2am shift did not run (no run recorded). Shifts only run
+  while the Claude app is open and the PC is awake. If a shift's log entry is
+  missing, check the task's run history in the app before assuming work
+  happened.
+- **Next up:** w23 (move list on the analysis page), then v04–v12.
 
 ### 2026-10-28 00:40 (overhaul session)
 
