@@ -98,7 +98,7 @@ export interface MoveRecord {
   notation: string
   from: Coord | null
   to: Coord | null
-  kind: 'move' | 'capture' | 'chain' | 'call' | 'resign' | 'draw-agreed'
+  kind: 'move' | 'capture' | 'chain' | 'call' | 'resign' | 'draw-agreed' | 'timeout'
   capturedIds: string[]
   promoted: boolean
   /** Set when this ply continues a chain begun by the previous ply. */
@@ -123,7 +123,12 @@ export type GameEvent =
   | { type: 'tie'; reason: DrawReason }
   | { type: 'illegal'; reason: string }
 
-export type WinReason = 'no-pieces' | 'resignation' | 'timeout'
+/**
+ * - `no-pieces`: the loser has nothing left on the board.
+ * - `no-moves`: the loser is to move but has no legal move and no call that
+ *   could free one. As in most draughts families, being blocked is a loss.
+ */
+export type WinReason = 'no-pieces' | 'no-moves' | 'resignation' | 'timeout'
 export type DrawReason = 'one-each-stalemate' | 'threefold' | 'no-captures' | 'agreement'
 
 export type GameStatus =
@@ -172,10 +177,23 @@ export interface EngineState {
   pliesSinceCapture: number
   /** Yin/yang opening: player one's very first move may be into the centre. */
   isFirstMove: boolean
-  clock: ClockState | null
   /** Incrementing id source so new kings/pieces never collide. */
   nextPieceId: number
 }
+
+/**
+ * Everything a player can do to the position, as plain data. This is the
+ * engine's whole input vocabulary: the match layer logs these, the AI emits
+ * them, and a network transport sends them. Time is not part of it — the
+ * engine never reads a clock; `timeout` is reported to it by whoever does.
+ */
+export type EngineAction =
+  | { type: 'move'; from: Coord; to: Coord }
+  | { type: 'end-chain' }
+  | { type: 'call'; pieceId?: string }
+  | { type: 'resign'; player: PlayerId }
+  | { type: 'agree-draw' }
+  | { type: 'timeout'; player: PlayerId }
 
 export interface EngineResult {
   state: EngineState

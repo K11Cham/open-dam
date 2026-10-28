@@ -1,6 +1,5 @@
-import { applyCall, applyMove, canCall, declineChain } from '../game/engine'
-import { getCaptures, getSimpleMoves } from '../game/moves'
-import type { Coord, EngineState, PlayerId } from '../game/types'
+import { applyAction as applyEngineAction, applyCall, canCall, legalActions } from '../game/engine'
+import type { EngineAction, EngineState, PlayerId } from '../game/types'
 import { WIN_SCORE, evaluate, kingValue } from './evaluate'
 import type { EvalProfile } from './evaluate'
 
@@ -23,10 +22,8 @@ import type { EvalProfile } from './evaluate'
  *     the greedy pick is the most valuable offender.
  */
 
-export type AIAction =
-  | { kind: 'move'; from: Coord; to: Coord }
-  | { kind: 'end-chain' }
-  | { kind: 'call'; pieceId?: string }
+/** The AI speaks the same action vocabulary as everyone else. */
+export type AIAction = EngineAction
 
 export interface SearchOptions {
   depth: number
@@ -39,7 +36,8 @@ export interface SearchOptions {
   noise: number
   /** Chance of ignoring the search entirely and playing a random legal move. */
   blunderChance: number
-  random: () => number
+  /** Defaults to Math.random; tests pass a seeded source. */
+  random?: () => number
 }
 
 export interface SearchResult {
@@ -55,36 +53,13 @@ export interface SearchResult {
 // Action generation
 // ---------------------------------------------------------------------------
 
+/** Moves and chain decisions. Calls are resolved greedily, so they are left out. */
 export function generateActions(state: EngineState): AIAction[] {
-  if (state.status.kind !== 'playing') return []
-  const player = state.currentPlayer
-
-  if (state.chain.active && state.chain.at) {
-    const at = state.chain.at
-    const continuations = getCaptures(state.board, player)
-      .filter((capture) => capture.from.row === at.row && capture.from.col === at.col)
-      .map<AIAction>((capture) => ({ kind: 'move', from: capture.from, to: capture.to }))
-    // Stopping is always legal — captures are never forced.
-    return [...continuations, { kind: 'end-chain' }]
-  }
-
-  const captures = getCaptures(state.board, player).map<AIAction>((capture) => ({
-    kind: 'move',
-    from: capture.from,
-    to: capture.to,
-  }))
-  const slides = getSimpleMoves(state.board, player).map<AIAction>((move) => ({
-    kind: 'move',
-    from: move.from,
-    to: move.to,
-  }))
-  return [...captures, ...slides]
+  return legalActions(state).filter((action) => action.type !== 'call')
 }
 
 export function applyAction(state: EngineState, action: AIAction): EngineState {
-  if (action.kind === 'end-chain') return declineChain(state).state
-  if (action.kind === 'call') return applyCall(state, action.pieceId).state
-  return applyMove(state, action.from, action.to).state
+  return applyEngineAction(state, action).state
 }
 
 /** Best offender to call on: the most valuable piece still on the board. */
@@ -122,8 +97,9 @@ const resolveCalls = (state: EngineState): EngineState => {
  * because continuing is usually right.
  */
 const orderingScore = (state: EngineState, action: AIAction): number => {
-  if (action.kind === 'end-chain') return -1000
-  if (action.kind === 'call') return 5000
+  if (action.type === 'end-chain') return -1000
+  if (action.type === 'call') return 5000
+  if (action.type !== 'move') return -5000
   const target = state.board[action.to.row]?.[action.to.col]
   const jumped = Math.abs(action.to.row - action.from.row) + Math.abs(action.to.col - action.from.col)
   const mover = state.board[action.from.row]?.[action.from.col]
@@ -184,7 +160,7 @@ function quiesce(
   if (standPat > alpha) alpha = standPat
 
   const captures = generateActions(resolved).filter((action) => {
-    if (action.kind !== 'move') return false
+    if (action.type !== 'move') return false
     const distance =
       Math.abs(action.to.row - action.from.row) + Math.abs(action.to.col - action.from.col)
     return distance >= 2 || resolved.board[action.to.row]?.[action.to.col] != null
@@ -259,12 +235,13 @@ function negamax(
  */
 export function chooseAction(state: EngineState, options: SearchOptions): SearchResult | null {
   if (state.status.kind !== 'playing') return null
+  const random = options.random ?? Math.random
 
   // A call is decided before anything else and surfaced as its own action, so
   // the move list shows it the way a human's call would appear.
   if (canCall(state)) {
     return {
-      action: { kind: 'call', pieceId: bestCallTarget(state) },
+      action: { type: 'call', pieceId: bestCallTarget(state) },
       score: 0,
       nodes: 0,
       depthReached: 0,
@@ -275,8 +252,8 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
   const actions = generateActions(state)
   if (actions.length === 0) return null
 
-  if (options.blunderChance > 0 && options.random() < options.blunderChance) {
-    const pick = actions[Math.floor(options.random() * actions.length)] ?? actions[0]
+  if (options.blunderChance > 0 && random() < options.blunderChance) {
+    const pick = actions[Math.floor(random() * actions.length)] ?? actions[0]
     return { action: pick, score: 0, nodes: 0, depthReached: 0, blundered: true }
   }
 
@@ -310,7 +287,7 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
 
       // Jitter is applied at the root only: it makes weaker tiers pick
       // plausible-but-not-best moves without corrupting the tree below.
-      const score = options.noise > 0 ? raw + (options.random() - 0.5) * 2 * options.noise : raw
+      const score = options.noise > 0 ? raw + (random() - 0.5) * 2 * options.noise : raw
 
       scored.push({ action, score })
       if (score > iterationScore) {

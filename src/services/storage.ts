@@ -1,51 +1,59 @@
 /**
- * Thin persistence abstraction. Kept as a seam so a real backend can replace
- * localStorage later without touching callers.
+ * Thin persistence abstraction over localStorage. Every call is wrapped,
+ * because storage can be missing or throw (private windows, blocked site data,
+ * a full quota) and none of those should break a game.
  *
- * The previous version enumerated a fixed union of keys tied to the old
- * flattened game state (`openDamBoard`, `openDamChainStartIndex`, ...). The
- * engine state is now a single serialisable object, so one namespaced key per
- * concern is enough.
+ * Keys in use:
+ *   openDam.theme          theme choice
+ *   openDam.lastSetup      the last New Game form (rules, opponent, side)
+ *   openDam.activeMatch    the unfinished match, as a replayable record
+ *   openDam.archive        the last 20 finished matches
+ *   openDam.clientId       (sessionStorage) this tab's id for online play
  */
 
 export const STORAGE_KEYS = {
   theme: 'openDam.theme',
-  resumeMatch: 'openDam.resumeMatch',
-  lastSettings: 'openDam.lastSettings',
+  lastSetup: 'openDam.lastSetup',
 } as const
 
-export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS] | string
-
 export interface StorageService {
-  get<T>(key: StorageKey): T | null
-  set<T>(key: StorageKey, value: T): void
-  remove(key: StorageKey): void
+  get<T>(key: string): T | null
+  set<T>(key: string, value: T): void
+  remove(key: string): void
+}
+
+const safeLocalStorage = (): Storage | null => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage
+  } catch {
+    return null
+  }
 }
 
 class LocalStorageService implements StorageService {
-  get<T>(key: StorageKey): T | null {
-    if (typeof localStorage === 'undefined') return null
-    const raw = localStorage.getItem(key)
-    if (raw === null) return null
+  get<T>(key: string): T | null {
     try {
-      return JSON.parse(raw) as T
+      const raw = safeLocalStorage()?.getItem(key) ?? null
+      return raw === null ? null : (JSON.parse(raw) as T)
     } catch {
       return null
     }
   }
 
-  set<T>(key: StorageKey, value: T): void {
-    if (typeof localStorage === 'undefined') return
+  set<T>(key: string, value: T): void {
     try {
-      localStorage.setItem(key, JSON.stringify(value))
+      safeLocalStorage()?.setItem(key, JSON.stringify(value))
     } catch {
       // Quota or private-mode failures are not worth breaking a game over.
     }
   }
 
-  remove(key: StorageKey): void {
-    if (typeof localStorage === 'undefined') return
-    localStorage.removeItem(key)
+  remove(key: string): void {
+    try {
+      safeLocalStorage()?.removeItem(key)
+    } catch {
+      // Same as above.
+    }
   }
 }
 

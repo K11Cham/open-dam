@@ -1,4 +1,4 @@
-import { countPieces, opponentOf, piecesOf, promotionRow } from '../game/board'
+import { opponentOf, piecesOf, promotionRow } from '../game/board'
 import { getCaptures, getSimpleMoves } from '../game/moves'
 import type { EngineState, PlayerId, RuleSettings } from '../game/types'
 
@@ -266,22 +266,3 @@ export function evaluate(
 
   return score
 }
-
-/** Cheap material-only read, used for move ordering and undo pricing. */
-export function materialBalance(state: EngineState, perspective: PlayerId): number {
-  const size = state.settings.boardSize
-  const kv = kingValue(size)
-  let total = 0
-  for (const player of ['player1', 'player2'] as PlayerId[]) {
-    const sign = player === perspective ? 1 : -1
-    for (const { piece } of piecesOf(state.board, player)) {
-      total += sign * (piece.isKing ? kv : PIECE_VALUE)
-    }
-  }
-  return total
-}
-
-export const pieceCountSummary = (state: EngineState) => ({
-  player1: countPieces(state.board, 'player1'),
-  player2: countPieces(state.board, 'player2'),
-})

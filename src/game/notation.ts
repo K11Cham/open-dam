@@ -64,6 +64,9 @@ export const formatCall = (targets: Coord[], gridSize: number): string =>
 export const formatResign = (player: 'player1' | 'player2'): string =>
   player === 'player1' ? 'resigns 0-1' : 'resigns 1-0'
 
+export const formatTimeout = (player: 'player1' | 'player2'): string =>
+  player === 'player1' ? 'time 0-1' : 'time 1-0'
+
 export const DRAW_NOTATION = '½-½'
 
 /**
@@ -76,7 +79,10 @@ export type MoveRow =
   | { kind: 'note'; record: MoveRecord }
 
 const isAnnotation = (record: MoveRecord): boolean =>
-  record.kind === 'call' || record.kind === 'resign' || record.kind === 'draw-agreed'
+  record.kind === 'call' ||
+  record.kind === 'resign' ||
+  record.kind === 'draw-agreed' ||
+  record.kind === 'timeout'
 
 export const toMoveRows = (moves: MoveRecord[]): MoveRow[] => {
   const rows: MoveRow[] = []
