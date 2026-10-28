@@ -1,10 +1,28 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { KeyboardEvent } from 'react'
-import type { MoveRecord } from '../../game/types'
-import type { MatchController } from '../../hooks/useMatchController'
+import type { MoveRow } from '../../game/notation'
+import type { MoveRecord, PlayerId } from '../../game/types'
 import { spokenMove } from '../../lib/describe'
 import { IconButton } from '../ui/Button'
+
+/**
+ * What the list needs to know. The match controller provides it for games,
+ * and the analysis board provides it for the line being studied.
+ */
+export interface MoveListSource {
+  moveRows: MoveRow[]
+  /** The position on show, counted in moves from the start of the line. */
+  viewIndex: number
+  lastIndex: number
+  /** Show the position at an index; `null` means the latest. */
+  goTo: (index: number | null) => void
+  indexAfterPly: (ply: number) => number
+  names: Record<PlayerId, string>
+  /** True while an earlier position is on show. */
+  reviewing: boolean
+  totalMoves: number
+}
 
 /**
  * Notation list plus review controls. Calls, resignations, timeouts and agreed
@@ -12,7 +30,7 @@ import { IconButton } from '../ui/Button'
  * Clicking a move shows the board as it was after it; the arrow keys step
  * through the game while the list has focus.
  */
-export default function MoveList({ controller }: { controller: MatchController }) {
+export default function MoveList({ controller }: { controller: MoveListSource }) {
   const { moveRows, viewIndex, lastIndex, goTo, indexAfterPly, names } = controller
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -61,7 +79,7 @@ export default function MoveList({ controller }: { controller: MatchController }
         <h2 id="moves-title" className="moves__title">
           Moves
         </h2>
-        <span className="moves__count">{controller.position.moves.length > 0 ? `${viewIndex} / ${lastIndex}` : ''}</span>
+        <span className="moves__count">{controller.totalMoves > 0 ? `${viewIndex} / ${lastIndex}` : ''}</span>
       </div>
 
       <div
