@@ -37,7 +37,7 @@ export default function ResultDialog({ open, onClose, controller, perspective, o
       footer={
         <>
           <Button variant="ghost" icon={<Eye size={16} />} onClick={onClose}>
-            Look at the board
+            See the board
           </Button>
           <Button icon={<Plus size={16} />} onClick={onNewGame}>
             New game
