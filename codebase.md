@@ -44,6 +44,8 @@ every visual decision. Lower layers never import higher ones.
 | File                          | Purpose                                                                                               |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `scripts/ai-strength.test.ts` | Tier-vs-tier matches; asserts stronger tiers outscore weaker ones. Slow; run with `npm run check:ai`. |
+| `scripts/ai-endgames.test.ts` | Endgame conversion from random starts (`npm run check:endgames`).                                     |
+| `scripts/ai-replay.test.ts`   | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.            |
 
 ## `public/`
 
@@ -76,16 +78,17 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/ai/` — the computer opponent (pure; the worker is the only browser-specific file)
 
-| File               | Purpose                                                                                                                                                        |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `evaluate.ts`      | Position scoring tuned to these rules (material, mobility, advancement, back row, call exposure, threats, king reach, endgame damping, draw counters).         |
-| `search.ts`        | Negamax with alpha-beta, quiescence and iterative deepening over the real engine; handles same-side chain legs, greedy calls, root noise and bounded mistakes. |
-| `difficulty.ts`    | The four tiers: depth, time budget, evaluation profile, noise, mistake rate and margin, undo and draw attitudes.                                               |
-| `opponent.ts`      | Non-move decisions: answer an undo request or a draw offer; thinking delay.                                                                                    |
-| `client.ts`        | `searchAsync`: runs the search in a Web Worker, falling back to the main thread.                                                                               |
-| `search.worker.ts` | The worker: receives a position, returns the chosen action.                                                                                                    |
-| `index.ts`         | Barrel re-export.                                                                                                                                              |
-| `ai.test.ts`       | Legality for every tier, basic tactics, time budget, offer decisions.                                                                                          |
+| File               | Purpose                                                                                                                                                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `evaluate.ts`      | Position scoring tuned to these rules (material, mobility, advancement, back row, call exposure, threats, king reach, endgame damping, draw counters, lone-king technique, `declineCost`).                                                   |
+| `search.ts`        | Negamax with alpha-beta over the real engine: chain legs at no depth cost, greedy calls, call-aware quiescence, forced-reply extensions, transposition table, killer/history ordering, iterative deepening, root noise and bounded mistakes. |
+| `hash.ts`          | Zobrist keys for positions, used by the transposition table.                                                                                                                                                                                 |
+| `difficulty.ts`    | The five tiers (Döff, Ndö, Khàlé, Màam, Seriñ): depth, time budget, evaluation profile, noise, mistakes, missed calls, call awareness, extensions, undo and draw attitudes; old ids mapped by `normalizeDifficultyId`.                       |
+| `opponent.ts`      | Non-move decisions: answer an undo request or a draw offer; thinking delay.                                                                                                                                                                  |
+| `client.ts`        | `searchAsync`: runs the search in a Web Worker, falling back to the main thread.                                                                                                                                                             |
+| `search.worker.ts` | The worker: receives a position, returns the chosen action.                                                                                                                                                                                  |
+| `index.ts`         | Barrel re-export.                                                                                                                                                                                                                            |
+| `ai.test.ts`       | Legality for every tier, sacrifices, lone-king finishes, missed calls, time budget, offer decisions.                                                                                                                                         |
 
 ## `src/match/` — a game as an action log (pure, except `storage.ts`)
 
@@ -120,31 +123,33 @@ every visual decision. Lower layers never import higher ones.
 | `useBoardAnimations.ts`  | Turns engine events into short-lived animations (travel, capture, call, crowning).                            |
 | `usePointerDrag.ts`      | Tap-or-drag for mouse, touch and pen.                                                                         |
 | `useNow.ts`              | A ticking "now" for clocks, only while a clock runs.                                                          |
-| `useAnalysisBoard.ts`    | The analysis board's state: edit, play both sides, undo and redo.                                             |
+| `useAnalysisBoard.ts`    | The analysis board's state: edit, play both sides, undo and redo, and the move list of the line being played. |
 
 ## `src/components/`
 
-| File                     | Purpose                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `board/BoardView.tsx`    | The board: geometry, keyboard and pointer input, spoken labels, travelling pieces, the theme's parts.   |
-| `game/MatchScreen.tsx`   | Match layout: player cards, board, review bar, status, moves, info, resign confirmation, result dialog. |
-| `game/PlayerCard.tsx`    | One side: name, pieces, turn state, clock, Undo/Draw/Resign.                                            |
-| `game/StatusPanel.tsx`   | Whose turn, call and chain decisions, pending offers, the result.                                       |
-| `game/MoveList.tsx`      | Notation list with review controls.                                                                     |
-| `game/ResultDialog.tsx`  | End-of-game summary.                                                                                    |
-| `game/ClockDisplay.tsx`  | One side's remaining time.                                                                              |
-| `layout/AppShell.tsx`    | Skip link, top bar, main, footer.                                                                       |
-| `layout/Navbar.tsx`      | Top bar, logo mark, navigation drawer on small screens.                                                 |
-| `layout/ThemeMenu.tsx`   | Theme picker menu with swatches.                                                                        |
-| `layout/navItems.ts`     | Navigation destinations.                                                                                |
-| `settings/RulesForm.tsx` | Board, clock and house-rule settings.                                                                   |
-| `ui/Button.tsx`          | `Button`, `ButtonLink`, `IconButton`.                                                                   |
-| `ui/Dialog.tsx`          | Accessible modal and drawer; `ConfirmDialog`.                                                           |
-| `ui/Toasts.tsx`          | Toast provider and `useToast`.                                                                          |
-| `ui/Segmented.tsx`       | Radio group drawn as segments.                                                                          |
-| `ui/ChoiceCards.tsx`     | Radio group drawn as cards.                                                                             |
-| `ui/Switch.tsx`          | On/off switch.                                                                                          |
-| `ui/Panel.tsx`           | Themed surface.                                                                                         |
+| File                       | Purpose                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `board/BoardView.tsx`      | The board: geometry, keyboard and pointer input, spoken labels, travelling pieces, the theme's parts.   |
+| `board/BoardThumbnail.tsx` | A small static picture of a position (one SVG from theme tokens) for cards and lists.                   |
+| `board/DemoBoard.tsx`      | Home's live demo game; runs only while visible and not under reduced motion.                            |
+| `game/MatchScreen.tsx`     | Match layout: player cards, board, review bar, status, moves, info, resign confirmation, result dialog. |
+| `game/PlayerCard.tsx`      | One side: name, pieces, turn state, clock, Undo/Draw/Resign.                                            |
+| `game/StatusPanel.tsx`     | Whose turn, call and chain decisions, pending offers, the result.                                       |
+| `game/MoveList.tsx`        | Notation list with review controls; takes a small `MoveListSource` (match or analysis line).            |
+| `game/ResultDialog.tsx`    | End-of-game summary.                                                                                    |
+| `game/ClockDisplay.tsx`    | One side's remaining time.                                                                              |
+| `layout/AppShell.tsx`      | Skip link, top bar, main, footer.                                                                       |
+| `layout/Navbar.tsx`        | Top bar, logo mark, navigation drawer on small screens.                                                 |
+| `layout/ThemeMenu.tsx`     | Theme picker menu with swatches.                                                                        |
+| `layout/navItems.ts`       | Navigation destinations.                                                                                |
+| `settings/RulesForm.tsx`   | Board and clock settings, and the house rules as a summary with an edit dialog.                         |
+| `ui/Button.tsx`            | `Button`, `ButtonLink`, `IconButton`.                                                                   |
+| `ui/Dialog.tsx`            | Accessible modal and drawer; `ConfirmDialog`.                                                           |
+| `ui/Toasts.tsx`            | Toast provider and `useToast`.                                                                          |
+| `ui/Segmented.tsx`         | Radio group drawn as segments.                                                                          |
+| `ui/ChoiceCards.tsx`       | Radio group drawn as cards.                                                                             |
+| `ui/Switch.tsx`            | On/off switch.                                                                                          |
+| `ui/Panel.tsx`             | Themed surface.                                                                                         |
 
 ## `src/pages/`
 

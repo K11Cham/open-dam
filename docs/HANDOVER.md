@@ -4,11 +4,13 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 
 ## Current state (2026-10-28)
 
-- `feat/overhaul` builds and `npm run verify` passes (about 150 tests). The
-  overhaul's work rows are done except **w23** (the analysis page has no move
-  list yet) and the future server rows **w25** and **w26**.
-- Most remaining rows are browser checks: **v04–v12**. The notes on each row say
-  what has already been checked and what is left.
+- `feat/overhaul` builds and `npm run verify` passes (163 tests). Every work
+  row and every verification row is done except the future server rows
+  **w25** and **w26**, which need a hosted server.
+- The AI was rebuilt with five Wolof-named tiers (row w27). To judge its play,
+  use `npm run check:endgames` and `npm run replay`.
+- With the board clear, shifts do the quality pass described in the scheduled
+  task: look for real problems, add rows (next ids **w31**, **v13**), fix them.
 - Nothing has been pushed and `main` is untouched.
 
 ## Starting a new session
@@ -104,6 +106,28 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-28 08:00–09:00 (owner's requests)
+
+- **Done:** w23 (analysis move list), and new rows w27 (AI rebuilt: tiers Döff,
+  Ndö, Khàlé, Màam, Seriñ; call-aware quiescence, chain and forced-reply
+  extensions, transposition table, lone-king technique), w28 (house rules
+  dialog), w29 (Home demo board and previews), w30 (Carnival tokens).
+  Verification v04–v12 done in the browser.
+- **Bugs found by checking, fixed:** rematch kept showing the finished game
+  (route keyed by id; Online and Review too); every movable piece was its own
+  Tab stop (framer-motion whileTap); dialogs scrolled their title away on short
+  screens; "1 moves".
+- **Commits:** 0dcfcad, 8d92af5, 0b27a76, 17ee157, b0b8b6c, and the docs commit.
+- **Checks:** verify (163 tests). Ladder: ndo 6–0 doff, khale 6–0 ndo, maam
+  5–0–1 khale, serin 2–1–3 maam (400 ms cap), serin 6–0 doff. Endgames, 7×7:
+  K+K v K 8/8, K+man v K 8/8; 9×9 K+man v K 5/6 at full thinking time.
+- **Notes:** the first lone-king term made the engine refuse winning captures
+  (0–12 against the old engine); see Part 4 of WALKTHROUGH.md. A greyscale
+  screenshot of the three themes could not be taken (hidden window); worth a
+  look by a person. The meaning of "Ndö" is unconfirmed; the UI shows names
+  only.
+- **Artifacts:** handover board and walkthrough pages are now phone-friendly.
 
 ### 2026-10-28 (handover)
 

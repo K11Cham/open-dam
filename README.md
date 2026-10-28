@@ -30,7 +30,7 @@ The full rules, with example boards, are on the **Learn** page.
 
 ## What you can do
 
-- Play the computer at four levels (Novice, Club, Expert, Master).
+- Play the computer at five levels named in Wolof, from Döff (plays on impulse) to Seriñ (plays to win).
 - Play a friend on the same device.
 - Play online between two browser tabs (preview; a server comes next).
 - Pick a board from 5×5 to 9×9, a clock, and house rules.
