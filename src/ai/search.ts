@@ -1,5 +1,5 @@
 import { applyAction as applyEngineAction, applyCall, canCall, legalActions } from '../game/engine'
-import type { EngineAction, EngineState, PlayerId } from '../game/types'
+import type { EngineAction, EngineState } from '../game/types'
 import { WIN_SCORE, evaluate, kingValue } from './evaluate'
 import type { EvalProfile } from './evaluate'
 
@@ -34,8 +34,15 @@ export interface SearchOptions {
   quiescenceDepth: number
   /** Centipiece jitter added to root scores, making weak tiers inconsistent. */
   noise: number
-  /** Chance of ignoring the search entirely and playing a random legal move. */
+  /** Chance of deliberately playing a worse move than the best one found. */
   blunderChance: number
+  /**
+   * How much worse (in centipieces) a deliberate mistake may be. `Infinity`
+   * means any legal move — the Novice tier — while stronger tiers only slip
+   * to moves that look nearly as good, the way a person misjudges rather than
+   * throws a piece away.
+   */
+  blunderMargin?: number
   /** Defaults to Math.random; tests pass a seeded source. */
   random?: () => number
 }
@@ -125,7 +132,6 @@ const sortActions = (state: EngineState, actions: AIAction[]): AIAction[] =>
 // ---------------------------------------------------------------------------
 
 interface Context {
-  perspective: PlayerId
   profile: EvalProfile
   deadline: number
   quiescenceDepth: number
@@ -133,10 +139,14 @@ interface Context {
   aborted: boolean
 }
 
-const terminalScore = (state: EngineState, perspective: PlayerId, ply: number): number => {
+/**
+ * Score of a finished game for the side to move at that node — negamax scores
+ * are always relative to whoever is on move, never to the root player. Faster
+ * wins and slower losses score better.
+ */
+const terminalScore = (state: EngineState, ply: number): number => {
   if (state.status.kind === 'win') {
-    // Prefer faster wins and slower losses.
-    return state.status.winner === perspective ? WIN_SCORE - ply : -WIN_SCORE + ply
+    return state.status.winner === state.currentPlayer ? WIN_SCORE - ply : -WIN_SCORE + ply
   }
   return 0
 }
@@ -151,9 +161,11 @@ function quiesce(
   ctx: Context,
 ): number {
   ctx.nodes++
-  if (state.status.kind !== 'playing') return terminalScore(state, ctx.perspective, ply)
+  if (state.status.kind !== 'playing') return terminalScore(state, ply)
 
   const resolved = resolveCalls(state)
+  // A call can end the game (it may leave one piece each, or none).
+  if (resolved.status.kind !== 'playing') return terminalScore(resolved, ply)
   const standPat = evaluate(resolved, resolved.currentPlayer, ctx.profile)
   if (depth <= 0) return standPat
   if (standPat >= beta) return beta
@@ -192,13 +204,16 @@ function negamax(
   ctx: Context,
 ): number {
   ctx.nodes++
-  if (state.status.kind !== 'playing') return terminalScore(state, ctx.perspective, ply)
+  if (state.status.kind !== 'playing') return terminalScore(state, ply)
   if (performance.now() > ctx.deadline) {
     ctx.aborted = true
     return evaluate(state, state.currentPlayer, ctx.profile)
   }
 
   const resolved = resolveCalls(state)
+  // A call can end the game; without this check the empty action list below
+  // would be misread as "stuck", i.e. a loss for the side to move.
+  if (resolved.status.kind !== 'playing') return terminalScore(resolved, ply)
 
   if (depth <= 0) {
     return ctx.quiescenceDepth > 0
@@ -252,13 +267,14 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
   const actions = generateActions(state)
   if (actions.length === 0) return null
 
-  if (options.blunderChance > 0 && random() < options.blunderChance) {
+  const margin = options.blunderMargin ?? Infinity
+  const blunder = options.blunderChance > 0 && random() < options.blunderChance
+  if (blunder && margin === Infinity) {
     const pick = actions[Math.floor(random() * actions.length)] ?? actions[0]
     return { action: pick, score: 0, nodes: 0, depthReached: 0, blundered: true }
   }
 
   const ctx: Context = {
-    perspective: state.currentPlayer,
     profile: options.profile,
     deadline: performance.now() + options.timeBudgetMs,
     quiescenceDepth: options.quiescenceDepth,
@@ -271,6 +287,13 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
   let depthReached = 0
   let ordered = sortActions(state, actions)
 
+  // With noise or a bounded blunder, every root move needs an exact score, so
+  // the root window stays fully open (no alpha narrowing at the root). Without
+  // this, noise added to one move's score would tighten the bound and corrupt
+  // the scores of every move searched after it.
+  const exactRoot = options.noise > 0 || blunder
+
+  let lastScored: Array<{ action: AIAction; score: number }> = []
   for (let depth = 1; depth <= options.depth; depth++) {
     let alpha = -Infinity
     const beta = Infinity
@@ -294,7 +317,7 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
         iterationScore = score
         iterationBest = action
       }
-      if (score > alpha) alpha = score
+      if (!exactRoot && raw > alpha) alpha = raw
       if (ctx.aborted) break
     }
 
@@ -303,10 +326,19 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
       bestScore = iterationScore
       depthReached = depth
       // Feed this depth's ordering into the next one.
-      ordered = scored.sort((a, b) => b.score - a.score).map((entry) => entry.action)
+      lastScored = scored.sort((a, b) => b.score - a.score)
+      ordered = lastScored.map((entry) => entry.action)
     }
     if (ctx.aborted) break
     if (Math.abs(bestScore) >= WIN_SCORE - 100) break
+  }
+
+  if (blunder && lastScored.length > 1) {
+    const plausible = lastScored.filter((entry, index) => index > 0 && bestScore - entry.score <= margin)
+    if (plausible.length > 0) {
+      const pick = plausible[Math.floor(random() * plausible.length)]
+      return { action: pick.action, score: pick.score, nodes: ctx.nodes, depthReached, blundered: true }
+    }
   }
 
   return { action: bestAction, score: bestScore, nodes: ctx.nodes, depthReached, blundered: false }

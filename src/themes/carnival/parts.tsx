@@ -1,25 +1,20 @@
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
-import type {
-  BoardFrameProps,
-  CellDecorProps,
-  EndSequenceProps,
-  PieceViewProps,
-} from '../types'
+import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
 /**
- * Drawn character rather than a styled div: body, highlight, eyes, mouth, and
- * for kings an actual crown shape. Kings bob gently so they are readable at a
- * glance without relying on colour.
+ * A drawn character rather than a styled div. The two sides differ in shape:
+ * Coral smiles, Sky has a tuft of hair and an "o" mouth. Kings wear a crown
+ * and bob gently, which reduced-motion settings switch off.
  */
-export function Piece({ piece, scale = 0.8, selected, offender, justPromoted }: PieceViewProps) {
+export function Piece({ piece, scale = 0.82, selected, offender, justPromoted }: PieceViewProps) {
   const isP1 = piece.player === 'player1'
   const body = isP1 ? 'var(--dam-p1)' : 'var(--dam-p2)'
   const edge = isP1 ? 'var(--dam-p1-edge)' : 'var(--dam-p2-edge)'
 
   return (
     <motion.div
-      className={`cv-piece ${selected ? 'is-selected' : ''} ${offender ? 'is-offender' : ''}`}
+      className={['cv-piece', selected && 'is-selected', offender && 'is-offender'].filter(Boolean).join(' ')}
       style={{ width: `${scale * 100}%`, height: `${scale * 100}%` }}
       animate={
         justPromoted
@@ -36,8 +31,9 @@ export function Piece({ piece, scale = 0.8, selected, offender, justPromoted }: 
             : { duration: 0.2 }
       }
     >
-      <svg viewBox="0 0 48 48" className="cv-piece-svg" role="img" aria-label={isP1 ? 'Red piece' : 'Blue piece'}>
+      <svg viewBox="0 0 48 48" className="cv-piece-svg" aria-hidden focusable="false">
         <ellipse cx="24" cy="42" rx="15" ry="3.5" className="cv-piece-shade" />
+        {!isP1 && <path d="M20 6c1-3 3-4 4-4s1 2 0 4c2-2 4-2 5-1s-1 2-3 3" stroke={edge} strokeWidth="2.2" strokeLinecap="round" fill="none" />}
         <circle cx="24" cy="24" r="19" fill={edge} />
         <circle cx="24" cy="22" r="18" fill={body} />
         <ellipse cx="17" cy="15" rx="6.5" ry="4.5" fill="#FFFFFF" opacity="0.28" />
@@ -45,15 +41,13 @@ export function Piece({ piece, scale = 0.8, selected, offender, justPromoted }: 
         <circle cx="30" cy="23" r="2.6" fill="#1B1033" />
         <circle cx="18.9" cy="22.2" r="0.9" fill="#FFFFFF" />
         <circle cx="30.9" cy="22.2" r="0.9" fill="#FFFFFF" />
-        <path
-          d="M18 29.5c1.8 2.4 4 3.6 6 3.6s4.2-1.2 6-3.6"
-          stroke="#1B1033"
-          strokeWidth="2"
-          strokeLinecap="round"
-          fill="none"
-        />
+        {isP1 ? (
+          <path d="M18 29.5c1.8 2.4 4 3.6 6 3.6s4.2-1.2 6-3.6" stroke="#1B1033" strokeWidth="2" strokeLinecap="round" fill="none" />
+        ) : (
+          <ellipse cx="24" cy="31" rx="2.6" ry="3" fill="#1B1033" />
+        )}
         {piece.isKing && (
-          <g className="cv-piece-crown">
+          <g>
             <path
               d="M12.5 10.5 16 4.5l5 4.5 3-6 3 6 5-4.5 3.5 6z"
               fill="var(--dam-crown)"
@@ -69,13 +63,7 @@ export function Piece({ piece, scale = 0.8, selected, offender, justPromoted }: 
   )
 }
 
-export function CellDecor({
-  isTarget,
-  isCaptureTarget,
-  isChainTarget,
-  isSelected,
-  isLastMove,
-}: CellDecorProps) {
+export function CellDecor({ isTarget, isCaptureTarget, isChainTarget, isSelected, isLastMove }: CellDecorProps) {
   return (
     <>
       {isLastMove && <span className="cv-last-move" />}
@@ -105,11 +93,8 @@ const seeded = (seed: number) => {
   }
 }
 
-/**
- * Winner's pieces launch confetti and jump; the loser's pieces spin down and
- * shrink; a tie has everything bow toward the middle. All on the board.
- */
-export function EndSequence({ status, survivors, gridSize, viewer }: EndSequenceProps) {
+/** Confetti for a win you care about; halos for the survivors either way. */
+export function EndSequence({ status, survivors, gridSize, perspective }: EndSequenceProps) {
   const confetti = useMemo(() => {
     const rand = seeded(survivors.length + gridSize + 7)
     return Array.from({ length: 26 }, (_, i) => ({
@@ -125,11 +110,11 @@ export function EndSequence({ status, survivors, gridSize, viewer }: EndSequence
   if (status.kind === 'playing') return null
   const drew = status.kind === 'draw'
   const winner = status.kind === 'win' ? status.winner : null
-  const viewerWon = winner === viewer
+  const celebrate = drew || (winner !== null && (perspective === null || winner === perspective))
 
   return (
     <div className="cv-end-layer" aria-hidden>
-      {(viewerWon || drew) &&
+      {celebrate &&
         confetti.map((bit) => (
           <motion.span
             key={bit.id}
@@ -146,12 +131,8 @@ export function EndSequence({ status, survivors, gridSize, viewer }: EndSequence
         return (
           <motion.span
             key={piece.id}
-            className={`cv-end-halo ${isWinnerPiece ? 'is-winner' : ''}`}
-            style={{
-              left: `${((at.col + 0.5) / gridSize) * 100}%`,
-              top: `${((at.row + 0.5) / gridSize) * 100}%`,
-              borderColor: piece.player === 'player1' ? 'var(--dam-p1)' : 'var(--dam-p2)',
-            }}
+            className={`cv-end-halo ${isWinnerPiece ? 'is-winner' : ''} ${piece.player === 'player1' ? 'is-p1' : 'is-p2'}`}
+            style={{ left: `${((at.col + 0.5) / gridSize) * 100}%`, top: `${((at.row + 0.5) / gridSize) * 100}%` }}
             initial={{ scale: 0.3, opacity: 0 }}
             animate={
               drew

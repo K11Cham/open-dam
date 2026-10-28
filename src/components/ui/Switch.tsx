@@ -1,3 +1,5 @@
+import { useId } from 'react'
+
 interface SwitchProps {
   checked: boolean
   onChange: (next: boolean) => void
@@ -5,23 +7,25 @@ interface SwitchProps {
   description?: string
 }
 
-/** Accessible toggle for the subjective rule settings. */
+/** On/off toggle with a visible label and optional description, both announced. */
 export default function Switch({ checked, onChange, label, description }: SwitchProps) {
+  const descriptionId = useId()
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
-      className="dam-switch"
+      aria-describedby={description ? descriptionId : undefined}
+      className="switch"
       onClick={() => onChange(!checked)}
     >
-      <span className={`dam-switch-track ${checked ? 'is-on' : ''}`}>
-        <span className="dam-switch-thumb" />
+      <span className={`switch__track ${checked ? 'is-on' : ''}`} aria-hidden>
+        <span className="switch__thumb" />
       </span>
-      <span>
-        <span style={{ display: 'block', fontSize: 13, fontWeight: 600 }}>{label}</span>
+      <span className="switch__text">
+        <span className="switch__label">{label}</span>
         {description && (
-          <span style={{ display: 'block', fontSize: 12, color: 'var(--dam-ink-muted)', marginTop: 2 }}>
+          <span id={descriptionId} className="switch__description">
             {description}
           </span>
         )}

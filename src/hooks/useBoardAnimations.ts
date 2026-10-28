@@ -1,29 +1,28 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Coord, GameEvent, PieceData } from '../game/types'
 
 /**
  * Turns the engine's event stream into a short-lived animation queue.
  *
- * The engine emits `move`, `capture`, `promotion`, `call`, `auto-king`,
- * `chain-*`, `win` and `tie` for every state change; this hook is the only
- * place that decides how long each one lives on screen. Components read the
- * queue and render it however their theme wants.
+ * The engine emits `move`, `capture`, `promotion`, `call`, `auto-king` and
+ * friends for every state change; this hook is the only place that decides how
+ * long each one lives on screen. The board reads the queue and renders it in
+ * whatever style the theme wants.
  */
 
 export type BoardAnimation =
   | { id: string; kind: 'travel'; piece: PieceData; from: Coord; to: Coord }
   | { id: string; kind: 'capture'; piece: PieceData; at: Coord }
   | { id: string; kind: 'call'; piece: PieceData; at: Coord }
-  | { id: string; kind: 'promotion'; pieceId: string; at: Coord }
 
-export interface AnimationBundle {
+export interface BoardAnimationState {
   animations: BoardAnimation[]
-  /** Piece ids that should render their "just crowned" state this frame. */
+  /** Piece ids that should play their "just crowned" animation. */
   promotedIds: string[]
-  /** Squares occupied by pieces currently mid-travel — hide the static piece. */
-  travelDestinations: Set<string>
   lastMove: { from: Coord; to: Coord } | null
 }
+
+const PROMOTION_MS = 900
 
 export function useBoardAnimations(captureDurationMs: number) {
   const [animations, setAnimations] = useState<BoardAnimation[]>([])
@@ -32,76 +31,58 @@ export function useBoardAnimations(captureDurationMs: number) {
   const counter = useRef(0)
   const timers = useRef<number[]>([])
 
-  const nextId = () => `anim-${counter.current++}`
-
   const schedule = useCallback((fn: () => void, delay: number) => {
-    const handle = window.setTimeout(fn, delay)
-    timers.current.push(handle)
+    timers.current.push(window.setTimeout(fn, delay))
   }, [])
+
+  useEffect(() => () => timers.current.forEach((handle) => window.clearTimeout(handle)), [])
 
   const ingest = useCallback(
     (events: GameEvent[], options: { skipTravel?: boolean } = {}) => {
       const added: BoardAnimation[] = []
+      const crowned: string[] = []
+      const nextId = () => `anim-${counter.current++}`
 
       for (const event of events) {
         switch (event.type) {
-          case 'move': {
+          case 'move':
             setLastMove({ from: event.from, to: event.to })
-            if (options.skipTravel) break
-            added.push({
-              id: nextId(),
-              kind: 'travel',
-              // The engine gives us ids, not the piece object post-move, so we
-              // rebuild the minimum the renderer needs.
-              piece: { player: event.player, isKing: event.isKing, id: event.pieceId },
-              from: event.from,
-              to: event.to,
-            })
+            if (!options.skipTravel) {
+              added.push({
+                id: nextId(),
+                kind: 'travel',
+                piece: { player: event.player, isKing: event.isKing, id: event.pieceId },
+                from: event.from,
+                to: event.to,
+              })
+            }
             break
-          }
           case 'capture':
             added.push({ id: nextId(), kind: 'capture', piece: event.captured, at: event.at })
             break
           case 'call':
-            for (const removed of event.removed) {
-              added.push({ id: nextId(), kind: 'call', piece: removed.piece, at: removed.at })
-            }
+            for (const removed of event.removed) added.push({ id: nextId(), kind: 'call', piece: removed.piece, at: removed.at })
             break
           case 'promotion':
-            if (!event.deferred) {
-              added.push({ id: nextId(), kind: 'promotion', pieceId: event.pieceId, at: event.at })
-              setPromotedIds((prev) => [...prev, event.pieceId])
-              schedule(
-                () => setPromotedIds((prev) => prev.filter((id) => id !== event.pieceId)),
-                900,
-              )
-            }
+            if (!event.deferred) crowned.push(event.pieceId)
             break
           case 'auto-king':
-            setPromotedIds((prev) => [...prev, event.pieceId])
-            schedule(() => setPromotedIds((prev) => prev.filter((id) => id !== event.pieceId)), 900)
+            crowned.push(event.pieceId)
             break
           default:
             break
         }
       }
 
+      if (crowned.length > 0) {
+        setPromotedIds((prev) => [...prev, ...crowned])
+        schedule(() => setPromotedIds((prev) => prev.filter((id) => !crowned.includes(id))), PROMOTION_MS)
+      }
       if (added.length === 0) return
       setAnimations((prev) => [...prev, ...added])
-
-      // Exits are timed; travel animations remove themselves on completion so
-      // the spring is never cut short.
-      const exits = added.filter((a) => a.kind === 'capture' || a.kind === 'call').map((a) => a.id)
-      if (exits.length > 0) {
-        schedule(
-          () => setAnimations((prev) => prev.filter((a) => !exits.includes(a.id))),
-          captureDurationMs,
-        )
-      }
-      const promos = added.filter((a) => a.kind === 'promotion').map((a) => a.id)
-      if (promos.length > 0) {
-        schedule(() => setAnimations((prev) => prev.filter((a) => !promos.includes(a.id))), 900)
-      }
+      // Exits are timed; travel animations remove themselves when they land.
+      const exits = added.filter((a) => a.kind !== 'travel').map((a) => a.id)
+      if (exits.length > 0) schedule(() => setAnimations((prev) => prev.filter((a) => !exits.includes(a.id))), captureDurationMs)
     },
     [captureDurationMs, schedule],
   )
@@ -118,9 +99,5 @@ export function useBoardAnimations(captureDurationMs: number) {
     setLastMove(null)
   }, [])
 
-  const travelDestinations = new Set(
-    animations.filter((a) => a.kind === 'travel').map((a) => `${a.to.row},${a.to.col}`),
-  )
-
-  return { animations, promotedIds, travelDestinations, lastMove, ingest, complete, reset }
+  return { animations, promotedIds, lastMove, ingest, complete, reset }
 }

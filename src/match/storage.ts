@@ -1,6 +1,6 @@
 import { isDifficultyId } from '../ai/difficulty'
 import { makeSettings } from '../game/settings'
-import type { PlayerId } from '../game/types'
+import type { GameStatus, PlayerId } from '../game/types'
 import { storage } from '../services/storage'
 import { replay } from './reducer'
 import type { MatchAction, MatchRecord, MatchState, Seat } from './types'
@@ -26,6 +26,8 @@ interface SavedActive {
 export interface ArchivedMatch {
   record: MatchRecord
   finishedAt: number
+  /** How it ended, from replaying the record. */
+  status: GameStatus
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
@@ -100,7 +102,7 @@ export function resumeAfterGap(record: MatchRecord, state: MatchState, savedAt: 
   let seq = state.lastSeq
   const lastAt = actions.at(-1)?.at ?? record.config.createdAt
   if (!state.clock.paused) actions.push({ seq: ++seq, at: Math.max(savedAt, lastAt), by: 'system', intent: { type: 'pause' } })
-  actions.push({ seq: ++seq, at: Math.max(now, savedAt, lastAt), by: 'system', intent: { type: 'resume' } })
+  actions.push({ seq: seq + 1, at: Math.max(now, savedAt, lastAt), by: 'system', intent: { type: 'resume' } })
   return { ...record, actions }
 }
 
@@ -112,7 +114,11 @@ export function loadArchive(): ArchivedMatch[] {
     if (!isObject(entry)) continue
     const parsed = parseRecord(entry.record)
     if (parsed && parsed.state.position.status.kind !== 'playing') {
-      out.push({ record: parsed.record, finishedAt: typeof entry.finishedAt === 'number' ? entry.finishedAt : 0 })
+      out.push({
+        record: parsed.record,
+        finishedAt: typeof entry.finishedAt === 'number' ? entry.finishedAt : 0,
+        status: parsed.state.position.status,
+      })
     }
   }
   return out
@@ -121,7 +127,8 @@ export function loadArchive(): ArchivedMatch[] {
 /** Keep the last few finished games for the home page and review. */
 export function archiveMatch(record: MatchRecord, finishedAt = Date.now()) {
   const existing = loadArchive().filter((entry) => entry.record.config.id !== record.config.id)
-  storage.set<ArchivedMatch[]>(ARCHIVE_KEY, [{ record, finishedAt }, ...existing].slice(0, ARCHIVE_LIMIT))
+  const entries = [{ record, finishedAt }, ...existing.map(({ record: r, finishedAt: f }) => ({ record: r, finishedAt: f }))]
+  storage.set(ARCHIVE_KEY, entries.slice(0, ARCHIVE_LIMIT))
 }
 
 export function findArchived(id: string): ArchivedMatch | null {

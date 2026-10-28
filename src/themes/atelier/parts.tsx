@@ -1,20 +1,17 @@
 import { motion } from 'framer-motion'
-import type {
-  BoardFrameProps,
-  CellDecorProps,
-  EndSequenceProps,
-  PieceViewProps,
-} from '../types'
+import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
 /**
- * Solid disc for player one, open ring for player two. Kings gain a concentric
- * inner rule rather than an icon — no glyphs anywhere in this theme.
+ * Solid disc for Black, open ring for White. Kings gain a concentric inner
+ * rule rather than an icon — no glyphs anywhere in this theme.
  */
-export function Piece({ piece, scale = 0.62, selected, justPromoted }: PieceViewProps) {
+export function Piece({ piece, scale = 0.6, selected, offender, justPromoted }: PieceViewProps) {
   const isP1 = piece.player === 'player1'
   return (
     <motion.div
-      className={`at-piece ${isP1 ? 'is-p1' : 'is-p2'} ${selected ? 'is-selected' : ''}`}
+      className={['at-piece', isP1 ? 'is-p1' : 'is-p2', selected && 'is-selected', offender && 'is-offender']
+        .filter(Boolean)
+        .join(' ')}
       style={{ width: `${scale * 100}%`, height: `${scale * 100}%` }}
       animate={justPromoted ? { scale: [1, 1.12, 1] } : { scale: 1 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -26,16 +23,9 @@ export function Piece({ piece, scale = 0.62, selected, justPromoted }: PieceView
 
 /**
  * Targets are drawn as open rules, not filled dots — a quiet move gets a thin
- * ring, a capture gets a cross, a chain continuation gets a thicker ring that
- * breathes.
+ * ring, a capture gets a cross, a chain continuation gets a thicker ring.
  */
-export function CellDecor({
-  isTarget,
-  isCaptureTarget,
-  isChainTarget,
-  isSelected,
-  isLastMove,
-}: CellDecorProps) {
+export function CellDecor({ isTarget, isCaptureTarget, isChainTarget, isSelected, isLastMove }: CellDecorProps) {
   return (
     <>
       {isLastMove && <span className="at-last-move" />}
@@ -52,15 +42,14 @@ export function BoardFrame({ children }: BoardFrameProps) {
 }
 
 /**
- * Nothing flashes. The losing side's pieces are erased one at a time with a
- * short delay between them; the winner's remaining pieces get a single
- * expanding rule. A tie holds both sides at half weight.
+ * Nothing flashes. The winner's pieces get a slowly expanding rule, the
+ * loser's barely register, and a line is ruled under the board.
  */
-export function EndSequence({ status, survivors, gridSize, viewer }: EndSequenceProps) {
+export function EndSequence({ status, survivors, gridSize, perspective }: EndSequenceProps) {
   if (status.kind === 'playing') return null
   const drew = status.kind === 'draw'
   const winner = status.kind === 'win' ? status.winner : null
-  const viewerWon = winner === viewer
+  const good = winner !== null && (perspective === null || winner === perspective)
 
   return (
     <div className="at-end-layer" aria-hidden>
@@ -70,10 +59,7 @@ export function EndSequence({ status, survivors, gridSize, viewer }: EndSequence
           <motion.span
             key={piece.id}
             className={`at-end-ring ${isWinnerPiece ? 'is-winner' : ''}`}
-            style={{
-              left: `${((at.col + 0.5) / gridSize) * 100}%`,
-              top: `${((at.row + 0.5) / gridSize) * 100}%`,
-            }}
+            style={{ left: `${((at.col + 0.5) / gridSize) * 100}%`, top: `${((at.row + 0.5) / gridSize) * 100}%` }}
             initial={{ scale: 0.2, opacity: 0 }}
             animate={
               drew
@@ -87,11 +73,10 @@ export function EndSequence({ status, survivors, gridSize, viewer }: EndSequence
         )
       })}
       <motion.span
-        className="at-end-rule"
+        className={`at-end-rule ${drew ? 'is-draw' : good ? 'is-good' : 'is-bad'}`}
         initial={{ scaleX: 0 }}
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.9, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        style={{ backgroundColor: drew ? 'var(--dam-ink-muted)' : viewerWon ? 'var(--dam-ink)' : 'var(--dam-danger)' }}
       />
     </div>
   )

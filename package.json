@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
     "preview": "vite preview",
-    "check:engine": "tsc -p tsconfig.check.json && node -e \"require('fs').writeFileSync('.enginecheck/package.json','{\\\"type\\\":\\\"commonjs\\\"}')\" && node .enginecheck/scripts/engine-check.js",
-    "check:ai": "npm run check:engine --silent >/dev/null && node .enginecheck/scripts/ai-smoke.js"
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:ai": "vitest run --config vitest.ai.config.ts",
+    "verify": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.3.0",
@@ -46,5 +49,8 @@
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
     "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }

@@ -154,15 +154,6 @@ export interface ChainState {
   legs: Coord[]
 }
 
-export interface ClockState {
-  player1Ms: number
-  player2Ms: number
-  /** Which clock is counting down; `null` when both are paused. */
-  running: PlayerId | null
-  /** `performance.now()`-style timestamp of the last tick applied. */
-  lastTickAt: number | null
-}
-
 export interface EngineState {
   settings: RuleSettings
   board: Board

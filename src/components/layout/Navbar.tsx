@@ -1,62 +1,82 @@
-import { Menu, Plus } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useState } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import Button from '../ui/Button'
-import SideNav from './SideNav'
+import { Link, NavLink } from 'react-router-dom'
+import { Dialog } from '../ui/Dialog'
+import { IconButton } from '../ui/Button'
 import ThemeMenu from './ThemeMenu'
 import { NAV_ITEMS } from './navItems'
 
-interface NavbarProps {
-  /** Shown on pages where starting a fresh match makes sense. */
-  showNewGame?: boolean
+/** The board-mark used as the logo: a 3x3 grid with the centre left open, as at the start of a game. */
+export function BrandMark() {
+  return (
+    <svg className="brand__mark" viewBox="0 0 24 24" aria-hidden focusable="false">
+      {[0, 1, 2].flatMap((r) =>
+        [0, 1, 2].map((c) =>
+          r === 1 && c === 1 ? null : (
+            <circle
+              key={`${r}${c}`}
+              cx={4 + c * 8}
+              cy={4 + r * 8}
+              r="3.1"
+              className={r < 1 || (r === 1 && c < 1) ? 'brand__dot is-p2' : 'brand__dot is-p1'}
+            />
+          ),
+        ),
+      )}
+    </svg>
+  )
 }
 
-export default function Navbar({ showNewGame = true }: NavbarProps) {
-  const navigate = useNavigate()
+export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <>
-      <nav className="dam-navbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <button
-            type="button"
-            className="dam-icon-button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu size={17} />
-          </button>
-          <button type="button" className="dam-wordmark" onClick={() => navigate('/')}>
-            Open Dam
-          </button>
-        </div>
+    <header className="topbar">
+      <div className="topbar__inner">
+        <IconButton
+          className="topbar__menu"
+          label="Open navigation"
+          icon={<Menu size={18} />}
+          onClick={() => setMenuOpen(true)}
+          aria-haspopup="dialog"
+        />
+        <Link to="/" className="brand" aria-label="Open Dam, home">
+          <BrandMark />
+          <span className="brand__name">Open Dam</span>
+        </Link>
 
-        <div className="dam-nav-links">
+        <nav className="topbar__nav" aria-label="Main">
+          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} className={({ isActive }) => `navlink ${isActive ? 'is-active' : ''}`}>
+              <Icon size={16} aria-hidden />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="topbar__end">
+          <ThemeMenu />
+        </div>
+      </div>
+
+      <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} title="Open Dam" variant="drawer">
+        <nav aria-label="Main" className="drawer-nav">
+          <NavLink to="/" end className={({ isActive }) => `drawer-nav__link ${isActive ? 'is-active' : ''}`} onClick={() => setMenuOpen(false)}>
+            Home
+          </NavLink>
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
-              className={({ isActive }) => `dam-nav-link ${isActive ? 'is-active' : ''}`}
+              className={({ isActive }) => `drawer-nav__link ${isActive ? 'is-active' : ''}`}
+              onClick={() => setMenuOpen(false)}
             >
-              <Icon size={15} />
+              <Icon size={18} aria-hidden />
               <span>{label}</span>
             </NavLink>
           ))}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ThemeMenu />
-          {showNewGame && (
-            <Button variant="primary" size="small" onClick={() => navigate('/play')}>
-              <Plus size={14} />
-              New game
-            </Button>
-          )}
-        </div>
-      </nav>
-
-      <SideNav open={menuOpen} onClose={() => setMenuOpen(false)} />
-    </>
+        </nav>
+      </Dialog>
+    </header>
   )
 }

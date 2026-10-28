@@ -1,14 +1,18 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 
-interface PanelProps extends HTMLAttributes<HTMLDivElement> {
+interface PanelProps extends HTMLAttributes<HTMLElement> {
   children: ReactNode
+  /** Render as a <section> with a heading-aware layout. */
+  as?: 'div' | 'section' | 'aside' | 'article'
+  /** Tighter inner spacing. */
+  dense?: boolean
 }
 
-/** Themed surface container. Shape and elevation come from the active theme. */
-export default function Panel({ children, className = '', ...rest }: PanelProps) {
+/** A themed surface. Shape, border and elevation come from the active theme. */
+export default function Panel({ children, className = '', as: Tag = 'div', dense, ...rest }: PanelProps) {
   return (
-    <div className={`dam-panel ${className}`} {...rest}>
+    <Tag className={['panel', dense && 'panel--dense', className].filter(Boolean).join(' ')} {...rest}>
       {children}
-    </div>
+    </Tag>
   )
 }

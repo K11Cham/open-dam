@@ -1,6 +1,6 @@
 import { opponentOf } from '../game/board'
 import { applyAction, createInitialState } from '../game/engine'
-import type { EngineAction, EngineState, PlayerId } from '../game/types'
+import type { EngineAction, PlayerId } from '../game/types'
 import { createMatchClock, finishTurn, pauseClock, remainingAt, resumeClock, runFor, settle, stop } from './clock'
 import type {
   Actor,

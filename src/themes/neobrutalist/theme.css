@@ -1,61 +1,168 @@
-/* Neobrutalist theme — every rule scoped under [data-theme='neobrutalist'] so
-   it cannot reach any other theme. Structural choices (chrome shapes, panel
-   layout, control sizing) live here; colours come from the token map. */
+/*
+  Neobrutalist Pop. Thick black outlines, flat offset shadows, loud flat
+  colour, uppercase display type. Everything is scoped to this theme.
+  Signature move: controls physically "press" — they lift on hover and sink
+  into their shadow when pushed.
+*/
 
-[data-theme='neobrutalist'] .nb-piece {
-  border: 3px solid var(--dam-p1-edge);
+[data-theme='neobrutalist'] .topbar__inner {
+  border: 3px solid var(--dam-border);
   border-radius: 999px;
+  box-shadow: var(--dam-shadow);
+  padding: 4px 8px 4px 12px;
+}
+
+[data-theme='neobrutalist'] .navlink.is-active {
+  background: var(--dam-accent);
+  box-shadow: inset 0 0 0 2px var(--dam-border);
+}
+
+/* Buttons: slabs that press. */
+[data-theme='neobrutalist'] .btn {
+  box-shadow: 3px 3px 0 0 var(--dam-border);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+[data-theme='neobrutalist'] .btn:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 0 var(--dam-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-[data-theme='neobrutalist'] .nb-piece-crown {
-  width: 44%;
-  height: 44%;
-  color: var(--dam-crown);
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6));
+[data-theme='neobrutalist'] .btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 var(--dam-border);
 }
 
-[data-theme='neobrutalist'] .nb-dot {
-  position: absolute;
-  border-radius: 999px;
+[data-theme='neobrutalist'] .btn--ghost {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+[data-theme='neobrutalist'] .btn--ghost:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .btn--icon {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+[data-theme='neobrutalist'] .btn--icon:hover:not(:disabled) {
+  border-color: var(--dam-border);
+  box-shadow: 2px 2px 0 0 var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .seg {
+  border: 3px solid var(--dam-border);
+  background: var(--dam-surface);
+}
+
+[data-theme='neobrutalist'] .seg__option.is-active {
+  background: var(--dam-accent);
+  color: var(--dam-accent-ink);
+  box-shadow: inset 0 0 0 2px var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .choice,
+[data-theme='neobrutalist'] .palette__tool {
+  border: 3px solid var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .choice.is-active,
+[data-theme='neobrutalist'] .palette__tool.is-active {
+  background: var(--dam-accent-soft);
+  box-shadow: 4px 4px 0 0 var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .switch__track {
+  border: 3px solid var(--dam-border);
+  height: 28px;
+  width: 48px;
+}
+
+[data-theme='neobrutalist'] .switch__thumb {
+  top: 2px;
+  left: 2px;
+}
+
+[data-theme='neobrutalist'] .card--link:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: var(--dam-shadow-lg);
+  background: var(--dam-surface);
+}
+
+[data-theme='neobrutalist'] .card__title,
+[data-theme='neobrutalist'] .panel__title,
+[data-theme='neobrutalist'] .status__title,
+[data-theme='neobrutalist'] .moves__title,
+[data-theme='neobrutalist'] .lesson__heading,
+[data-theme='neobrutalist'] .dialog__title {
+  text-transform: uppercase;
+}
+
+[data-theme='neobrutalist'] .hero__title {
+  -webkit-text-stroke: 0;
+  text-shadow: 5px 5px 0 var(--dam-accent);
+}
+
+[data-theme='neobrutalist'] .continue {
+  background: var(--dam-accent);
+}
+
+[data-theme='neobrutalist'] .tag {
   border: 2px solid var(--dam-border);
-  animation: nb-pop 0.22s ease-out both;
-  pointer-events: none;
-}
-[data-theme='neobrutalist'] .nb-dot-move {
-  width: 26%;
-  height: 26%;
-  background: var(--dam-target);
-}
-[data-theme='neobrutalist'] .nb-dot-capture {
-  width: 30%;
-  height: 30%;
-  background: var(--dam-capture-target);
-}
-[data-theme='neobrutalist'] .nb-dot-chain {
-  width: 36%;
-  height: 36%;
-  background: var(--dam-offender);
-  animation: nb-pop 0.22s ease-out both, nb-throb 1.2s ease-in-out infinite 0.22s;
-}
-[data-theme='neobrutalist'] .nb-last-move {
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--dam-accent) 45%, transparent);
-  pointer-events: none;
+  background: var(--dam-surface);
+  color: var(--dam-ink);
 }
 
-@keyframes nb-pop {
-  from { opacity: 0; transform: scale(0.4); }
-  to   { opacity: 1; transform: scale(1); }
+[data-theme='neobrutalist'] .tag--turn {
+  background: var(--dam-accent);
 }
-@keyframes nb-throb {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.22); }
+
+[data-theme='neobrutalist'] .player-card.is-turn {
+  background: var(--dam-accent-soft);
 }
+
+[data-theme='neobrutalist'] .clock {
+  border: 2px solid var(--dam-border);
+  background: var(--dam-surface);
+  color: var(--dam-ink);
+}
+
+[data-theme='neobrutalist'] .clock.is-running {
+  background: var(--dam-ink);
+  color: var(--dam-accent);
+}
+
+[data-theme='neobrutalist'] .moves__cell.is-current {
+  box-shadow: inset 0 0 0 2px var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .toast {
+  border: 3px solid var(--dam-border);
+  box-shadow: 4px 4px 0 0 var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .notice {
+  border: 3px solid var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .status__block--call {
+  border: 3px solid var(--dam-border);
+  background: color-mix(in srgb, var(--dam-offender) 18%, var(--dam-surface));
+}
+
+[data-theme='neobrutalist'] .result__side.is-winner {
+  background: var(--dam-accent);
+  box-shadow: inset 0 0 0 3px var(--dam-border);
+}
+
+/* ── Board ─────────────────────────────────────────────────────────────── */
 
 [data-theme='neobrutalist'] .nb-board-frame {
   position: relative;
@@ -68,19 +175,138 @@
   background: var(--dam-board-bg);
 }
 
+[data-theme='neobrutalist'] .cell {
+  box-shadow: inset -1px -1px 0 0 color-mix(in srgb, var(--dam-cell-line) 22%, transparent);
+}
+
+[data-theme='neobrutalist'] .board.is-interactive .cell:hover {
+  filter: brightness(0.97);
+}
+
+[data-theme='neobrutalist'] .nb-piece {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--dam-border);
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 0 var(--dam-border);
+}
+
+[data-theme='neobrutalist'] .nb-piece.is-p1 {
+  background: var(--dam-p1);
+}
+
+[data-theme='neobrutalist'] .nb-piece.is-p2 {
+  background: var(--dam-p2);
+}
+
+/* Blue's inner ring: a shape difference, so sides read without colour. */
+[data-theme='neobrutalist'] .nb-piece-ring {
+  position: absolute;
+  inset: 20%;
+  border-radius: 999px;
+  border: 3px solid rgb(255 255 255 / 0.85);
+}
+
+[data-theme='neobrutalist'] .nb-piece.is-selected {
+  outline: 4px solid var(--dam-highlight);
+  outline-offset: 2px;
+}
+
+[data-theme='neobrutalist'] .nb-piece-crown {
+  position: relative;
+  width: 46%;
+  height: 46%;
+  color: var(--dam-border);
+  fill: var(--dam-crown);
+}
+
+[data-theme='neobrutalist'] .nb-dot {
+  position: absolute;
+  border-radius: 999px;
+  border: 3px solid var(--dam-border);
+  pointer-events: none;
+  animation: nb-pop 0.2s ease-out both;
+}
+
+[data-theme='neobrutalist'] .nb-dot-move {
+  width: 26%;
+  height: 26%;
+  background: var(--dam-target);
+}
+
+[data-theme='neobrutalist'] .nb-dot-capture {
+  width: 80%;
+  height: 80%;
+  background: transparent;
+  border: 4px dashed var(--dam-capture-target);
+}
+
+[data-theme='neobrutalist'] .nb-dot-chain {
+  width: 34%;
+  height: 34%;
+  background: var(--dam-offender);
+  animation:
+    nb-pop 0.2s ease-out both,
+    nb-throb 1.1s ease-in-out infinite 0.2s;
+}
+
+[data-theme='neobrutalist'] .nb-last-move {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--dam-accent) 50%, transparent);
+  pointer-events: none;
+}
+
+[data-theme='neobrutalist'] .nb-selected {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--dam-highlight) 14%, transparent);
+  pointer-events: none;
+}
+
+@keyframes nb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes nb-throb {
+  50% {
+    transform: scale(1.2);
+  }
+}
+
 [data-theme='neobrutalist'] .nb-end-layer {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   z-index: 40;
+  pointer-events: none;
 }
+
 [data-theme='neobrutalist'] .nb-end-flash {
   position: absolute;
   inset: 0;
 }
-[data-theme='neobrutalist'] .nb-end-flash.is-win  { background: var(--dam-accent); }
-[data-theme='neobrutalist'] .nb-end-flash.is-loss { background: var(--dam-capture-target); }
-[data-theme='neobrutalist'] .nb-end-flash.is-draw { background: var(--dam-ink-muted); }
+
+[data-theme='neobrutalist'] .nb-end-flash.is-win {
+  background: var(--dam-accent);
+}
+
+[data-theme='neobrutalist'] .nb-end-flash.is-loss {
+  background: var(--dam-capture-target);
+}
+
+[data-theme='neobrutalist'] .nb-end-flash.is-draw {
+  background: var(--dam-ink-muted);
+}
+
 [data-theme='neobrutalist'] .nb-end-marker {
   position: absolute;
   width: 14%;
@@ -90,243 +316,10 @@
   border-radius: 999px;
 }
 
-/* ── Shared-component overrides: chrome shapes ─────────────────────────── */
-
-[data-theme='neobrutalist'] .dam-navbar {
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: 999px;
-  box-shadow: var(--dam-shadow);
-  margin: 16px auto 0;
-  width: calc(100% - 32px);
-  max-width: 1280px;
+[data-theme='neobrutalist'] .nb-end-marker.is-p1 {
+  background: var(--dam-p1);
 }
 
-/* Icon buttons (menu, close, theme picker) get the same hard-outline,
-   offset-shadow treatment as every other brutalist control. */
-[data-theme='neobrutalist'] .dam-icon-button {
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: var(--dam-radius);
-  background: var(--dam-surface);
-  color: var(--dam-ink);
-  box-shadow: var(--dam-shadow);
-  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms;
-}
-[data-theme='neobrutalist'] .dam-icon-button:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--dam-shadow-lg);
-}
-[data-theme='neobrutalist'] .dam-icon-button:active {
-  transform: translate(3px, 3px);
-  box-shadow: none;
-}
-
-[data-theme='neobrutalist'] .dam-panel {
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: var(--dam-radius);
-  box-shadow: var(--dam-shadow);
-}
-
-[data-theme='neobrutalist'] .dam-button {
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: var(--dam-radius);
-  box-shadow: var(--dam-shadow);
-  font-family: var(--dam-font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms;
-}
-[data-theme='neobrutalist'] .dam-button:hover:not(:disabled) {
-  transform: translate(-2px, -2px);
-  box-shadow: var(--dam-shadow-lg);
-}
-[data-theme='neobrutalist'] .dam-button:active:not(:disabled) {
-  transform: translate(3px, 3px);
-  box-shadow: none;
-}
-
-[data-theme='neobrutalist'] .dam-player-bar {
-  border: var(--dam-border-width) solid var(--dam-border);
-  /* Same rounded-slab shape as the board frame, so the bars read as part of
-     the board stack rather than as unrelated full-width strips. */
-  border-radius: var(--dam-radius);
-  box-shadow: var(--dam-shadow);
-}
-[data-theme='neobrutalist'] .dam-player-bar.is-active {
-  background: var(--dam-accent-soft);
-}
-
-/* The board's hard 8px offset shadow needs room below/above the frame;
-   keep it clear of the bars entirely. */
-[data-theme='neobrutalist'] .dam-board-stack {
-  gap: 14px;
-}
-
-[data-theme='neobrutalist'] .dam-clock {
-  border: 2px solid var(--dam-border);
-  border-radius: 999px;
-  font-family: var(--dam-font-mono);
-  font-weight: 700;
-}
-
-/* The side panel is a full floating brutalist island matching the board & navbar. */
-[data-theme='neobrutalist'] .dam-side-panel {
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: var(--dam-radius-lg);
-  box-shadow: var(--dam-shadow-lg);
-  background: var(--dam-surface);
-  overflow: hidden;
-  margin: 12px 16px 16px 0;
-  max-height: calc(100% - 28px);
-  align-self: center;
-}
-@media (max-width: 999px) {
-  [data-theme='neobrutalist'] .dam-side-panel {
-    margin: 10px 14px 18px;
-    max-height: 48vh;
-    align-self: stretch;
-  }
-}
-[data-theme='neobrutalist'] .dam-side-panel-header {
-  border-bottom: var(--dam-border-width) solid var(--dam-border);
-  background: var(--dam-accent);
-  color: var(--dam-accent-ink);
-  font-family: var(--dam-font-display);
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 12px 16px;
-}
-[data-theme='neobrutalist'] .dam-side-panel-nav {
-  border-top: var(--dam-border-width) solid var(--dam-border);
-  background: var(--dam-surface-2);
-  padding: 10px 12px;
-}
-[data-theme='neobrutalist'] .dam-move-row {
-  border: 2px solid var(--dam-border);
-  border-radius: var(--dam-radius);
-  background: var(--dam-surface);
-  box-shadow: 2px 2px 0 0 var(--dam-border);
-  margin: 6px 10px;
-  padding: 6px 12px;
-}
-[data-theme='neobrutalist'] .dam-move-row.is-note {
-  background: var(--dam-accent-soft);
-  border-style: dashed;
-}
-[data-theme='neobrutalist'] .dam-move-cell {
-  border: 1.5px solid var(--dam-border);
-  border-radius: 6px;
-  padding: 4px 8px;
-  text-align: center;
-  font-weight: 700;
-  background: var(--dam-surface-2);
-}
-[data-theme='neobrutalist'] .dam-move-cell.is-current {
-  background: var(--dam-accent);
-  color: var(--dam-accent-ink);
-  box-shadow: none;
-}
-
-[data-theme='neobrutalist'] .dam-sidenav {
-  /* Floats like the navbar: an outlined rounded island inset from the edge,
-     not a full-height slab glued to the viewport. */
-  top: 16px;
-  left: 16px;
-  height: calc(100% - 32px);
-  max-height: calc(100svh - 32px);
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: var(--dam-radius-lg);
-  box-shadow: var(--dam-shadow-lg);
-  overflow: hidden;
-}
-[data-theme='neobrutalist'] .dam-sidenav-header {
-  border-bottom: var(--dam-border-width) solid var(--dam-border);
-  background: var(--dam-accent);
-}
-[data-theme='neobrutalist'] .dam-sidenav-link {
-  border-radius: 8px;
-  border: 2px solid transparent;
-  margin: 0 10px;
-  padding: 11px 12px;
-  font-family: var(--dam-font-display);
-  letter-spacing: 0.02em;
-}
-[data-theme='neobrutalist'] .dam-sidenav-link.is-active {
-  background: var(--dam-accent);
-  border-color: var(--dam-border);
-  box-shadow: 3px 3px 0 0 var(--dam-border);
-}
-
-/* ── Game Over Modal (Neobrutalist) ───────────────────────────────────────── */
-[data-theme='neobrutalist'] .dam-game-over-modal {
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: var(--dam-radius-lg);
-  box-shadow: 10px 10px 0 0 var(--dam-border);
-  background: var(--dam-surface);
-}
-
-[data-theme='neobrutalist'] .dam-outcome-badge {
-  border: var(--dam-border-width) solid var(--dam-border);
-  box-shadow: 4px 4px 0 0 var(--dam-border);
-}
-
-[data-theme='neobrutalist'] .dam-outcome-badge.is-win {
-  background: var(--dam-accent);
-  color: var(--dam-accent-ink);
-}
-
-[data-theme='neobrutalist'] .dam-outcome-badge.is-loss {
-  background: var(--dam-capture-target);
-  color: #fff;
-}
-
-[data-theme='neobrutalist'] .dam-outcome-badge.is-draw {
-  background: var(--dam-surface-2);
-  color: var(--dam-ink);
-}
-
-[data-theme='neobrutalist'] .dam-modal-player-card {
-  border: 2.5px solid var(--dam-border);
-  border-radius: var(--dam-radius);
-  box-shadow: 3px 3px 0 0 var(--dam-border);
-  background: var(--dam-surface-2);
-}
-
-[data-theme='neobrutalist'] .dam-modal-player-card.is-winner {
-  background: var(--dam-accent-soft);
-  box-shadow: 4px 4px 0 0 var(--dam-border);
-}
-
-[data-theme='neobrutalist'] .dam-winner-tag {
-  border: 1.5px solid var(--dam-border);
-  box-shadow: 2px 2px 0 0 var(--dam-border);
-}
-
-[data-theme='neobrutalist'] .dam-modal-btn {
-  box-shadow: var(--dam-shadow);
-  border: var(--dam-border-width) solid var(--dam-border);
-}
-
-[data-theme='neobrutalist'] .dam-app {
-  background-color: var(--dam-bg);
-  background-image: radial-gradient(#cccccc 1px, transparent 1px);
-  background-size: 16px 16px;
-}
-
-[data-theme='neobrutalist'] .dam-tag {
-  border: 2px solid var(--dam-border);
-  border-radius: 999px;
-  font-family: var(--dam-font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* The prompts and the result strip are part of the same conversation as the
-   bars — outlined rounded slabs, not bare text on the dotted background. */
-[data-theme='neobrutalist'] .dam-inline-prompt,
-[data-theme='neobrutalist'] .dam-result-strip {
-  border: var(--dam-border-width) solid var(--dam-border);
-  border-radius: var(--dam-radius);
-  box-shadow: var(--dam-shadow);
-  background: var(--dam-surface);
+[data-theme='neobrutalist'] .nb-end-marker.is-p2 {
+  background: var(--dam-p2);
 }
