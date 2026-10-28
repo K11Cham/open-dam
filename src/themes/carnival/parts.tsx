@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
 import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
@@ -141,6 +141,8 @@ const seeded = (seed: number) => {
 
 /** Confetti for a win you care about; halos for the survivors either way. */
 export function EndSequence({ status, survivors, gridSize, perspective }: EndSequenceProps) {
+  // With reduced motion the confetti could only flash in place, so it is left out.
+  const reducedMotion = useReducedMotion()
   const confetti = useMemo(() => {
     const rand = seeded(survivors.length + gridSize + 7)
     return Array.from({ length: 26 }, (_, i) => ({
@@ -156,7 +158,7 @@ export function EndSequence({ status, survivors, gridSize, perspective }: EndSeq
   if (status.kind === 'playing') return null
   const drew = status.kind === 'draw'
   const winner = status.kind === 'win' ? status.winner : null
-  const celebrate = drew || (winner !== null && (perspective === null || winner === perspective))
+  const celebrate = !reducedMotion && (drew || (winner !== null && (perspective === null || winner === perspective)))
 
   return (
     <div className="cv-end-layer" aria-hidden>

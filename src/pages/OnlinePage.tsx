@@ -155,8 +155,18 @@ function JoinedOnline({ matchId, seat }: { matchId: string; seat: PlayerId }) {
   return <OnlineMatch session={guest} seat={seat} inviteUrl={null} authoritative={false} />
 }
 
-/** `/online/:id` — host the game if this browser created it, otherwise join it. */
+/**
+ * `/online/:id` — host the game if this browser created it, otherwise join it.
+ * Keyed by the URL, because whether this tab hosts is decided once per mount
+ * and the route stays mounted when only the id changes.
+ */
 export default function OnlinePage() {
+  const { id = '' } = useParams()
+  const [params] = useSearchParams()
+  return <OnlineRoute key={`${id}?${params.toString()}`} />
+}
+
+function OnlineRoute() {
   const { id = '' } = useParams()
   const [params] = useSearchParams()
   const [hosted] = useState(() => {

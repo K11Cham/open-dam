@@ -26,7 +26,7 @@ const tap = (element: Element) => {
 }
 
 describe('board', () => {
-  const renderBoard = (onSquare: (c: Coord) => void) =>
+  const renderBoard = (onSquare: (c: Coord) => void, canDragFrom: (c: Coord) => boolean = () => false) =>
     render(
       <AppProviders>
         <BoardView
@@ -39,7 +39,7 @@ describe('board', () => {
           promotedIds={[]}
           lastMove={null}
           interactive
-          canDragFrom={() => false}
+          canDragFrom={canDragFrom}
           onSquare={onSquare}
           onDrop={() => {}}
           perspective={null}
@@ -67,6 +67,15 @@ describe('board', () => {
     expect(square('d4')).toHaveFocus()
     await user.keyboard('{Enter}')
     expect(pressed).toEqual([{ row: 1, col: 3 }])
+  })
+
+  test('movable pieces do not add Tab stops of their own', () => {
+    renderBoard(
+      () => {},
+      () => true,
+    )
+    const grid = screen.getByRole('grid')
+    expect(grid.querySelectorAll('[tabindex="0"]')).toHaveLength(1)
   })
 })
 
@@ -190,5 +199,20 @@ describe('analysis', () => {
     await user.click(within(list).getByRole('button', { name: /d3 to c3/ }))
     expect(square('d3')).toHaveAccessibleName(/d3, empty/)
     expect(within(list).getByText('1 / 2')).toBeInTheDocument()
+  })
+})
+
+describe('after a game', () => {
+  test('rematch starts a fresh game, not the finished one', async () => {
+    const user = userEvent.setup()
+    renderAt('/match/new?vs=hotseat&size=5')
+    await screen.findByRole('grid')
+    tap(square('d3'))
+    fireEvent.click(square('c3'))
+    await user.click(screen.getAllByRole('button', { name: 'Resign' })[0])
+    await user.click(within(screen.getByRole('dialog', { name: 'Resign this game?' })).getByRole('button', { name: 'Resign' }))
+    await user.click(await screen.findByRole('button', { name: 'Rematch' }))
+    await waitFor(() => expect(screen.getByText('No moves yet.')).toBeInTheDocument())
+    expect(square('d3')).toHaveAccessibleName(/d3, Red piece/)
   })
 })

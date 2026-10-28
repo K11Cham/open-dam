@@ -13,7 +13,7 @@ import { useSideNames } from '../context/useTheme'
 import { createInitialState } from '../game/engine'
 import { positionFromAscii } from '../game/position'
 import type { PlayerId } from '../game/types'
-import { outcomeTitle, seatLabel, timeControlLabel } from '../lib/describe'
+import { countOf, outcomeTitle, seatLabel, timeControlLabel } from '../lib/describe'
 import { usePageTitle } from '../lib/usePageTitle'
 import { replay } from '../match/reducer'
 import { DEFAULT_SETUP, setupToParams } from '../match/setup'
@@ -135,7 +135,7 @@ export default function HomePage() {
               <p className="panel__text">
                 {opponentText(unfinished.record, sideNames)} · {unfinished.record.config.settings.boardSize}×
                 {unfinished.record.config.settings.boardSize} · {timeControlLabel(unfinished.record.config.settings)} ·{' '}
-                {unfinished.state.position.moves.length} moves played
+                {countOf(unfinished.state.position.moves.length, 'move')} played
               </p>
             </div>
             <div className="panel__actions">

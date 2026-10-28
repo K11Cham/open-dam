@@ -62,9 +62,18 @@ function LocalMatch({ record }: { record: MatchRecord }) {
   )
 }
 
-/** `/match/:id` — open the saved game with this id. */
+/**
+ * `/match/:id` — open the saved game with this id. Keyed by the id: moving
+ * from one match to another (a rematch) keeps this route mounted, and the
+ * saved game is read once per mount, so without the key a rematch kept
+ * showing the finished game.
+ */
 export default function MatchPage() {
   const { id = '' } = useParams()
+  return <SavedMatch key={id} id={id} />
+}
+
+function SavedMatch({ id }: { id: string }) {
   const [loaded] = useState(() => {
     const active = loadActiveMatch()
     if (!active || active.record.config.id !== id || active.record.config.mode !== 'local') return null

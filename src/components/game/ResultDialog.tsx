@@ -3,7 +3,7 @@ import { countPieces } from '../../game/board'
 import { formatClock } from '../../game/clock'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
-import { outcomeReason, outcomeTitle, timeControlLabel } from '../../lib/describe'
+import { countOf, outcomeReason, outcomeTitle, timeControlLabel } from '../../lib/describe'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 
@@ -58,13 +58,14 @@ export default function ResultDialog({ open, onClose, controller, perspective, o
               {winner === player && <span className="tag tag--turn">Winner</span>}
             </span>
             <span className="result__stat">
-              {countPieces(position.board, player)} pieces left
+              {countOf(countPieces(position.board, player), 'piece')} left
               {state.clock ? ` · ${formatClock(state.clock.remaining[player])} on the clock` : ''}
             </span>
           </div>
         ))}
         <p className="result__meta">
-          {turns} moves · {position.settings.boardSize}×{position.settings.boardSize} · {timeControlLabel(position.settings)}
+          {countOf(turns, 'move')} · {position.settings.boardSize}×{position.settings.boardSize} ·{' '}
+          {timeControlLabel(position.settings)}
         </p>
       </div>
     </Dialog>
