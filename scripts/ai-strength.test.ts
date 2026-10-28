@@ -15,6 +15,8 @@ import type { DifficultyId } from '../src/ai/difficulty'
 import { chooseAction } from '../src/ai/search'
 import type { EngineState, PlayerId } from '../src/game/types'
 
+// Vitest hides console output from passing tests, so results go straight to stdout.
+const out = (text: string) => process.stdout.write(`${text}\n`)
 const BUDGET_CAP_MS = 400
 const PLY_CAP = 200
 
@@ -35,6 +37,9 @@ function play(red: DifficultyId, blue: DifficultyId, size: 5 | 7, seed: number):
       noise: tier.noise,
       blunderChance: tier.blunderChance,
       blunderMargin: tier.blunderMargin,
+      missCallChance: tier.missCallChance,
+      callAware: tier.callAware,
+      forcingExtensions: tier.forcingExtensions,
       random,
     })
     if (!result) break
@@ -58,9 +63,9 @@ function match(strong: DifficultyId, weak: DifficultyId, games: number) {
     } else if (state.status.kind === 'playing') unfinished++
     const p1 = countPieces(state.board, 'player1')
     const p2 = countPieces(state.board, 'player2')
-    console.log(`  game ${i + 1}: ${JSON.stringify(state.status)} pieces ${p1}/${p2}`)
+    out(`  game ${i + 1}: ${JSON.stringify(state.status)} pieces ${p1}/${p2}`)
   }
-  console.log(
+  out(
     `${strong} ${strongWins} – ${weakWins} ${weak} (${games - strongWins - weakWins - unfinished} draws, ${unfinished} unfinished)`,
   )
   return { strongWins, weakWins }
@@ -71,16 +76,17 @@ test(
   () => {
     const problems: string[] = []
     for (const [strong, weak] of [
-      ['club', 'novice'],
-      ['expert', 'club'],
-      ['master', 'novice'],
-      ['master', 'expert'],
+      ['ndo', 'doff'],
+      ['khale', 'ndo'],
+      ['maam', 'khale'],
+      ['serin', 'maam'],
+      ['serin', 'doff'],
     ] as Array<[DifficultyId, DifficultyId]>) {
-      console.log(`
+      out(`
 ${strong} vs ${weak}`)
       const { strongWins, weakWins } = match(strong, weak, 6)
       if (strongWins < weakWins) problems.push(`${strong} was outscored by ${weak}`)
-      if (strong === 'master' && strongWins === 0) problems.push('Master did not win a single game against Novice')
+      if (strong === 'serin' && weak === 'doff' && strongWins === 0) problems.push('Seriñ did not win a single game against Döff')
     }
     expect(problems).toEqual([])
   },

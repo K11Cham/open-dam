@@ -1,4 +1,4 @@
-import { DIFFICULTIES, isDifficultyId } from '../ai/difficulty'
+import { DIFFICULTIES, normalizeDifficultyId } from '../ai/difficulty'
 import type { DifficultyId } from '../ai/difficulty'
 import { TIME_CONTROLS, boardTypeForSize, makeSettings } from '../game/settings'
 import type { BoardSize, PlayerId, PromotionPolicy, RuleSettings } from '../game/types'
@@ -22,18 +22,20 @@ export interface GameSetup {
 
 export const DEFAULT_SETUP: GameSetup = {
   settings: makeSettings(),
-  opponent: 'club',
+  opponent: 'khale',
   side: 'player1',
 }
 
-const isOpponent = (value: unknown): value is OpponentChoice => value === 'hotseat' || value === 'online' || isDifficultyId(value)
+/** Read an opponent choice, accepting tier ids from older links and saves. */
+const parseOpponent = (value: unknown): OpponentChoice | null =>
+  value === 'hotseat' || value === 'online' ? value : normalizeDifficultyId(value)
 
 export function loadLastSetup(): GameSetup {
   const saved = storage.get<Partial<GameSetup>>(STORAGE_KEYS.lastSetup)
   if (!saved || typeof saved !== 'object') return DEFAULT_SETUP
   return {
     settings: makeSettings(saved.settings && typeof saved.settings === 'object' ? saved.settings : {}),
-    opponent: isOpponent(saved.opponent) ? saved.opponent : DEFAULT_SETUP.opponent,
+    opponent: parseOpponent(saved.opponent) ?? DEFAULT_SETUP.opponent,
     side: saved.side === 'player2' ? 'player2' : 'player1',
   }
 }
@@ -58,7 +60,7 @@ export function recordFromSetup(setup: GameSetup): MatchRecord {
   return createRecord({ mode: setup.opponent === 'online' ? 'online' : 'local', settings: setup.settings, seats })
 }
 
-// -- URL form, for links such as /match/new?size=7&ai=expert&side=player2 ------
+// -- URL form, for links such as /match/new?size=7&vs=maam&side=player2 ------
 
 const POLICIES: PromotionPolicy[] = ['promote-and-continue', 'promote-after-chain', 'end-turn-on-promotion', 'match-opponent']
 
@@ -107,7 +109,7 @@ export function setupFromParams(params: URLSearchParams): GameSetup {
       },
       timeControl: tcLabel ? (TIME_CONTROLS.find((tc) => tc.label === tcLabel) ?? null) : null,
     }),
-    opponent: isOpponent(vs) ? vs : 'hotseat',
+    opponent: parseOpponent(vs) ?? 'hotseat',
     side: params.get('side') === 'player2' ? 'player2' : 'player1',
   }
 }

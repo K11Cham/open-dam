@@ -22,6 +22,9 @@ export const searchOptionsFor = (difficulty: Difficulty): Omit<SearchOptions, 'r
   noise: difficulty.noise,
   blunderChance: difficulty.blunderChance,
   blunderMargin: difficulty.blunderMargin,
+  missCallChance: difficulty.missCallChance,
+  callAware: difficulty.callAware,
+  forcingExtensions: difficulty.forcingExtensions,
 })
 
 let worker: Worker | null = null

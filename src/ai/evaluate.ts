@@ -1,6 +1,6 @@
-import { opponentOf, piecesOf, promotionRow } from '../game/board'
+import { ORTHOGONAL, cloneBoard, forwardDir, inBounds, opponentOf, piecesOf, promotionRow } from '../game/board'
 import { getCaptures, getSimpleMoves } from '../game/moves'
-import type { EngineState, PlayerId, RuleSettings } from '../game/types'
+import type { Board, EngineState, PlayerId, RuleSettings } from '../game/types'
 
 /**
  * Evaluation for dam, written for *this* rule set rather than adapted from
@@ -39,6 +39,12 @@ export interface EvalProfile {
   endgameDamping: boolean
   /** Steer away from the no-capture and repetition draw counters when ahead. */
   drawClockAwareness: boolean
+  /**
+   * Weight of lone-king technique: hunting an opponent who is down to one
+   * king (take away its safe squares, drive it to a corner) and, when you are
+   * the one with a lone king, keeping your escape squares. Zero disables it.
+   */
+  endgameTechnique: number
 }
 
 export const PIECE_VALUE = 100
@@ -159,6 +165,180 @@ const openLines = (state: EngineState, row: number, col: number): number => {
   return total
 }
 
+/**
+ * Whether `attacker` could capture the piece standing on (row, col) right now.
+ * Looks outward from the target instead of generating every capture, which
+ * matters because the lone-king term asks this for every square a king can
+ * reach.
+ */
+export const isCapturable = (board: Board, attacker: PlayerId, row: number, col: number): boolean => {
+  for (const { dr, dc } of ORTHOGONAL) {
+    // The attacker travels in (dr, dc): it comes from behind the target and
+    // lands on the square beyond it, which must be empty.
+    const landRow = row + dr
+    const landCol = col + dc
+    if (!inBounds(board, landRow, landCol) || board[landRow][landCol] !== null) continue
+
+    let r = row - dr
+    let c = col - dc
+    let adjacent = true
+    while (inBounds(board, r, c)) {
+      const piece = board[r][c]
+      if (piece) {
+        if (piece.player === attacker) {
+          if (piece.isKing) return true
+          // A man only captures from the next square, forward or sideways.
+          if (adjacent && (dr === 0 || dr === forwardDir(attacker))) return true
+        }
+        break
+      }
+      adjacent = false
+      r -= dr
+      c -= dc
+    }
+  }
+  return false
+}
+
+/**
+ * What the side to move loses by not capturing at all: the opponent calls the
+ * piece that could have captured (the most valuable one under `choose-one`,
+ * all of them under `all`). Captures are optional, but this is why they are not
+ * free to ignore, and why the quiescence search cannot assume "doing nothing"
+ * is safe when a capture is on the board.
+ */
+export const declineCost = (state: EngineState): number => {
+  const captures = getCaptures(state.board, state.currentPlayer)
+  if (captures.length === 0) return 0
+  const size = state.settings.boardSize
+  const seen = new Set<string>()
+  let total = 0
+  let highest = 0
+  for (const capture of captures) {
+    if (seen.has(capture.pieceId)) continue
+    seen.add(capture.pieceId)
+    const piece = state.board[capture.from.row][capture.from.col]
+    const value = piece?.isKing ? kingValue(size) : PIECE_VALUE
+    total += value
+    highest = Math.max(highest, value)
+  }
+  // Losing the last piece to the call loses the game, whatever it was worth.
+  const removed = state.settings.call.scope === 'all' ? seen.size : 1
+  if (piecesOf(state.board, state.currentPlayer).length <= removed) return WIN_SCORE
+  return state.settings.call.scope === 'all' ? total : highest
+}
+
+/**
+ * How well `hunter` is doing against an opponent reduced to a single king.
+ *
+ * One king cannot be cornered by force of numbers alone: it slides the whole
+ * board and takes anything that stands alone on its line. The technique is to
+ * remove its safe squares. A square is unsafe when, after the king stops
+ * there, one of the hunter's pieces could capture it. When none are left, the
+ * king must step into a capture (or capture into one), so the game is won.
+ * The usual finish is the lone king in a corner with hunting kings on the two
+ * edges that meet there, which this term reaches naturally because corners
+ * have the fewest lines to escape along.
+ *
+ * The score is never negative: it only adds credit for progress, measured
+ * against a king with every square still open. A version that subtracted for
+ * open squares made reducing the opponent to one piece look worse than
+ * leaving them two, and the engine stopped taking winning captures.
+ */
+const loneKingPressure = (state: EngineState, hunter: PlayerId): number => {
+  const prey = opponentOf(hunter)
+  const preyPieces = piecesOf(state.board, prey)
+  if (preyPieces.length !== 1) return 0
+  const { piece, at } = preyPieces[0]
+  const size = state.settings.boardSize
+  const board = cloneBoard(state.board)
+
+  // A lone king that can capture must: declining gets its last piece called.
+  // So when a capture is on offer, its only escapes are capture landings that
+  // the hunter cannot take back. Offering a piece so that every landing is
+  // covered is the classic finish (the "kill or be called" sacrifice).
+  const captures = getCaptures(board, prey)
+  let safeLandings = 0
+  for (const capture of captures) {
+    const taken = board[capture.captured.row][capture.captured.col]
+    board[capture.captured.row][capture.captured.col] = null
+    board[at.row][at.col] = null
+    board[capture.to.row][capture.to.col] = piece
+    // It may keep capturing from there, which is an escape in itself.
+    const continues = getCaptures(board, prey).some((c) => c.from.row === capture.to.row && c.from.col === capture.to.col)
+    if (continues || !isCapturable(board, hunter, capture.to.row, capture.to.col)) safeLandings++
+    board[capture.to.row][capture.to.col] = null
+    board[at.row][at.col] = piece
+    board[capture.captured.row][capture.captured.col] = taken
+  }
+
+  let safe = 0
+  if (captures.length === 0) {
+    board[at.row][at.col] = null
+    for (const { dr, dc } of piece.isKing ? ORTHOGONAL : []) {
+      let r = at.row + dr
+      let c = at.col + dc
+      while (inBounds(board, r, c) && board[r][c] === null) {
+        board[r][c] = piece
+        if (!isCapturable(board, hunter, r, c)) safe++
+        board[r][c] = null
+        r += dr
+        c += dc
+      }
+    }
+    board[at.row][at.col] = piece
+  } else {
+    safe = safeLandings
+  }
+
+  // A king sees at most 2(size - 1) squares; that is "no progress".
+  const open = 2 * (size - 1)
+  const fromEdge = Math.min(at.row, size - 1 - at.row) + Math.min(at.col, size - 1 - at.col)
+  const farthest = 2 * Math.floor((size - 1) / 2)
+  let score = (open - Math.min(open, safe)) * 18 + (farthest - fromEdge) * 8
+  if (safe === 0) score += state.currentPlayer === prey ? 600 : 260
+  return score
+}
+
+/**
+ * Men against a lone king. Men cannot hunt (they never move backward), so the
+ * job is to crown one, after which the king-and-piece technique takes over.
+ * The lone king guards the promotion row: it captures a man that arrives on
+ * it whenever the square beyond is empty. The way through is a square it
+ * cannot take, most often a corner, where there is no square beyond. This
+ * rewards each man's progress and, above all, a crowning move that is safe
+ * right now.
+ */
+const promotionPush = (state: EngineState, hunter: PlayerId): number => {
+  const prey = opponentOf(hunter)
+  const size = state.settings.boardSize
+  const goal = promotionRow(hunter, size)
+  const board = cloneBoard(state.board)
+  let score = 0
+  let safeCrowning = false
+  for (const { piece, at } of piecesOf(state.board, hunter)) {
+    if (piece.isKing) continue
+    const progress = 1 - Math.abs(at.row - goal) / Math.max(1, size - 1)
+    score += progress * progress * 60
+    for (const { dr, dc } of [
+      { dr: forwardDir(hunter), dc: 0 },
+      { dr: 0, dc: -1 },
+      { dr: 0, dc: 1 },
+    ]) {
+      const r = at.row + dr
+      const c = at.col + dc
+      if (r !== goal || !inBounds(board, r, c) || board[r][c] !== null) continue
+      board[at.row][at.col] = null
+      board[r][c] = piece
+      if (!isCapturable(board, prey, r, c)) safeCrowning = true
+      board[r][c] = null
+      board[at.row][at.col] = piece
+    }
+  }
+  if (safeCrowning) score += state.currentPlayer === hunter ? 160 : 70
+  return score
+}
+
 export function evaluate(state: EngineState, perspective: PlayerId, profile: EvalProfile): number {
   if (state.status.kind === 'win') {
     return state.status.winner === perspective ? WIN_SCORE : -WIN_SCORE
@@ -228,10 +408,34 @@ export function evaluate(state: EngineState, perspective: PlayerId, profile: Eva
     const total = me.pieces + them.pieces
     if (total <= 4) {
       const edge = Math.abs(me.pieces - them.pieces)
-      const damping = edge >= 2 ? 0.85 : total <= 2 ? 0.15 : 0.5
+      // A king plus anything against a lone king is a technical win (trap it,
+      // or sacrifice the extra piece so it must capture into a recapture), not
+      // a near-draw, for an engine that knows the technique below. Men alone
+      // cannot do it: they never move backward, and the lone king guards the
+      // whole promotion row.
+      const hunterKings = me.pieces > them.pieces ? me.kings : them.kings
+      const huntable = profile.endgameTechnique > 0 && Math.min(me.pieces, them.pieces) === 1 && hunterKings >= 1
+      const damping = edge >= 2 || huntable ? 0.85 : total <= 2 ? 0.15 : 0.5
       score *= damping
     }
     if (me.pieces === 1 && them.pieces === 1 && me.captures + them.captures === 0) return 0
+  }
+
+  if (profile.endgameTechnique !== 0) {
+    // Only a side with a king can carry out the hunt; with men alone the
+    // pressure is mostly illusory, so it counts for little.
+    // With a king, hunt; a man that can still crown is worth pushing too,
+    // because two kings finish the job far faster than king and man.
+    const technique = (hunter: PlayerId, kings: number, men: number) =>
+      kings > 0
+        ? loneKingPressure(state, hunter) + (men > 0 ? promotionPush(state, hunter) * 0.5 : 0)
+        : promotionPush(state, hunter)
+    if (them.pieces === 1 && me.pieces >= 2) {
+      score += technique(perspective, me.kings, me.pieces - me.kings) * profile.endgameTechnique
+    }
+    if (me.pieces === 1 && them.pieces >= 2) {
+      score -= technique(foe, them.kings, them.pieces - them.kings) * profile.endgameTechnique
+    }
   }
 
   if (profile.drawClockAwareness) {

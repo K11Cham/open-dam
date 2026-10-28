@@ -1,15 +1,28 @@
 import type { EvalProfile } from './evaluate'
 
 /**
- * Four tiers that differ in what the engine *knows*, not only how deep it
- * looks. A tier with a crude evaluation plays differently from a shallow one
- * with a full evaluation: Novice cannot see mobility or exposure at all, so it
- * walks into calls; Club sees threats but not the drawish endgame, so it trades
- * down into ties it should have avoided. Depth alone would just make one engine
- * slower and weaker in the same shape.
+ * Five computer opponents, named in Wolof, from the fool to the master.
+ *
+ * They differ in what they *know*, not only in how far they look, because a
+ * person improving at dam learns things in a recognisable order:
+ *
+ *  1. Döff counts pieces and moves on impulse. It looks one move ahead and
+ *     often forgets to call a skipped capture.
+ *  2. Ndö sees your reply and grabs what is offered, but does not yet
+ *     understand that a capture it skips will be called, so it is easy to
+ *     catch with "take this or lose that".
+ *  3. Khàlé knows the calling rule cold and reads short exchanges to the end.
+ *     It has no feel for sacrifices further out, nor an endgame plan.
+ *  4. Màam searches deep, follows every chain, plays sacrifices that win a
+ *     king or start a chain, and knows how to hunt a lone king.
+ *  5. Seriñ adds the deepest search, forced-reply extensions, full lone-king
+ *     technique and no deliberate errors.
+ *
+ * Depth alone would make one engine slower and weaker in the same shape;
+ * changing the knowledge makes each tier play like a different person.
  */
 
-export type DifficultyId = 'novice' | 'club' | 'expert' | 'master'
+export type DifficultyId = 'doff' | 'ndo' | 'khale' | 'maam' | 'serin'
 
 export interface UndoPolicy {
   /**
@@ -17,7 +30,7 @@ export interface UndoPolicy {
    * refuses an undo. `Infinity` means always accept.
    */
   maxSwing: number
-  /** Always accept in the opening — refusing a second-move slip is obnoxious. */
+  /** Always accept in the opening; refusing a second-move slip is obnoxious. */
   graceUntilPly: number
 }
 
@@ -25,7 +38,7 @@ export interface Difficulty {
   id: DifficultyId
   name: string
   blurb: string
-  /** Mock rating, used to place the tier in the sample elo bands. */
+  /** Mock rating, used to place the tier in the sample rating bands. */
   elo: number
   depth: number
   timeBudgetMs: number
@@ -34,6 +47,12 @@ export interface Difficulty {
   blunderChance: number
   /** How much worse a deliberate mistake may be, in centipieces (Infinity: any move). */
   blunderMargin: number
+  /** Chance of not noticing an available call. */
+  missCallChance: number
+  /** Whether the search knows a skipped capture gets called. */
+  callAware: boolean
+  /** Extra plies per line for replies forced by the calling rule. */
+  forcingExtensions: number
   profile: EvalProfile
   /** Range of simulated thinking time, in ms. */
   thinkMs: [number, number]
@@ -52,18 +71,33 @@ const MATERIAL_ONLY: EvalProfile = {
   kingActivity: 0,
   endgameDamping: false,
   drawClockAwareness: false,
+  endgameTechnique: 0,
 }
 
-const SHALLOW: EvalProfile = {
-  name: 'material, mobility and tempo',
-  mobility: 3,
-  advancement: 5,
+const GREEDY: EvalProfile = {
+  name: 'material, tempo and threats',
+  mobility: 1,
+  advancement: 4,
   backRow: 0,
-  exposure: 0.35,
-  threats: 6,
+  exposure: 0,
+  threats: 8,
   kingActivity: 0,
   endgameDamping: false,
   drawClockAwareness: false,
+  endgameTechnique: 0,
+}
+
+const TACTICAL: EvalProfile = {
+  name: 'tactical',
+  mobility: 3,
+  advancement: 6,
+  backRow: 8,
+  exposure: 0.6,
+  threats: 8,
+  kingActivity: 1,
+  endgameDamping: true,
+  drawClockAwareness: false,
+  endgameTechnique: 0,
 }
 
 const FULL: EvalProfile = {
@@ -76,90 +110,138 @@ const FULL: EvalProfile = {
   kingActivity: 1.5,
   endgameDamping: true,
   drawClockAwareness: true,
+  endgameTechnique: 0.6,
 }
 
-const SHARP: EvalProfile = {
+const MASTER: EvalProfile = {
   ...FULL,
-  name: 'full, sharpened',
+  name: 'full, with endgame technique',
   mobility: 6,
   backRow: 18,
   exposure: 1.0,
   threats: 12,
   kingActivity: 2.2,
+  endgameTechnique: 1,
 }
 
 export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
-  novice: {
-    id: 'novice',
-    name: 'Novice',
-    blurb:
-      'Counts pieces and nothing else, one move ahead, and misplays roughly a third of the time. It will leave captures on the table for you to call.',
-    elo: 780,
+  doff: {
+    id: 'doff',
+    name: 'Döff',
+    blurb: 'Moves on impulse. Looks one move ahead, counts pieces and nothing else, and often forgets to call.',
+    elo: 500,
     depth: 1,
-    timeBudgetMs: 120,
+    timeBudgetMs: 100,
     quiescenceDepth: 0,
-    noise: 150,
-    blunderChance: 0.32,
+    noise: 160,
+    blunderChance: 0.35,
     blunderMargin: Infinity,
+    missCallChance: 0.5,
+    callAware: false,
+    forcingExtensions: 0,
     profile: MATERIAL_ONLY,
-    thinkMs: [320, 700],
+    thinkMs: [350, 750],
     undo: { maxSwing: Infinity, graceUntilPly: Infinity },
-    drawAcceptWithin: 400,
+    drawAcceptWithin: 500,
   },
-  club: {
-    id: 'club',
-    name: 'Club',
-    blurb:
-      'Three plies, and it understands tempo and threats — but it is blind to the back row and to how drawish the endgame gets, so it trades down too readily.',
-    elo: 1120,
-    depth: 3,
-    timeBudgetMs: 450,
-    quiescenceDepth: 2,
-    noise: 40,
-    blunderChance: 0.1,
-    blunderMargin: 160,
-    profile: SHALLOW,
-    thinkMs: [420, 900],
-    undo: { maxSwing: 150, graceUntilPly: 6 },
-    drawAcceptWithin: 180,
+  ndo: {
+    id: 'ndo',
+    name: 'Ndö',
+    blurb: 'Sees your reply and grabs what is offered, but walks into captures it then has to make.',
+    elo: 850,
+    depth: 2,
+    timeBudgetMs: 250,
+    quiescenceDepth: 1,
+    noise: 70,
+    blunderChance: 0.18,
+    blunderMargin: 220,
+    missCallChance: 0.2,
+    callAware: false,
+    forcingExtensions: 0,
+    profile: GREEDY,
+    thinkMs: [400, 850],
+    undo: { maxSwing: 300, graceUntilPly: 10 },
+    drawAcceptWithin: 250,
   },
-  expert: {
-    id: 'expert',
-    name: 'Expert',
-    blurb:
-      'Five plies with the full evaluation and capture extensions. It punishes skipped captures and knows when a material lead has stopped converting.',
-    elo: 1460,
-    depth: 5,
-    timeBudgetMs: 900,
+  khale: {
+    id: 'khale',
+    name: 'Khàlé',
+    blurb: 'Knows the calling rule cold and reads short exchanges to the end. Deep sacrifices are past it.',
+    elo: 1200,
+    depth: 4,
+    timeBudgetMs: 600,
     quiescenceDepth: 4,
-    noise: 12,
-    blunderChance: 0.04,
-    blunderMargin: 60,
+    noise: 30,
+    blunderChance: 0.07,
+    blunderMargin: 120,
+    missCallChance: 0.04,
+    callAware: true,
+    forcingExtensions: 0,
+    profile: TACTICAL,
+    thinkMs: [450, 950],
+    undo: { maxSwing: 150, graceUntilPly: 6 },
+    drawAcceptWithin: 150,
+  },
+  maam: {
+    id: 'maam',
+    name: 'Màam',
+    blurb: 'Patient and deep. Follows every chain, sacrifices to win kings, and knows how to hunt a lone king.',
+    elo: 1550,
+    depth: 10,
+    timeBudgetMs: 1200,
+    quiescenceDepth: 6,
+    noise: 8,
+    blunderChance: 0.02,
+    blunderMargin: 40,
+    missCallChance: 0,
+    callAware: true,
+    forcingExtensions: 1,
     profile: FULL,
     thinkMs: [500, 1100],
     undo: { maxSwing: 60, graceUntilPly: 4 },
     drawAcceptWithin: 70,
   },
-  master: {
-    id: 'master',
-    name: 'Master',
-    blurb:
-      'Iterative deepening to eight plies inside a time budget, sharpened weights, deep capture extensions, and no deliberate error.',
-    elo: 1790,
-    depth: 8,
-    timeBudgetMs: 1500,
-    quiescenceDepth: 6,
+  serin: {
+    id: 'serin',
+    name: 'Seriñ',
+    blurb: 'Plays to win from the first move. Deepest search, no deliberate errors, and it corners your last king.',
+    elo: 1900,
+    depth: 40,
+    timeBudgetMs: 2600,
+    quiescenceDepth: 10,
     noise: 0,
     blunderChance: 0,
     blunderMargin: 0,
-    profile: SHARP,
-    thinkMs: [600, 1400],
+    missCallChance: 0,
+    callAware: true,
+    forcingExtensions: 2,
+    profile: MASTER,
+    thinkMs: [500, 1200],
     undo: { maxSwing: 25, graceUntilPly: 2 },
     drawAcceptWithin: 30,
   },
 }
 
-export const DIFFICULTY_IDS: DifficultyId[] = ['novice', 'club', 'expert', 'master']
+export const DIFFICULTY_IDS: DifficultyId[] = ['doff', 'ndo', 'khale', 'maam', 'serin']
 
 export const isDifficultyId = (value: unknown): value is DifficultyId =>
   typeof value === 'string' && (DIFFICULTY_IDS as string[]).includes(value)
+
+/** Tier ids and names used before the Wolof names, mapped to their closest successor. */
+const LEGACY: Record<string, { id: DifficultyId; name: string }> = {
+  novice: { id: 'doff', name: 'Novice' },
+  club: { id: 'khale', name: 'Club' },
+  expert: { id: 'maam', name: 'Expert' },
+  master: { id: 'serin', name: 'Master' },
+}
+
+/** A current tier id for any id this app has ever saved, or null. */
+export const normalizeDifficultyId = (value: unknown): DifficultyId | null => {
+  if (isDifficultyId(value)) return value
+  if (typeof value === 'string' && value in LEGACY) return LEGACY[value].id
+  return null
+}
+
+/** The display name of a legacy tier, so old saves can be renamed. */
+export const legacyTierName = (value: unknown): string | null =>
+  typeof value === 'string' && value in LEGACY ? LEGACY[value].name : null

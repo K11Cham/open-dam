@@ -11,7 +11,7 @@ import { evaluate } from './evaluate'
  * This replaces the auto-accept placeholder. The decision is priced, not
  * guessed: the AI evaluates the position it is in now against the position an
  * undo would put it back into, and compares the swing against its tier's
- * tolerance. A Master hands back almost nothing; a Novice hands back anything.
+ * tolerance. Seriñ hands back almost nothing; Döff hands back anything.
  */
 
 export interface UndoContext {
