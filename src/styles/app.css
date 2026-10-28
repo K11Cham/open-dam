@@ -478,6 +478,12 @@
   font-size: 15px;
 }
 
+.choice__note {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--dam-ink-muted);
+}
+
 .choice__badge {
   margin-left: auto;
   font-family: var(--dam-font-mono);
@@ -1120,8 +1126,8 @@
 
 .bot-row {
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
-  grid-template-areas: 'name elo . go' 'blurb blurb blurb go';
+  grid-template-columns: auto auto auto 1fr auto;
+  grid-template-areas: 'name meaning elo . go' 'blurb blurb blurb blurb go';
   align-items: center;
   column-gap: var(--space-2);
   row-gap: 2px;
@@ -1141,6 +1147,13 @@
   font-family: var(--dam-font-display);
   font-weight: var(--dam-display-weight);
   font-size: 17px;
+}
+
+.bot-row__meaning {
+  grid-area: meaning;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--dam-ink-muted);
 }
 
 .bot-row__elo {

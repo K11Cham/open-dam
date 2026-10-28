@@ -4,6 +4,8 @@ import type { KeyboardEvent, ReactNode } from 'react'
 export interface Choice<T extends string> {
   value: T
   title: ReactNode
+  /** A quiet word beside the title, e.g. what a name means. */
+  note?: ReactNode
   description?: ReactNode
   /** Small text in the corner, e.g. a rating. */
   badge?: ReactNode
@@ -70,6 +72,7 @@ export default function ChoiceCards<T extends string>({ label, choices, value, o
               <span className="choice__head">
                 {choice.icon && <span className="choice__icon">{choice.icon}</span>}
                 <span className="choice__title">{choice.title}</span>
+                {choice.note && <span className="choice__note">{choice.note}</span>}
                 {choice.badge && <span className="choice__badge">{choice.badge}</span>}
               </span>
               {choice.description && <span className="choice__description">{choice.description}</span>}

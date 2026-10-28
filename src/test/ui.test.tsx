@@ -181,6 +181,7 @@ describe('new game', () => {
     renderAt('/play')
     await screen.findByRole('heading', { name: 'New game' })
     for (const name of ['Döff', 'Ndö', 'Khàlé', 'Màam', 'Seriñ']) expect(screen.getByText(name)).toBeInTheDocument()
+    expect(screen.getByText('the youngster')).toBeInTheDocument()
   })
 })
 
