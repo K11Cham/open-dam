@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .enginecheck/
+
+# Personal Claude Code settings (permissions for unattended runs)
+.claude/settings.local.json
