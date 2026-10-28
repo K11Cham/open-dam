@@ -81,7 +81,7 @@ describe('board', () => {
 
 describe('playing against the computer', () => {
   test('the human cannot select the computer’s pieces', async () => {
-    renderAt('/match/new?vs=khale&side=player1&size=5')
+    renderAt('/match/new?vs=ndo&side=player1&size=5')
     await screen.findByRole('grid')
     tap(square('a5')) // a Blue (computer) piece
     expect(square('a5')).not.toHaveAccessibleName(/selected/)
@@ -102,7 +102,7 @@ describe('playing against the computer', () => {
 
   test('resigning asks first', async () => {
     const user = userEvent.setup()
-    renderAt('/match/new?vs=khale&side=player1&size=5')
+    renderAt('/match/new?vs=ndo&side=player1&size=5')
     await screen.findByRole('grid')
     await user.click(screen.getByRole('button', { name: 'Resign' }))
     const dialog = screen.getByRole('dialog', { name: 'Resign this game?' })
@@ -180,7 +180,7 @@ describe('new game', () => {
   test('the five computer opponents are offered', async () => {
     renderAt('/play')
     await screen.findByRole('heading', { name: 'New game' })
-    for (const name of ['Döff', 'Ndö', 'Khàlé', 'Màam', 'Seriñ']) expect(screen.getByText(name)).toBeInTheDocument()
+    for (const name of ['Döff', 'Khàlé', 'Ndö', 'Màam', 'Seriñ']) expect(screen.getByText(name)).toBeInTheDocument()
     expect(screen.getByText('the youngster')).toBeInTheDocument()
   })
 })

@@ -16,7 +16,7 @@ const fresh = () => createInitialState({ boardSize: 5 })
 
 /** A quick, slightly varied player, so the demo is lively and never repeats exactly. */
 const demoOptions = () => {
-  const tier = DIFFICULTIES.khale
+  const tier = DIFFICULTIES.ndo
   return {
     depth: 3,
     profile: tier.profile,

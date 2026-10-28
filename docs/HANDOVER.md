@@ -8,7 +8,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   row and every verification row is done except the future server rows
   **w25** and **w26**, which need a hosted server.
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
-  Ndö (the youngster), Khàlé (the child), Màam (the elder), Seriñ (the master). To judge its play,
+  Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
 - With the board clear, shifts do the quality pass described in the scheduled
   task: look for real problems, add rows (next ids **w31**, **v13**), fix them.
@@ -107,6 +107,13 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-28 (tier order)
+
+- At the owner's request Khàlé (the child) is now the second tier and Ndö (the
+  youngster) the third. Ids moved with the names, so `?vs=ndo` and the default
+  opponent are now the third-strongest tier; the old "club" id maps to `ndo`.
+  Earlier log entries use the old order.
 
 ### 2026-10-28 (tier meanings)
 

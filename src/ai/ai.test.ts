@@ -121,7 +121,7 @@ describe('tactics', () => {
 
   test('a lost position returns null instead of throwing', () => {
     const over = applyAction(createInitialState({ boardSize: 5 }), { type: 'resign', player: 'player1' }).state
-    expect(chooseAction(over, options('khale'))).toBeNull()
+    expect(chooseAction(over, options('ndo'))).toBeNull()
   })
 })
 
