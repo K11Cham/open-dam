@@ -284,7 +284,9 @@ Four rules decide almost every ending, and the evaluation has to know them:
 ### How tiers differ: `difficulty.ts`
 
 Five opponents, named in Wolof, differ in what they _know_, in the order a
-person learns it:
+person learns it. The names mean the fool, the youngster (usually a teen),
+the child, the elder and the master; the app shows each meaning beside the
+name.
 
 | Tier      | What it knows                                                                             |
 | --------- | ----------------------------------------------------------------------------------------- |

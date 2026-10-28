@@ -183,6 +183,7 @@ export default function HomePage() {
                   <li key={id}>
                     <Link className="bot-row" to={quickLink(id)}>
                       <span className="bot-row__name">{DIFFICULTIES[id].name}</span>
+                      <span className="bot-row__meaning">{DIFFICULTIES[id].meaning}</span>
                       <span className="bot-row__elo">~{DIFFICULTIES[id].elo}</span>
                       <span className="bot-row__blurb">{DIFFICULTIES[id].blurb}</span>
                       <ArrowRight size={16} aria-hidden className="bot-row__go" />

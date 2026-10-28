@@ -34,6 +34,7 @@ export default function NewGamePage() {
     ...DIFFICULTY_IDS.map((id) => ({
       value: id,
       title: DIFFICULTIES[id].name,
+      note: DIFFICULTIES[id].meaning,
       badge: `~${DIFFICULTIES[id].elo}`,
       icon: <Bot size={18} aria-hidden />,
       description: DIFFICULTIES[id].blurb,

@@ -1,7 +1,8 @@
 import type { EvalProfile } from './evaluate'
 
 /**
- * Five computer opponents, named in Wolof, from the fool to the master.
+ * Five computer opponents, named in Wolof: Döff (the fool), Ndö (the youngster,
+ * usually a teen), Khàlé (the child), Màam (the elder) and Seriñ (the master).
  *
  * They differ in what they *know*, not only in how far they look, because a
  * person improving at dam learns things in a recognisable order:
@@ -37,6 +38,8 @@ export interface UndoPolicy {
 export interface Difficulty {
   id: DifficultyId
   name: string
+  /** What the Wolof name means, shown beside it. */
+  meaning: string
   blurb: string
   /** Mock rating, used to place the tier in the sample rating bands. */
   elo: number
@@ -128,6 +131,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
   doff: {
     id: 'doff',
     name: 'Döff',
+    meaning: 'the fool',
     blurb: 'Moves on impulse. Looks one move ahead, counts pieces and nothing else, and often forgets to call.',
     elo: 500,
     depth: 1,
@@ -147,6 +151,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
   ndo: {
     id: 'ndo',
     name: 'Ndö',
+    meaning: 'the youngster',
     blurb: 'Sees your reply and grabs what is offered, but walks into captures it then has to make.',
     elo: 850,
     depth: 2,
@@ -166,6 +171,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
   khale: {
     id: 'khale',
     name: 'Khàlé',
+    meaning: 'the child',
     blurb: 'Knows the calling rule cold and reads short exchanges to the end. Deep sacrifices are past it.',
     elo: 1200,
     depth: 4,
@@ -185,6 +191,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
   maam: {
     id: 'maam',
     name: 'Màam',
+    meaning: 'the elder',
     blurb: 'Patient and deep. Follows every chain, sacrifices to win kings, and knows how to hunt a lone king.',
     elo: 1550,
     depth: 10,
@@ -204,6 +211,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
   serin: {
     id: 'serin',
     name: 'Seriñ',
+    meaning: 'the master',
     blurb: 'Plays to win from the first move. Deepest search, no deliberate errors, and it corners your last king.',
     elo: 1900,
     depth: 40,
