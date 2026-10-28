@@ -7,7 +7,7 @@ import type { Coord, GameStatus, PieceData, PlayerId } from '../game/types'
  *   1. `tokens`  — CSS custom properties written onto <html>. Every shared
  *                  component styles itself from these and nothing else.
  *   2. `parts`   — React components for the pieces of the UI whose STRUCTURE
- *                  differs between themes (a flat disc vs a drawn character).
+ *                  differs between themes (a flat disc vs a painted token).
  *   3. `motion`  — how things move.
  *   4. `sides`   — what the two sides are called in this theme. The pieces
  *                  are black and white in Atelier, so calling them "Red" and

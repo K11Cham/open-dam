@@ -4,9 +4,9 @@ import './theme.css'
 
 /**
  * Carnival: a dark, playful night-market look. Separated rounded tiles,
- * floating chrome, drawn characters for pieces (Coral smiles, Sky has a tuft
- * and an "o" mouth, so they differ in shape as well as colour), and a board
- * that throws confetti.
+ * floating chrome, painted festival tokens for pieces (Coral has a scalloped
+ * bottle-cap edge and a sun, Sky a smooth edge and a ring of beads, so they
+ * differ in shape as well as colour), and a board that throws confetti.
  */
 const tokens: ThemeTokens = {
   '--dam-bg': '#1B1033',
@@ -65,7 +65,7 @@ const tokens: ThemeTokens = {
 export const carnivalTheme: ThemeDefinition = {
   key: 'carnival',
   name: 'Carnival',
-  blurb: 'Drawn characters, springy tiles, and a board that celebrates.',
+  blurb: 'Painted festival tokens, springy tiles, and a board that celebrates.',
   colorScheme: 'dark',
   tokens,
   parts: { Piece, CellDecor, BoardFrame, EndSequence },
