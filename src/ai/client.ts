@@ -21,6 +21,7 @@ export const searchOptionsFor = (difficulty: Difficulty): Omit<SearchOptions, 'r
   quiescenceDepth: difficulty.quiescenceDepth,
   noise: difficulty.noise,
   blunderChance: difficulty.blunderChance,
+  blunderMargin: difficulty.blunderMargin,
 })
 
 let worker: Worker | null = null

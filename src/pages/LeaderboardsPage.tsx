@@ -4,26 +4,31 @@ import AppShell from '../components/layout/AppShell'
 import Panel from '../components/ui/Panel'
 import Segmented from '../components/ui/Segmented'
 import { LEADERBOARDS } from '../data/leaderboards'
+import { usePageTitle } from '../lib/usePageTitle'
 
-/** SCAFFOLD: sample data only, clearly labelled as such. */
+/** Sample standings. Real ratings arrive with the game server; the page says so up front. */
 export default function LeaderboardsPage() {
+  usePageTitle('Leaderboards')
   const [boardId, setBoardId] = useState(LEADERBOARDS[0].id)
   const board = LEADERBOARDS.find((entry) => entry.id === boardId) ?? LEADERBOARDS[0]
 
   return (
-    <AppShell showNewGame={false}>
-      <div className="dam-page">
-        <div className="dam-section-head">
-          <h1 className="dam-section-title">Leaderboards</h1>
-        </div>
+    <AppShell>
+      <div className="page">
+        <header className="page-head">
+          <p className="eyebrow">Community</p>
+          <h1 className="page-title">Leaderboards</h1>
+        </header>
 
-        <div className="dam-mock-banner">
-          <Info size={14} />
-          Sample data. Ratings are not computed yet — there is no elo backend behind this page.
-        </div>
+        <p className="notice">
+          <Info size={16} aria-hidden />
+          Ratings start once online play has a server. Until then this page shows made-up sample players, so you can see how it will
+          look.
+        </p>
 
         <Segmented
           label="Leaderboard"
+          wrap
           value={boardId}
           options={LEADERBOARDS.map((entry) => ({
             value: entry.id,
@@ -32,22 +37,31 @@ export default function LeaderboardsPage() {
           onChange={setBoardId}
         />
 
-        <Panel style={{ marginTop: 16, padding: 4, overflowX: 'auto' }}>
-          <table className="dam-table">
+        <Panel className="table-wrap">
+          <table className="table">
+            <caption className="visually-hidden">
+              Sample standings, {board.modeLabel}, {board.boardSize} by {board.boardSize}, {board.timeControlLabel}
+            </caption>
             <thead>
               <tr>
-                <th>#</th>
-                <th>Player</th>
-                <th style={{ textAlign: 'right' }}>Rating</th>
-                <th style={{ textAlign: 'right' }}>Games</th>
-                <th style={{ textAlign: 'right' }}>Win rate</th>
+                <th scope="col">#</th>
+                <th scope="col">Player</th>
+                <th scope="col" className="is-numeric">
+                  Rating
+                </th>
+                <th scope="col" className="is-numeric">
+                  Games
+                </th>
+                <th scope="col" className="is-numeric">
+                  Win rate
+                </th>
               </tr>
             </thead>
             <tbody>
               {board.entries.map((entry) => (
                 <tr key={entry.name}>
-                  <td className="is-numeric" style={{ textAlign: 'left' }}>{entry.rank}</td>
-                  <td>{entry.name}</td>
+                  <td className="is-numeric">{entry.rank}</td>
+                  <th scope="row">{entry.name}</th>
                   <td className="is-numeric">{entry.rating}</td>
                   <td className="is-numeric">{entry.games}</td>
                   <td className="is-numeric">{Math.round(entry.winRate * 100)}%</td>

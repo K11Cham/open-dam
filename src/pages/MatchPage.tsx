@@ -1,112 +1,144 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { DIFFICULTIES, isDifficultyId } from '../ai/difficulty'
-import { decideUndoRequest } from '../ai/opponent'
-import GameScreen from '../components/game/GameScreen'
+import { useEffect, useState } from 'react'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import MatchScreen from '../components/game/MatchScreen'
 import AppShell from '../components/layout/AppShell'
-import { opponentOf } from '../game/board'
-import type { EngineState, PlayerId } from '../game/types'
-import { useAIOpponent } from '../hooks/useAIOpponent'
-import { useGameLogic } from '../hooks/useGameLogic'
-import type { OfferDecision } from '../hooks/useMatchOffers'
-import { STORAGE_KEYS, storage } from '../services/storage'
-import { paramsToSettings, settingsToParams } from './matchParams'
+import { ButtonLink } from '../components/ui/Button'
+import { ConfirmDialog } from '../components/ui/Dialog'
+import Panel from '../components/ui/Panel'
+import { useToast } from '../components/ui/Toasts'
+import { useSideNames, useTheme } from '../context/useTheme'
+import type { PlayerId } from '../game/types'
+import { useAIPlayer } from '../hooks/useAIPlayer'
+import { useMatchController } from '../hooks/useMatchController'
+import { useMatchPersistence } from '../hooks/useMatchPersistence'
+import { usePageTitle } from '../lib/usePageTitle'
+import { MatchHost, createRecord } from '../match/session'
+import { recordFromSetup, setupFromParams } from '../match/setup'
+import { clearActiveMatch, findArchived, loadActiveMatch, resumeAfterGap, saveActiveMatch } from '../match/storage'
+import type { MatchRecord } from '../match/types'
 
-/**
- * A live match, hot-seat or against the computer.
- *
- * `?ai=<tier>` turns the opposing side into the engine and `?side=` picks which
- * colour the human takes. The rules themselves are unchanged either way — the
- * AI plays through the same controller actions a human does, including calling
- * and declining chains, so nothing about the position depends on who is moving.
- */
-export default function MatchPage() {
+const SIDES: PlayerId[] = ['player1', 'player2']
+
+/** A local game (pass and play, or against the computer) hosted on this device. */
+function LocalMatch({ record }: { record: MatchRecord }) {
   const navigate = useNavigate()
-  const [params] = useSearchParams()
-  const settings = useMemo(() => paramsToSettings(params), [params.toString()])
+  const toast = useToast()
+  const { theme } = useTheme()
+  const sideNames = useSideNames()
+  const [host] = useState(() => new MatchHost(record))
+  useMatchPersistence(host)
 
-  const humanSide: PlayerId = params.get('side') === 'player2' ? 'player2' : 'player1'
-  const tierId = params.get('ai')
-  const difficulty = isDifficultyId(tierId) ? DIFFICULTIES[tierId] : null
-  const aiSide = opponentOf(humanSide)
+  const seats = record.config.seats
+  const localSeats = SIDES.filter((side) => seats[side].kind === 'human')
+  const aiSeat = SIDES.find((side) => seats[side].kind === 'ai') ?? null
+  const perspective = localSeats.length === 1 ? localSeats[0] : null
 
-  // Only restore if the saved game was played under these exact rules.
-  const [seed] = useState<EngineState | null>(() => {
-    const saved = storage.get<EngineState>(STORAGE_KEYS.resumeMatch)
-    if (!saved) return null
-    const sameRules =
-      settingsToParams(saved.settings).toString() === settingsToParams(settings).toString()
-    return sameRules && saved.status.kind === 'playing' ? saved : null
+  const controller = useMatchController({
+    session: host,
+    localSeats,
+    authoritative: true,
+    sideNames,
+    captureDurationMs: theme.motion.captureDurationMs,
+    notify: toast.show,
   })
+  const thinking = useAIPlayer(host, aiSeat, aiSeat ? seats[aiSeat].difficulty : undefined)
+  usePageTitle(controller.over ? 'Game over' : perspective && controller.myTurn ? 'Your move' : 'Game')
 
-  /**
-   * The undo decider needs the controller, and the controller needs the
-   * decider, so it goes through a ref. The callback only ever fires from a
-   * click, long after the effect below has filled the box in.
-   */
-  const undoDecider = useRef<(requester: PlayerId) => OfferDecision>(() => 'defer')
-
-  const controller = useGameLogic({
-    settings,
-    viewer: humanSide,
-    initialState: seed,
-    onUndoRequest: (requester) => undoDecider.current(requester),
-  })
-
-  useEffect(() => {
-    undoDecider.current = (requester: PlayerId): OfferDecision => {
-      // Hot-seat (OTB): hand the decision to the other player. The request
-      // becomes a pending offer they accept or refuse from their own bar —
-      // undoing is a negotiation, not an app-granted rollback.
-      if (!difficulty) return 'defer'
-      if (requester === aiSide) return 'accept'
-      return decideUndoRequest({
-        difficulty,
-        aiSide,
-        current: controller.state,
-        target: controller.getUndoTarget(requester),
-      })
-    }
-  })
-
-  const { thinking } = useAIOpponent({
-    controller,
-    aiSide,
-    difficulty: difficulty ?? DIFFICULTIES.club,
-    enabled: difficulty !== null,
-  })
-
-  useEffect(() => {
-    if (controller.state.moves.length === 0) return
-    if (controller.state.status.kind === 'playing') {
-      storage.set(STORAGE_KEYS.resumeMatch, controller.state)
-    } else {
-      storage.remove(STORAGE_KEYS.resumeMatch)
-    }
-  }, [controller.state])
-
-  const playerNames: Partial<Record<PlayerId, string>> = difficulty
-    ? {
-        [humanSide]: 'You',
-        [aiSide]: `${difficulty.name} (${difficulty.elo})`,
-      }
-    : {}
+  const rematch = () => {
+    const next = createRecord({ mode: 'local', settings: record.config.settings, seats })
+    saveActiveMatch(next)
+    navigate(`/match/${next.config.id}`)
+  }
 
   return (
-    <AppShell fill showNewGame={false}>
-      <GameScreen
-        controller={controller}
-        playerNames={playerNames}
-        humanSides={difficulty ? [humanSide] : ['player1', 'player2']}
-        thinking={thinking ? aiSide : null}
-        onRematch={() => {
-          storage.remove(STORAGE_KEYS.resumeMatch)
-          controller.reset()
-        }}
-        onNewGame={() => {
-          storage.remove(STORAGE_KEYS.resumeMatch)
-          navigate('/play')
-        }}
+    <MatchScreen
+      controller={controller}
+      localSeats={localSeats}
+      perspective={perspective}
+      thinkingSeat={thinking ? aiSeat : null}
+      onRematch={rematch}
+      onNewGame={() => navigate('/play')}
+    />
+  )
+}
+
+/** `/match/:id` — open the saved game with this id. */
+export default function MatchPage() {
+  const { id = '' } = useParams()
+  const [loaded] = useState(() => {
+    const active = loadActiveMatch()
+    if (!active || active.record.config.id !== id || active.record.config.mode !== 'local') return null
+    return resumeAfterGap(active.record, active.state, active.savedAt)
+  })
+
+  if (!loaded) {
+    if (findArchived(id)) return <Navigate to={`/review/${id}`} replace />
+    return (
+      <AppShell>
+        <div className="page page--narrow">
+          <Panel>
+            <h1 className="panel__title">This game is not on this device</h1>
+            <p className="panel__text">
+              Games are saved in this browser only. It may have finished, been replaced by a newer game, or been started somewhere
+              else.
+            </p>
+            <div className="panel__actions">
+              <ButtonLink to="/play" variant="primary">
+                Start a new game
+              </ButtonLink>
+              <ButtonLink to="/">Home</ButtonLink>
+            </div>
+          </Panel>
+        </div>
+      </AppShell>
+    )
+  }
+
+  return (
+    <AppShell wide>
+      <LocalMatch key={loaded.config.id} record={loaded} />
+    </AppShell>
+  )
+}
+
+/**
+ * `/match/new?vs=club&size=7&...` — start a game straight from a link (the
+ * home page's quick-play cards, bookmarks, older `/match?ai=...` URLs). Asks
+ * before replacing an unfinished game.
+ */
+export function NewMatchFromLink() {
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const [pending] = useState(() => {
+    const active = loadActiveMatch()
+    return active && active.state.position.status.kind === 'playing' && active.record.actions.length > 0 ? active : null
+  })
+
+  const start = () => {
+    const setup = setupFromParams(params)
+    const record = recordFromSetup(setup)
+    clearActiveMatch()
+    saveActiveMatch(record)
+    navigate(record.config.mode === 'online' ? `/online/${record.config.id}` : `/match/${record.config.id}`, { replace: true })
+  }
+
+  useEffect(() => {
+    if (!pending) start()
+    // Runs once on arrival; `start` reads the URL as it was when the link was followed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <AppShell>
+      <ConfirmDialog
+        open={!!pending}
+        title="Start a new game?"
+        description="You have an unfinished game saved on this device. Starting a new one will discard it."
+        confirmLabel="Discard and start"
+        cancelLabel="Back to my game"
+        tone="danger"
+        onConfirm={start}
+        onCancel={() => navigate(pending ? `/match/${pending.record.config.id}` : '/', { replace: true })}
       />
     </AppShell>
   )

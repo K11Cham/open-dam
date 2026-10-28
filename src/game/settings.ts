@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS: RuleSettings = {
     abandonedChainCallable: true,
   },
   draw: {
-    // Kept alongside the 1v1 tie rule; see RULES_SUMMARY below for why.
+    // Kept alongside the one-each tie rule; see evaluateStatus in engine.ts for why.
     threefoldRepetition: true,
     pliesWithoutCapture: 50, // 25 moves each
   },
@@ -129,25 +129,25 @@ export const PROMOTION_POLICY_BLURBS: Record<PromotionPolicy, string> = {
   'end-turn-on-promotion':
     'Getting crowned ends your turn on the spot, even mid-chain.',
   'match-opponent':
-    'Take whatever your opponent picked. Offline this falls back to Crown and continue.',
+    'Play whichever rule your opponent picked. Used for online matchmaking; on its own it means Crown and continue.',
 }
 
 /**
- * Placeholder rules summary shown on the settings panel and the (stub) rules
- * page. Deliberately short — the full tutorial text is message 3's job.
+ * The rules in eight sentences, shown on the Learn page. Kept beside the
+ * defaults so a rule change and its description are edited together.
  */
-export const RULES_SUMMARY = [
-  'Pieces move one square forward, left, or right. Never diagonally, never backward.',
-  'Capture by jumping an adjacent enemy piece horizontally or vertically onto the empty square directly beyond it.',
-  'Reaching the far row crowns a piece. Kings slide and capture any distance in a straight orthogonal line, and after a capture may stop on any empty square beyond the piece they took.',
-  'Captures are never forced. Neither is calling, and neither is undo.',
-  'If you pass up a capture, your opponent may call it. Default: the caller removes one piece of their choosing from those that could have captured, and a chain abandoned partway through is callable for the captures you left behind.',
-  'Down to your last piece, that piece is crowned automatically.',
-  'You lose when you have no pieces left. It is a tie when both players are down to one piece and neither has a capture or a call available.',
-  'Long shuffles are also drawn: threefold repetition of the position, or 25 moves each with no capture.',
-].join('\n')
+export const RULES_AT_A_GLANCE: string[] = [
+  'Pieces move one square forward, left or right. Never diagonally, never backward.',
+  'Capture by jumping an enemy piece next to you, straight across, onto the empty square just beyond it. If the same piece can capture again, it may keep going.',
+  'A piece that reaches the far row is crowned. Kings move and capture any distance in a straight line, and may land on any empty square past the piece they take.',
+  'Captures are optional. But if you pass one up, your opponent may call it on their turn and remove the piece that could have captured.',
+  'On odd boards the first move may send any piece straight into the empty centre.',
+  'A player down to their last piece has it crowned automatically.',
+  'You win when your opponent has no pieces left, or no legal move on their turn.',
+  'The game is drawn by agreement, when one piece each is left with nothing to capture, when a position repeats three times, or after 25 moves each without a capture.',
+]
 
 export const CALL_SCOPE_LABELS: Record<'all' | 'choose-one', string> = {
-  all: 'Remove every piece that could have captured',
-  'choose-one': 'Remove one piece of the caller’s choosing',
+  'choose-one': 'One piece, caller’s choice',
+  all: 'Every piece that could have captured',
 }

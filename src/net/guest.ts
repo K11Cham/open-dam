@@ -2,7 +2,6 @@ import { DEFAULT_SETTINGS } from '../game/settings'
 import type { PlayerId } from '../game/types'
 import { applyMatchAction, replay } from '../match/reducer'
 import { SessionBase } from '../match/session'
-import type { SessionSnapshot } from '../match/session'
 import type { Actor, MatchIntent, MatchRecord } from '../match/types'
 import { HEARTBEAT_MS, PRESENCE_TIMEOUT_MS, PROTOCOL_VERSION } from './protocol'
 import type { GuestMessage, HostMessage } from './protocol'
@@ -31,24 +30,30 @@ const placeholderRecord = (matchId: string): MatchRecord => ({
 export class MatchGuest extends SessionBase {
   private readonly matchId: string
   private readonly seat: PlayerId
-  private readonly transport: Transport
   private readonly clientId: string
   private readonly now: () => number
+  private transport: Transport | null = null
   private welcomed = false
   private lastHeardFromHost = 0
   private nonce = 0
-  private timer: ReturnType<typeof setInterval>
-  private stopListening: () => void
+  private timer: ReturnType<typeof setInterval> | undefined
+  private stopListening: (() => void) | undefined
 
-  constructor(options: { matchId: string; seat: PlayerId; transport: Transport; clientId: string; now?: () => number }) {
+  /** Creating a guest has no side effects; nothing is sent until `connect`. */
+  constructor(options: { matchId: string; seat: PlayerId; clientId: string; now?: () => number }) {
     const record = placeholderRecord(options.matchId)
     super({ record, state: replay(record), connection: 'connecting', online: { player1: false, player2: false } })
     this.matchId = options.matchId
     this.seat = options.seat
-    this.transport = options.transport
     this.clientId = options.clientId
     this.now = options.now ?? Date.now
-    this.stopListening = this.transport.onMessage((message) => {
+  }
+
+  /** Start talking to the host over `transport`. Safe to call again after `disconnect`. */
+  connect(transport: Transport) {
+    this.disconnect()
+    this.transport = transport
+    this.stopListening = transport.onMessage((message) => {
       if (message.matchId !== this.matchId || message.from === this.clientId) return
       this.handle(message as HostMessage)
     })
@@ -56,8 +61,18 @@ export class MatchGuest extends SessionBase {
     this.timer = setInterval(() => this.tick(), HEARTBEAT_MS)
   }
 
+  /** Stop talking to the host and tell it we left. The game state is kept. */
+  disconnect() {
+    if (!this.transport) return
+    clearInterval(this.timer)
+    this.send({ type: 'leave', seat: this.seat })
+    this.stopListening?.()
+    this.transport = null
+    this.welcomed = false
+  }
+
   private send(body: GuestBody) {
-    this.transport.send({ v: PROTOCOL_VERSION, matchId: this.matchId, from: this.clientId, ...body } as GuestMessage)
+    this.transport?.send({ v: PROTOCOL_VERSION, matchId: this.matchId, from: this.clientId, ...body } as GuestMessage)
   }
 
   private tick() {
@@ -150,19 +165,7 @@ export class MatchGuest extends SessionBase {
   }
 
   dispose() {
-    clearInterval(this.timer)
-    this.send({ type: 'leave', seat: this.seat })
-    this.stopListening()
+    this.disconnect()
     super.dispose()
-  }
-
-  /** Seat this guest plays. */
-  get playerSeat(): PlayerId {
-    return this.seat
-  }
-
-  /** For callers that need the snapshot type explicitly. */
-  current(): SessionSnapshot {
-    return this.snapshot
   }
 }

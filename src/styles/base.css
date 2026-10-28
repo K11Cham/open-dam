@@ -1,0 +1,173 @@
+/*
+  Base layer: reset, document defaults and utilities. No colour decisions
+  here — every colour comes from the active theme's --dam-* tokens, written
+  onto <html> by ThemeContext. Fallbacks keep the first paint sensible before
+  the tokens arrive.
+*/
+
+:root {
+  /* Spacing scale (4px base) and layout widths, shared by every theme. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --page-max: 1120px;
+  --page-wide: 1320px;
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-right: max(16px, env(safe-area-inset-right, 0px));
+  --tap: 44px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--dam-bg, #f5f4f0);
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  font-family: var(--dam-font-body, system-ui, sans-serif);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--dam-ink, #111);
+  background: var(--dam-bg, #f5f4f0);
+  background-image: var(--dam-bg-pattern, none);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+ol,
+ul,
+dl,
+dd {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--dam-font-display);
+  font-weight: var(--dam-display-weight, 700);
+  letter-spacing: var(--dam-display-spacing, 0);
+  text-wrap: balance;
+  line-height: 1.15;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: var(--dam-font-mono);
+  font-size: 0.9em;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* One focus style everywhere: a solid ring in the theme's focus colour. */
+:focus-visible {
+  outline: 3px solid var(--dam-focus, #2e5bff);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-3);
+  top: -100px;
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--dam-accent);
+  color: var(--dam-accent-ink);
+  font-weight: 600;
+  border-radius: var(--dam-radius-sm);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--space-3);
+}
+
+.spin {
+  animation: dam-spin 1s linear infinite;
+}
+
+@keyframes dam-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* CSS animations and transitions honour reduced motion here; framer-motion
+   animations honour it through <MotionConfig reducedMotion="user">. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

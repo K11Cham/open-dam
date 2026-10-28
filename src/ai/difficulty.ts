@@ -32,6 +32,8 @@ export interface Difficulty {
   quiescenceDepth: number
   noise: number
   blunderChance: number
+  /** How much worse a deliberate mistake may be, in centipieces (Infinity: any move). */
+  blunderMargin: number
   profile: EvalProfile
   /** Range of simulated thinking time, in ms. */
   thinkMs: [number, number]
@@ -98,6 +100,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     quiescenceDepth: 0,
     noise: 150,
     blunderChance: 0.32,
+    blunderMargin: Infinity,
     profile: MATERIAL_ONLY,
     thinkMs: [320, 700],
     undo: { maxSwing: Infinity, graceUntilPly: Infinity },
@@ -112,8 +115,9 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     depth: 3,
     timeBudgetMs: 450,
     quiescenceDepth: 2,
-    noise: 55,
-    blunderChance: 0.08,
+    noise: 40,
+    blunderChance: 0.1,
+    blunderMargin: 160,
     profile: SHALLOW,
     thinkMs: [420, 900],
     undo: { maxSwing: 150, graceUntilPly: 6 },
@@ -128,8 +132,9 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     depth: 5,
     timeBudgetMs: 900,
     quiescenceDepth: 4,
-    noise: 18,
-    blunderChance: 0.015,
+    noise: 12,
+    blunderChance: 0.04,
+    blunderMargin: 60,
     profile: FULL,
     thinkMs: [500, 1100],
     undo: { maxSwing: 60, graceUntilPly: 4 },
@@ -146,6 +151,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     quiescenceDepth: 6,
     noise: 0,
     blunderChance: 0,
+    blunderMargin: 0,
     profile: SHARP,
     thinkMs: [600, 1400],
     undo: { maxSwing: 25, graceUntilPly: 2 },

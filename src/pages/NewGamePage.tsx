@@ -1,94 +1,138 @@
-import { Play } from 'lucide-react'
+import { Bot, Globe, Play, Users } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { DifficultyId } from '../ai/difficulty'
+import { DIFFICULTIES, DIFFICULTY_IDS } from '../ai/difficulty'
 import AppShell from '../components/layout/AppShell'
-import OpponentPicker from '../components/settings/OpponentPicker'
-import RuleSettingsPanel from '../components/settings/RuleSettingsPanel'
-import Button from '../components/ui/Button'
+import RulesForm from '../components/settings/RulesForm'
+import { Button } from '../components/ui/Button'
+import ChoiceCards from '../components/ui/ChoiceCards'
+import type { Choice } from '../components/ui/ChoiceCards'
+import { ConfirmDialog } from '../components/ui/Dialog'
 import Panel from '../components/ui/Panel'
-import { DEFAULT_SETTINGS, filterCompatibleSeeks } from '../game/settings'
-import type { PlayerId, RuleSettings } from '../game/types'
-import { RANKED_POOLS } from '../data/ranked'
-import { storage, STORAGE_KEYS } from '../services/storage'
-import { settingsToParams } from './matchParams'
+import Segmented from '../components/ui/Segmented'
+import { useSideNames } from '../context/useTheme'
+import type { PlayerId } from '../game/types'
+import { usePageTitle } from '../lib/usePageTitle'
+import { timeControlLabel } from '../lib/describe'
+import { loadLastSetup, opponentLabel, recordFromSetup, saveLastSetup } from '../match/setup'
+import type { GameSetup, OpponentChoice } from '../match/setup'
+import { clearActiveMatch, loadActiveMatch, saveActiveMatch } from '../match/storage'
 
 /**
- * Pre-game screen. Alongside the rule toggles it shows how many of the mock
- * ranked pools these settings could actually be paired with — that list comes
- * from the engine's `filterCompatibleSeeks`, which is the real compatibility
- * rule rather than a display approximation.
+ * New game: who you play, which side, and the rules. Starting saves the setup
+ * for next time, creates the match record, and opens it. If an unfinished game
+ * is saved, it asks before replacing it.
  */
 export default function NewGamePage() {
+  usePageTitle('New game')
   const navigate = useNavigate()
-  const [settings, setSettings] = useState<RuleSettings>(
-    () => storage.get<RuleSettings>(STORAGE_KEYS.lastSettings) ?? DEFAULT_SETTINGS,
-  )
-  const [opponent, setOpponent] = useState<DifficultyId | 'human'>('human')
-  const [side, setSide] = useState<PlayerId>('player1')
+  const sideNames = useSideNames()
+  const [setup, setSetup] = useState<GameSetup>(loadLastSetup)
+  const [confirmReplace, setConfirmReplace] = useState(false)
 
-  const compatible = filterCompatibleSeeks(
-    settings,
-    RANKED_POOLS.map((pool) => ({ id: pool.id, settings: pool.settings, payload: pool })),
-  )
+  const choices: Choice<OpponentChoice>[] = [
+    ...DIFFICULTY_IDS.map((id) => ({
+      value: id,
+      title: DIFFICULTIES[id].name,
+      badge: `~${DIFFICULTIES[id].elo}`,
+      icon: <Bot size={18} aria-hidden />,
+      description: DIFFICULTIES[id].blurb,
+    })),
+    {
+      value: 'hotseat',
+      title: 'Pass and play',
+      icon: <Users size={18} aria-hidden />,
+      description: 'Two people on one device, taking turns. Offers to undo or draw are answered by the other player.',
+    },
+    {
+      value: 'online',
+      title: 'Online',
+      badge: 'Preview',
+      icon: <Globe size={18} aria-hidden />,
+      description: 'Play from two browser tabs. This uses the real online protocol; playing across devices needs the game server, which is not live yet.',
+    },
+  ]
 
-  const start = () => {
-    storage.set(STORAGE_KEYS.lastSettings, settings)
-    storage.remove(STORAGE_KEYS.resumeMatch)
-    const params = settingsToParams(settings)
-    if (opponent !== 'human') params.set('ai', opponent)
-    params.set('side', side)
-    navigate(`/match?${params.toString()}`)
+  const begin = () => {
+    saveLastSetup(setup)
+    clearActiveMatch()
+    const record = recordFromSetup(setup)
+    saveActiveMatch(record)
+    navigate(record.config.mode === 'online' ? `/online/${record.config.id}` : `/match/${record.config.id}`)
   }
 
+  const start = () => {
+    const active = loadActiveMatch()
+    if (active && active.state.position.status.kind === 'playing' && active.record.actions.length > 0) setConfirmReplace(true)
+    else begin()
+  }
+
+  const { settings } = setup
+  const summary = [
+    `${settings.boardSize}×${settings.boardSize}`,
+    timeControlLabel(settings),
+    opponentLabel(setup.opponent),
+    setup.opponent === 'hotseat' ? null : `you play ${sideNames[setup.side]}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <AppShell showNewGame={false}>
-      <div className="dam-page">
-        <div className="dam-section-head">
-          <h1 className="dam-section-title">New game</h1>
-          <Button variant="primary" onClick={start}>
-            <Play size={15} />
-            Start
-          </Button>
-        </div>
+    <AppShell>
+      <div className="page">
+        <header className="page-head">
+          <p className="eyebrow">Play</p>
+          <h1 className="page-title">New game</h1>
+        </header>
 
-        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: '1fr' }}>
-          <OpponentPicker
-            opponent={opponent}
-            onOpponentChange={setOpponent}
-            side={side}
-            onSideChange={setSide}
-          />
-
-          <RuleSettingsPanel settings={settings} onChange={setSettings} />
-
-          <Panel style={{ padding: 18 }}>
-            <span className="dam-section-label">Matchmaking preview</span>
-            <p style={{ fontSize: 13, margin: '10px 0 0' }}>
-              {compatible.length === 0
-                ? 'No open pool matches these settings. Online play would queue you separately.'
-                : `${compatible.length} of ${RANKED_POOLS.length} pools would accept these settings.`}
-            </p>
-            {compatible.length > 0 && (
-              <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--dam-ink-muted)' }}>
-                {compatible.map((seek) => (
-                  <li key={seek.id}>{seek.id}</li>
-                ))}
-              </ul>
+        <div className="setup">
+          <Panel as="section" aria-labelledby="opponent-h" className="setup__opponent">
+            <h2 id="opponent-h" className="panel__title">
+              Opponent
+            </h2>
+            <ChoiceCards label="Who do you want to play?" choices={choices} value={setup.opponent} onChange={(opponent) => setSetup({ ...setup, opponent })} />
+            {setup.opponent !== 'hotseat' && (
+              <Segmented
+                label="Your side"
+                value={setup.side}
+                options={(['player1', 'player2'] as PlayerId[]).map((side) => ({
+                  value: side,
+                  label: side === 'player1' ? `${sideNames.player1} (moves first)` : sideNames.player2,
+                }))}
+                onChange={(side) => setSetup({ ...setup, side })}
+              />
             )}
-            <p style={{ fontSize: 12, color: 'var(--dam-ink-muted)', margin: '10px 0 0' }}>
-              Data model only — there is no queue behind this yet.
-            </p>
+          </Panel>
+
+          <Panel as="section" aria-labelledby="rules-h" className="setup__rules">
+            <h2 id="rules-h" className="panel__title">
+              Rules
+            </h2>
+            <RulesForm settings={settings} online={setup.opponent === 'online'} onChange={(next) => setSetup({ ...setup, settings: next })} />
           </Panel>
         </div>
 
-        <div style={{ marginTop: 20 }}>
-          <Button variant="primary" onClick={start}>
-            <Play size={15} />
+        <div className="start-bar">
+          <p className="start-bar__summary">{summary}</p>
+          <Button variant="primary" size="lg" icon={<Play size={18} />} onClick={start}>
             Start game
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmReplace}
+        title="Start a new game?"
+        description="You have an unfinished game saved on this device. Starting a new one will discard it."
+        confirmLabel="Discard and start"
+        cancelLabel="Keep it"
+        tone="danger"
+        onCancel={() => setConfirmReplace(false)}
+        onConfirm={() => {
+          setConfirmReplace(false)
+          begin()
+        }}
+      />
     </AppShell>
   )
 }

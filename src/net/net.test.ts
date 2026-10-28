@@ -19,7 +19,8 @@ const setup = () => {
   })
   const host = new MatchHost(record, { connection: 'waiting-for-opponent' })
   const unlink = linkHost(host, hub.connect(), { hostSeat: 'player1', clientId: 'host-tab' })
-  const guest = new MatchGuest({ matchId: record.config.id, seat: 'player2', transport: hub.connect(), clientId: 'guest-tab' })
+  const guest = new MatchGuest({ matchId: record.config.id, seat: 'player2', clientId: 'guest-tab' })
+  guest.connect(hub.connect())
   return { hub, host, guest, unlink, record }
 }
 
@@ -77,9 +78,10 @@ describe('host and guest over a transport', () => {
   test('a second client cannot take an occupied seat', async () => {
     const { hub, record, unlink, guest } = setup()
     await flush()
-    const intruder = new MatchGuest({ matchId: record.config.id, seat: 'player2', transport: hub.connect(), clientId: 'other-tab' })
+    const intruder = new MatchGuest({ matchId: record.config.id, seat: 'player2', clientId: 'other-tab' })
     const errors: string[] = []
     intruder.subscribe((u) => u.error && errors.push(u.error))
+    intruder.connect(hub.connect())
     await flush()
     expect(errors[0]).toMatch(/already playing/)
     intruder.dispose()
@@ -93,7 +95,8 @@ describe('host and guest over a transport', () => {
     host.submit('player1', { type: 'engine', action: { type: 'move', from: { row: 3, col: 2 }, to: { row: 2, col: 2 } } })
     guest.dispose() // tab closed
     await flush()
-    const again = new MatchGuest({ matchId: record.config.id, seat: 'player2', transport: hub.connect(), clientId: 'guest-tab' })
+    const again = new MatchGuest({ matchId: record.config.id, seat: 'player2', clientId: 'guest-tab' })
+    again.connect(hub.connect())
     await flush()
     expect(again.getSnapshot().state.lastSeq).toBe(1)
     again.dispose()

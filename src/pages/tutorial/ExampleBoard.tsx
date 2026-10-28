@@ -1,139 +1,108 @@
-import { useEffect, useMemo, useState } from 'react'
+import { ChevronRight, Play, RotateCcw } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import BoardView from '../../components/board/BoardView'
-import Button from '../../components/ui/Button'
-import { makeEmptyBoard } from '../../game/board'
-import { applyMove, createInitialState } from '../../game/engine'
-import { notationToCoord } from '../../game/notation'
-import type { Board, EngineState, PieceData, PlayerId } from '../../game/types'
+import { Button } from '../../components/ui/Button'
+import { useSideNames, useTheme } from '../../context/useTheme'
+import { canCall } from '../../game/engine'
+import type { EngineState } from '../../game/types'
 import { useBoardAnimations } from '../../hooks/useBoardAnimations'
-import { useTheme } from '../../context/ThemeContext'
+import { initialPosition, playStep } from './script'
+import type { ExampleSpec } from './script'
 
-export interface ExampleSpec {
-  size: 5 | 6 | 7 | 8 | 9
-  /** Rows of `.` / `a` / `A` / `b` / `B`, top row first. */
-  rows: string[]
-  toMove: PlayerId
-  /** Moves replayed in order, as `from-to` square pairs, e.g. `c2-c3`. */
-  script: Array<{ from: string; to: string; caption: string }>
-}
+const STEP_MS = 1400
 
-const buildState = (spec: ExampleSpec): EngineState => {
-  const base = createInitialState({ boardSize: spec.size })
-  const board: Board = makeEmptyBoard(spec.size)
-  let id = 0
-  spec.rows.forEach((line, row) => {
-    line.split('').forEach((char, col) => {
-      if (char === '.') return
-      const player: PlayerId = char.toLowerCase() === 'a' ? 'player1' : 'player2'
-      const piece: PieceData = {
-        player,
-        isKing: char === char.toUpperCase(),
-        id: `ex-${id++}`,
-      }
-      board[row][col] = piece
-    })
-  })
-  return {
-    ...base,
-    board,
-    currentPlayer: spec.toMove,
-    isFirstMove: false,
-    positionCounts: {},
-  }
-}
+/** Captions mention sides as {p1}/{p2}, so they follow the theme's names ("Red" or "Black"). */
+const fill = (text: string, names: Record<'player1' | 'player2', string>) =>
+  text.replaceAll('{p1}', names.player1).replaceAll('{p2}', names.player2)
 
 /**
- * A scripted, animated example that runs through the real engine rather than a
- * canned animation — so a tutorial example can never show an illegal move. If
- * the engine rejects a scripted step, the step is skipped and the caption says
- * so, which makes a broken example obvious instead of silent.
+ * A small board that plays a scripted example through the real engine. Step
+ * through it, play it automatically, or restart. If a step were ever illegal
+ * the engine would refuse it and the caption says so, instead of animating a
+ * move the rules do not allow.
  */
-export default function ExampleBoard({ spec }: { spec: ExampleSpec }) {
+export default function ExampleBoard({ spec, label }: { spec: ExampleSpec; label: string }) {
   const { theme } = useTheme()
-  const initial = useMemo(() => buildState(spec), [spec])
-  const [state, setState] = useState<EngineState>(initial)
+  const names = useSideNames()
+  const [state, setState] = useState<EngineState>(() => initialPosition(spec))
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
   const animations = useBoardAnimations(theme.motion.captureDurationMs)
-
-  const caption =
-    step === 0 ? 'Starting position.' : (spec.script[step - 1]?.caption ?? '')
+  const done = step >= spec.steps.length || problem !== null
 
   const advance = () => {
-    const move = spec.script[step]
-    if (!move) return
-    const from = notationToCoord(move.from, spec.size)
-    const to = notationToCoord(move.to, spec.size)
-    if (!from || !to) return
-    const result = applyMove(state, from, to)
+    const next = spec.steps[step]
+    if (!next) return
+    const result = playStep(state, next)
     if (result.error) {
-      // Should not happen; surfaced rather than swallowed.
-      setStep(spec.script.length)
+      setProblem(result.error)
+      setPlaying(false)
       return
     }
     setState(result.state)
     animations.ingest(result.events)
-    setStep((prev) => prev + 1)
+    setStep(step + 1)
   }
 
   const restart = () => {
-    setState(initial)
+    setState(initialPosition(spec))
     setStep(0)
+    setProblem(null)
+    setPlaying(false)
     animations.reset()
   }
 
   useEffect(() => {
-    if (!playing) return
-    if (step >= spec.script.length) {
-      setPlaying(false)
-      return
-    }
-    const handle = window.setTimeout(advance, 1100)
+    if (!playing || done) return
+    const handle = window.setTimeout(advance, STEP_MS)
     return () => window.clearTimeout(handle)
-  }, [playing, step, state])
+  })
 
-  const done = step >= spec.script.length
+  const caption = problem
+    ? `This example could not continue: ${problem}`
+    : fill(step === 0 ? spec.intro : spec.steps[step - 1].caption, names)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 420 }}>
-      <div style={{ width: '100%', aspectRatio: '1 / 1', position: 'relative' }}>
+    <figure className="example">
+      <div className="example__board">
         <BoardView
-          state={state}
-          viewState={state}
-          viewer="player1"
+          position={state}
+          orientation="player1"
           selected={null}
           destinations={{ slides: [], captures: [] }}
+          offenderIds={new Set(canCall(state) ? state.offenders.map((o) => o.pieceId) : [])}
           animations={animations.animations}
           promotedIds={animations.promotedIds}
-          travelDestinations={animations.travelDestinations}
           lastMove={animations.lastMove}
-          isOffender={() => false}
-          onTap={() => {}}
-          onMove={() => {}}
-          interactive={false}
-          showCoordinates
           onAnimationComplete={animations.complete}
+          interactive={false}
+          canDragFrom={() => false}
+          onSquare={() => {}}
+          onDrop={() => {}}
+          perspective={null}
+          sideNames={names}
+          label={label}
+          hideEndSequence
         />
       </div>
-
-      <p style={{ fontSize: 13, margin: 0, minHeight: '2.6em', color: 'var(--dam-ink-muted)' }}>
+      <figcaption className="example__caption" aria-live="polite">
+        <span className="example__count">
+          Step {step} of {spec.steps.length}
+        </span>
         {caption}
-      </p>
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Button size="small" onClick={advance} disabled={done}>
-          Step
+      </figcaption>
+      <div className="example__controls">
+        <Button size="sm" icon={<ChevronRight size={15} />} onClick={advance} disabled={done}>
+          Next step
         </Button>
-        <Button size="small" variant="primary" onClick={() => setPlaying(true)} disabled={done || playing}>
+        <Button size="sm" variant="primary" icon={<Play size={15} />} onClick={() => setPlaying(true)} disabled={done || playing}>
           Play
         </Button>
-        <Button size="small" onClick={restart}>
+        <Button size="sm" variant="ghost" icon={<RotateCcw size={15} />} onClick={restart} disabled={step === 0 && !problem}>
           Restart
         </Button>
-        <span style={{ fontSize: 12, color: 'var(--dam-ink-muted)', alignSelf: 'center' }}>
-          {step} / {spec.script.length}
-        </span>
       </div>
-    </div>
+    </figure>
   )
 }

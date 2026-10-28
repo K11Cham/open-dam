@@ -2,28 +2,24 @@ import type { ComponentType, ReactNode } from 'react'
 import type { Coord, GameStatus, PieceData, PlayerId } from '../game/types'
 
 /**
- * A theme is three things, not one:
+ * A theme is a complete visual language, not a palette:
  *
- *   1. `tokens`  — CSS custom properties written onto <html>.
- *   2. `parts`   — actual React components for the pieces of the UI whose
- *                  *structure* differs between themes, not just their colour.
- *   3. `motion`  — the interaction and outcome animations.
+ *   1. `tokens`  — CSS custom properties written onto <html>. Every shared
+ *                  component styles itself from these and nothing else.
+ *   2. `parts`   — React components for the pieces of the UI whose STRUCTURE
+ *                  differs between themes (a flat disc vs a drawn character).
+ *   3. `motion`  — how things move.
+ *   4. `sides`   — what the two sides are called in this theme. The pieces
+ *                  are black and white in Atelier, so calling them "Red" and
+ *                  "Blue" there would be wrong.
  *
- * Point 2 is the reason this file exists. The previous ThemeContext held ten
- * entries that were nothing but colour maps rendered by identical components,
- * which meant every "theme" was the same app with a different accent. A theme
- * here can change the DOM: a piece can be a flat disc in one theme and an
- * illustrated token with a face in another, and the board can be a bordered
- * slab or a set of hairlines.
- *
- * Structural rules that are better expressed in CSS than in JSX live in each
- * theme's stylesheet, scoped to `[data-theme="<key>"]` so one theme can never
- * leak into another.
+ * Structural rules better expressed in CSS live in each theme's stylesheet,
+ * scoped to `[data-theme="<key>"]` so one theme can never leak into another.
  */
 
 export type ThemeKey = 'neobrutalist' | 'atelier' | 'carnival'
 
-/** Semantic token set. Every component styles itself from these, never raw hex. */
+/** Semantic token set. Components use these, never raw colours. */
 export interface ThemeTokens {
   // surfaces
   '--dam-bg': string
@@ -31,6 +27,7 @@ export interface ThemeTokens {
   '--dam-surface': string
   '--dam-surface-2': string
   '--dam-surface-hover': string
+  '--dam-overlay': string
   // ink
   '--dam-ink': string
   '--dam-ink-muted': string
@@ -44,11 +41,13 @@ export interface ThemeTokens {
   '--dam-radius-lg': string
   '--dam-shadow': string
   '--dam-shadow-lg': string
+  '--dam-focus': string
   // accents
   '--dam-accent': string
   '--dam-accent-ink': string
   '--dam-accent-soft': string
   '--dam-danger': string
+  '--dam-danger-ink': string
   '--dam-success': string
   '--dam-warning': string
   // board
@@ -72,6 +71,7 @@ export interface ThemeTokens {
   '--dam-font-mono': string
   '--dam-display-transform': string
   '--dam-display-spacing': string
+  '--dam-display-weight': string
 }
 
 export interface PieceViewProps {
@@ -82,7 +82,6 @@ export interface PieceViewProps {
   offender?: boolean
   /** Drives the crowning animation once. */
   justPromoted?: boolean
-  interactive?: boolean
 }
 
 export interface CellDecorProps {
@@ -100,24 +99,25 @@ export interface CellDecorProps {
 export interface BoardFrameProps {
   gridSize: number
   children: ReactNode
-  /** `null` while the game is in progress. */
-  outcome: GameStatus
 }
 
 export interface EndSequenceProps {
   status: GameStatus
-  /** Board coordinates of the surviving pieces, for per-piece choreography. */
+  /** Board coordinates of the surviving pieces, already in display orientation. */
   survivors: Array<{ piece: PieceData; at: Coord }>
   gridSize: number
-  /** Which side the local player is on, so "you" reads correctly. */
-  viewer: PlayerId
+  /**
+   * The side whose win counts as "ours" on this device, or null when both
+   * sides are local (hot seat) and neither result is a loss for the viewer.
+   */
+  perspective: PlayerId | null
 }
 
 export interface ThemeParts {
   Piece: ComponentType<PieceViewProps>
   CellDecor: ComponentType<CellDecorProps>
   BoardFrame: ComponentType<BoardFrameProps>
-  /** Board-level win/lose/tie choreography. Never a modal. */
+  /** Board-level win/lose/tie choreography, drawn over the board. */
   EndSequence: ComponentType<EndSequenceProps>
 }
 
@@ -129,19 +129,23 @@ export interface ThemeMotion {
   moveTransition: { type: 'spring'; stiffness: number; damping: number } | { duration: number }
   /** How long the capture exit animation runs, in ms. */
   captureDurationMs: number
-  /** How long the end-of-game board animation runs, in ms. */
-  endSequenceMs: number
+}
+
+export interface SideStyle {
+  /** What this side is called in this theme, e.g. "Red" or "Black". */
+  name: string
 }
 
 export interface ThemeDefinition {
   key: ThemeKey
   name: string
   blurb: string
+  /** Light or dark, so the browser chrome and form controls match. */
+  colorScheme: 'light' | 'dark'
   tokens: ThemeTokens
   parts: ThemeParts
   motion: ThemeMotion
+  sides: Record<PlayerId, SideStyle>
   /** Board grid gap in px — a structural, not cosmetic, difference. */
   boardGap: number
-  /** Whether the board draws alternating cell fills or hairline rules only. */
-  boardStyle: 'checker' | 'grid-lines' | 'tiles'
 }
