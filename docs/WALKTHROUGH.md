@@ -284,15 +284,15 @@ Four rules decide almost every ending, and the evaluation has to know them:
 ### How tiers differ: `difficulty.ts`
 
 Five opponents, named in Wolof, differ in what they _know_, in the order a
-person learns it. The names mean the fool, the youngster (usually a teen),
-the child, the elder and the master; the app shows each meaning beside the
+person learns it. The names mean the fool, the child, the youngster
+(usually a teen), the elder and the master; the app shows each meaning beside the
 name.
 
 | Tier      | What it knows                                                                             |
 | --------- | ----------------------------------------------------------------------------------------- |
 | **Döff**  | Counts pieces, looks one move ahead, often forgets to call.                               |
-| **Ndö**   | Sees your reply, but not that a capture it skips will be called.                          |
-| **Khàlé** | Knows the calling rule cold; reads short exchanges. No deep sacrifices, no endgame plan.  |
+| **Khàlé** | Sees your reply, but not that a capture it skips will be called.                          |
+| **Ndö**   | Knows the calling rule cold; reads short exchanges. No deep sacrifices, no endgame plan.  |
 | **Màam**  | Deep search, every chain, sacrifices that win kings, lone-king hunting. Rare small slips. |
 | **Seriñ** | Everything, deepest, forced-reply extensions, full technique, no deliberate errors.       |
 

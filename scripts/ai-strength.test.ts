@@ -76,9 +76,9 @@ test(
   () => {
     const problems: string[] = []
     for (const [strong, weak] of [
-      ['ndo', 'doff'],
-      ['khale', 'ndo'],
-      ['maam', 'khale'],
+      ['khale', 'doff'],
+      ['ndo', 'khale'],
+      ['maam', 'ndo'],
       ['serin', 'maam'],
       ['serin', 'doff'],
     ] as Array<[DifficultyId, DifficultyId]>) {

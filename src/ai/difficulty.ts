@@ -1,18 +1,18 @@
 import type { EvalProfile } from './evaluate'
 
 /**
- * Five computer opponents, named in Wolof: Döff (the fool), Ndö (the youngster,
- * usually a teen), Khàlé (the child), Màam (the elder) and Seriñ (the master).
+ * Five computer opponents, named in Wolof: Döff (the fool), Khàlé (the child),
+ * Ndö (the youngster, usually a teen), Màam (the elder) and Seriñ (the master).
  *
  * They differ in what they *know*, not only in how far they look, because a
  * person improving at dam learns things in a recognisable order:
  *
  *  1. Döff counts pieces and moves on impulse. It looks one move ahead and
  *     often forgets to call a skipped capture.
- *  2. Ndö sees your reply and grabs what is offered, but does not yet
+ *  2. Khàlé sees your reply and grabs what is offered, but does not yet
  *     understand that a capture it skips will be called, so it is easy to
  *     catch with "take this or lose that".
- *  3. Khàlé knows the calling rule cold and reads short exchanges to the end.
+ *  3. Ndö knows the calling rule cold and reads short exchanges to the end.
  *     It has no feel for sacrifices further out, nor an endgame plan.
  *  4. Màam searches deep, follows every chain, plays sacrifices that win a
  *     king or start a chain, and knows how to hunt a lone king.
@@ -23,7 +23,7 @@ import type { EvalProfile } from './evaluate'
  * changing the knowledge makes each tier play like a different person.
  */
 
-export type DifficultyId = 'doff' | 'ndo' | 'khale' | 'maam' | 'serin'
+export type DifficultyId = 'doff' | 'khale' | 'ndo' | 'maam' | 'serin'
 
 export interface UndoPolicy {
   /**
@@ -148,10 +148,10 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     undo: { maxSwing: Infinity, graceUntilPly: Infinity },
     drawAcceptWithin: 500,
   },
-  ndo: {
-    id: 'ndo',
-    name: 'Ndö',
-    meaning: 'the youngster',
+  khale: {
+    id: 'khale',
+    name: 'Khàlé',
+    meaning: 'the child',
     blurb: 'Sees your reply and grabs what is offered, but walks into captures it then has to make.',
     elo: 850,
     depth: 2,
@@ -168,10 +168,10 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     undo: { maxSwing: 300, graceUntilPly: 10 },
     drawAcceptWithin: 250,
   },
-  khale: {
-    id: 'khale',
-    name: 'Khàlé',
-    meaning: 'the child',
+  ndo: {
+    id: 'ndo',
+    name: 'Ndö',
+    meaning: 'the youngster',
     blurb: 'Knows the calling rule cold and reads short exchanges to the end. Deep sacrifices are past it.',
     elo: 1200,
     depth: 4,
@@ -230,7 +230,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
   },
 }
 
-export const DIFFICULTY_IDS: DifficultyId[] = ['doff', 'ndo', 'khale', 'maam', 'serin']
+export const DIFFICULTY_IDS: DifficultyId[] = ['doff', 'khale', 'ndo', 'maam', 'serin']
 
 export const isDifficultyId = (value: unknown): value is DifficultyId =>
   typeof value === 'string' && (DIFFICULTY_IDS as string[]).includes(value)
@@ -238,7 +238,7 @@ export const isDifficultyId = (value: unknown): value is DifficultyId =>
 /** Tier ids and names used before the Wolof names, mapped to their closest successor. */
 const LEGACY: Record<string, { id: DifficultyId; name: string }> = {
   novice: { id: 'doff', name: 'Novice' },
-  club: { id: 'khale', name: 'Club' },
+  club: { id: 'ndo', name: 'Club' },
   expert: { id: 'maam', name: 'Expert' },
   master: { id: 'serin', name: 'Master' },
 }

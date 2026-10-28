@@ -22,7 +22,7 @@ export interface GameSetup {
 
 export const DEFAULT_SETUP: GameSetup = {
   settings: makeSettings(),
-  opponent: 'khale',
+  opponent: 'ndo',
   side: 'player1',
 }
 
