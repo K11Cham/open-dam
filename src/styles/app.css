@@ -601,7 +601,8 @@
   gap: var(--space-4);
   width: 100%;
   max-height: calc(100svh - 32px);
-  overflow-y: auto;
+  /* Only the body scrolls, so the title and the buttons stay in view on short screens. */
+  overflow: hidden;
   padding: var(--space-6);
   background: var(--dam-surface);
   color: var(--dam-ink);
@@ -647,11 +648,32 @@
   color: var(--dam-ink-muted);
 }
 
+.dialog__head,
+.dialog__description,
+.dialog__footer {
+  flex: none;
+}
+
+.dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Room for focus rings at the scroll edges. */
+  margin: -4px calc(var(--space-2) * -1);
+  padding: 4px var(--space-2);
+}
+
 .dialog__footer {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+/* A leading quiet action (Cancel, See the board) sits apart on the left. */
+.dialog__footer > .btn--ghost:first-child {
+  margin-right: auto;
 }
 
 .theme-menu {
