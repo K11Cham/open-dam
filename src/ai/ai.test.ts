@@ -5,6 +5,7 @@ import type { EngineAction, EngineState } from '../game/types'
 import { DIFFICULTIES, DIFFICULTY_IDS } from './difficulty'
 import type { DifficultyId } from './difficulty'
 import { decideDrawOffer, decideUndoRequest } from './opponent'
+import { WIN_SCORE } from './evaluate'
 import { chooseAction } from './search'
 
 /** Deterministic random source so these tests never flake. */
@@ -26,6 +27,9 @@ const options = (id: DifficultyId, budgetMs = 150) => {
     noise: d.noise,
     blunderChance: d.blunderChance,
     blunderMargin: d.blunderMargin,
+    missCallChance: d.missCallChance,
+    callAware: d.callAware,
+    forcingExtensions: d.forcingExtensions,
     random: seeded(7),
   }
 }
@@ -50,61 +54,97 @@ describe('every tier only plays legal actions', () => {
 })
 
 describe('tactics', () => {
-  test('Master takes a free piece', () => {
+  test('Seriñ takes a free piece', () => {
     // Red's c2 can take c3 for nothing.
     const state = positionFromAscii(['b...b', '.....', '..b..', '..a..', 'a...a'], 'player1')
-    const result = chooseAction(state, options('master', 400))
+    const result = chooseAction(state, options('serin', 400))
     expect(result?.action).toEqual({ type: 'move', from: { row: 3, col: 2 }, to: { row: 1, col: 2 } })
   })
 
-  test('Master always calls a skipped capture first', () => {
+  test('Seriñ always calls a skipped capture first', () => {
     const state = positionFromAscii(['b...b', '.....', '..b..', '..a..', 'a...a'], 'player1')
     const skipped = applyAction(state, { type: 'move', from: { row: 4, col: 0 }, to: { row: 3, col: 0 } }).state
-    expect(chooseAction(skipped, options('master'))?.action.type).toBe('call')
+    expect(chooseAction(skipped, options('serin'))?.action.type).toBe('call')
   })
 
-  test('Master completes a two-piece chain instead of stopping', () => {
+  test('Seriñ completes a two-piece chain instead of stopping', () => {
     const state = positionFromAscii(['b...b', '.....', '..b..', '.b...', '.a..a'], 'player1')
-    const first = chooseAction(state, options('master', 400))!
+    const first = chooseAction(state, options('serin', 400))!
     expect(first.action).toEqual({ type: 'move', from: { row: 4, col: 1 }, to: { row: 2, col: 1 } })
     const mid = applyAction(state, first.action).state
-    expect(chooseAction(mid, options('master', 400))?.action).toEqual({
+    expect(chooseAction(mid, options('serin', 400))?.action).toEqual({
       type: 'move',
       from: { row: 2, col: 1 },
       to: { row: 2, col: 3 },
     })
   })
 
+  test('Seriñ sacrifices a man to win a king: take it, or have the king called', () => {
+    // Red's c3 steps up to c4. Blue's king on c5 must jump it (landing on c3,
+    // the only empty square) or be called; either way c2 then takes the king.
+    const state = positionFromAscii(['b.B.b', '.....', '..a..', '..a..', 'a.a.a'], 'player1')
+    const result = chooseAction(state, options('serin', 800))
+    expect(result?.action).toEqual({ type: 'move', from: { row: 2, col: 2 }, to: { row: 1, col: 2 } })
+  })
+
+  test('Seriñ offers a king so the lone king must capture into a recapture', () => {
+    // Two kings against one: the sacrifice on c5 is a forced win in three plies.
+    const state = positionFromAscii(['B...A', '.....', '..A..', '.....', '.....'], 'player1')
+    const result = chooseAction(state, options('serin', 800))!
+    expect(result.score).toBeGreaterThan(WIN_SCORE - 100)
+  })
+
+  test('Seriñ closes the corner net on a lone king', () => {
+    // Blue's king is in the a5 corner; a king on e5 covers the fifth rank and
+    // the one on a1 covers the a-file, so every move it has walks into a capture.
+    const state = positionFromAscii(['B....', '.....', '....A', '.....', 'A....'], 'player1')
+    const result = chooseAction(state, options('serin', 800))!
+    expect(result.score).toBeGreaterThan(WIN_SCORE - 100)
+  })
+
+  test('Seriñ converts two kings against one on 7×7', () => {
+    let state = positionFromAscii(['.......', '.......', '.......', '...B...', '.......', '.......', 'A.....A'], 'player2')
+    for (let ply = 0; ply < 80 && state.status.kind === 'playing'; ply++) {
+      // Depth-limited with a generous clock, so the result does not depend on machine speed.
+      const result = chooseAction(state, { ...options('serin', 5000), depth: 4 })!
+      state = applyAction(state, result.action).state
+    }
+    expect(state.status).toEqual({ kind: 'win', winner: 'player1', reason: 'no-pieces' })
+  })
+
+  test('a tier that misses calls sometimes plays on instead', () => {
+    const state = positionFromAscii(['b...b', '.....', '..b..', '..a..', 'a...a'], 'player1')
+    const skipped = applyAction(state, { type: 'move', from: { row: 4, col: 0 }, to: { row: 3, col: 0 } }).state
+    const result = chooseAction(skipped, { ...options('doff'), missCallChance: 1 })
+    expect(result?.action.type).toBe('move')
+  })
+
   test('a lost position returns null instead of throwing', () => {
     const over = applyAction(createInitialState({ boardSize: 5 }), { type: 'resign', player: 'player1' }).state
-    expect(chooseAction(over, options('club'))).toBeNull()
+    expect(chooseAction(over, options('khale'))).toBeNull()
   })
 })
 
 describe('time budget', () => {
-  test('Master on an open 9×9 returns within its budget', () => {
+  test('Seriñ on an open 9×9 returns within its budget', () => {
     const state = createInitialState({ boardSize: 9 })
     const started = performance.now()
-    chooseAction(state, { ...options('master'), timeBudgetMs: 500 })
+    chooseAction(state, { ...options('serin'), timeBudgetMs: 500 })
     // Generous ceiling for slow CI machines; the search checks its deadline every node.
     expect(performance.now() - started).toBeLessThan(2500)
   })
 })
 
 describe('offers', () => {
-  test('Novice accepts any undo; nothing to undo is declined', () => {
+  test('Döff accepts any undo; nothing to undo is declined', () => {
     const state = createInitialState({ boardSize: 5 })
-    expect(decideUndoRequest({ difficulty: DIFFICULTIES.novice, aiSide: 'player2', current: state, target: state })).toBe(
-      'accept',
-    )
-    expect(decideUndoRequest({ difficulty: DIFFICULTIES.master, aiSide: 'player2', current: state, target: null })).toBe(
-      'decline',
-    )
+    expect(decideUndoRequest({ difficulty: DIFFICULTIES.doff, aiSide: 'player2', current: state, target: state })).toBe('accept')
+    expect(decideUndoRequest({ difficulty: DIFFICULTIES.serin, aiSide: 'player2', current: state, target: null })).toBe('decline')
   })
 
-  test('Master declines a draw when clearly winning and accepts when losing', () => {
+  test('Seriñ declines a draw when clearly winning and accepts when losing', () => {
     const winning = positionFromAscii(['....b', '.....', '.....', 'a.a.a', 'a.a.a'], 'player1')
-    expect(decideDrawOffer(DIFFICULTIES.master, 'player1', winning)).toBe('decline')
-    expect(decideDrawOffer(DIFFICULTIES.master, 'player2', winning)).toBe('accept')
+    expect(decideDrawOffer(DIFFICULTIES.serin, 'player1', winning)).toBe('decline')
+    expect(decideDrawOffer(DIFFICULTIES.serin, 'player2', winning)).toBe('accept')
   })
 })

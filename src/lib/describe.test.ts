@@ -51,20 +51,21 @@ describe('spoken moves', () => {
 
 describe('game setup links', () => {
   test('a setup survives a round trip through the URL', () => {
-    const setup = { ...DEFAULT_SETUP, opponent: 'expert' as const, side: 'player2' as const }
+    const setup = { ...DEFAULT_SETUP, opponent: 'maam' as const, side: 'player2' as const }
     expect(setupFromParams(setupToParams(setup))).toEqual(setup)
   })
 
   test('older ?ai= links still work and junk falls back to defaults', () => {
     const parsed = setupFromParams(new URLSearchParams('ai=master&size=99&nocap=-4&tc=bogus'))
-    expect(parsed.opponent).toBe('master')
+    // Tiers were renamed; the old Master is now Seriñ.
+    expect(parsed.opponent).toBe('serin')
     expect(parsed.settings.boardSize).toBe(5)
     expect(parsed.settings.draw.pliesWithoutCapture).toBeNull()
     expect(parsed.settings.timeControl).toBeNull()
   })
 
   test('the AI sits opposite the human', () => {
-    const rec = recordFromSetup({ ...DEFAULT_SETUP, opponent: 'novice', side: 'player2' })
+    const rec = recordFromSetup({ ...DEFAULT_SETUP, opponent: 'doff', side: 'player2' })
     expect(rec.config.seats.player1.kind).toBe('ai')
     expect(rec.config.seats.player2.kind).toBe('human')
   })

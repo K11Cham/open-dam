@@ -1,4 +1,4 @@
-import { isDifficultyId } from '../ai/difficulty'
+import { DIFFICULTIES, legacyTierName, normalizeDifficultyId } from '../ai/difficulty'
 import { makeSettings } from '../game/settings'
 import type { GameStatus, PlayerId } from '../game/types'
 import { storage } from '../services/storage'
@@ -36,7 +36,16 @@ const isSeat = (value: unknown): value is Seat =>
   isObject(value) &&
   (value.kind === 'human' || value.kind === 'ai' || value.kind === 'remote') &&
   typeof value.name === 'string' &&
-  (value.difficulty === undefined || isDifficultyId(value.difficulty))
+  (value.difficulty === undefined || normalizeDifficultyId(value.difficulty) !== null)
+
+/** Move a seat saved under an old tier id (and its old display name) to the current tier. */
+const migrateSeat = (seat: Seat): Seat => {
+  if (seat.difficulty === undefined) return seat
+  const id = normalizeDifficultyId(seat.difficulty)
+  if (!id || id === seat.difficulty) return seat
+  const renamed = seat.name === legacyTierName(seat.difficulty) ? DIFFICULTIES[id].name : seat.name
+  return { ...seat, difficulty: id, name: renamed }
+}
 
 const isAction = (value: unknown): value is MatchAction =>
   isObject(value) &&
@@ -62,7 +71,7 @@ export function parseRecord(value: unknown): { record: MatchRecord; state: Match
       id: config.id,
       mode: config.mode,
       createdAt: typeof config.createdAt === 'number' ? config.createdAt : Date.now(),
-      seats: { player1: seats.player1, player2: seats.player2 },
+      seats: { player1: migrateSeat(seats.player1), player2: migrateSeat(seats.player2) },
       settings: makeSettings(isObject(config.settings) ? (config.settings as object) : {}),
     },
     actions: value.actions as MatchAction[],

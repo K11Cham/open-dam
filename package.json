@@ -11,7 +11,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:ai": "vitest run --config vitest.ai.config.ts",
+    "check:ai": "vitest run --config vitest.ai.config.ts ai-strength",
+    "check:endgames": "vitest run --config vitest.ai.config.ts ai-endgames",
+    "replay": "vitest run --config vitest.ai.config.ts ai-replay",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
