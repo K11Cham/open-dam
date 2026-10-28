@@ -61,11 +61,9 @@ export const formatMove = (parts: NotationParts): string => {
 export const formatCall = (targets: Coord[], gridSize: number): string =>
   `!${targets.map((t) => coordToNotation(t.row, t.col, gridSize)).join('+')}`
 
-export const formatResign = (player: 'player1' | 'player2'): string =>
-  player === 'player1' ? 'resigns 0-1' : 'resigns 1-0'
+export const formatResign = (player: 'player1' | 'player2'): string => (player === 'player1' ? 'resigns 0-1' : 'resigns 1-0')
 
-export const formatTimeout = (player: 'player1' | 'player2'): string =>
-  player === 'player1' ? 'time 0-1' : 'time 1-0'
+export const formatTimeout = (player: 'player1' | 'player2'): string => (player === 'player1' ? 'time 0-1' : 'time 1-0')
 
 export const DRAW_NOTATION = '½-½'
 
@@ -75,14 +73,10 @@ export const DRAW_NOTATION = '½-½'
  * they get their own full-width annotation rows instead of stealing a column.
  */
 export type MoveRow =
-  | { kind: 'pair'; number: number; player1?: MoveRecord; player2?: MoveRecord }
-  | { kind: 'note'; record: MoveRecord }
+  { kind: 'pair'; number: number; player1?: MoveRecord; player2?: MoveRecord } | { kind: 'note'; record: MoveRecord }
 
 const isAnnotation = (record: MoveRecord): boolean =>
-  record.kind === 'call' ||
-  record.kind === 'resign' ||
-  record.kind === 'draw-agreed' ||
-  record.kind === 'timeout'
+  record.kind === 'call' || record.kind === 'resign' || record.kind === 'draw-agreed' || record.kind === 'timeout'
 
 export const toMoveRows = (moves: MoveRecord[]): MoveRow[] => {
   const rows: MoveRow[] = []

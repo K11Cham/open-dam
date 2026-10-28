@@ -1,14 +1,6 @@
 import type { PlayerId } from '../game/types'
 import { applyMatchAction, createMatchState, replay, stepMatch } from './reducer'
-import type {
-  Actor,
-  MatchAction,
-  MatchConfig,
-  MatchIntent,
-  MatchNotice,
-  MatchRecord,
-  MatchState,
-} from './types'
+import type { Actor, MatchAction, MatchConfig, MatchIntent, MatchNotice, MatchRecord, MatchState } from './types'
 import type { GameEvent } from '../game/types'
 
 /**
@@ -64,7 +56,9 @@ export const newMatchId = (): string => {
   return random
 }
 
-export const createRecord = (config: Omit<MatchConfig, 'id' | 'createdAt'> & Partial<Pick<MatchConfig, 'id' | 'createdAt'>>): MatchRecord => {
+export const createRecord = (
+  config: Omit<MatchConfig, 'id' | 'createdAt'> & Partial<Pick<MatchConfig, 'id' | 'createdAt'>>,
+): MatchRecord => {
   const full: MatchConfig = { ...config, id: config.id ?? newMatchId(), createdAt: config.createdAt ?? Date.now() }
   // Normalise the settings once, through the engine, so the record carries the
   // fully-resolved rule set (e.g. "match opponent" already resolved).

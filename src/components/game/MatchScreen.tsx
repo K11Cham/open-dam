@@ -34,7 +34,15 @@ const RESULT_DELAY_MS = 900
  * and a side column for status, moves and game info. Phones: the same blocks
  * stacked, with the page scrolling normally so nothing is ever clipped.
  */
-export default function MatchScreen({ controller, localSeats, perspective, thinkingSeat, onRematch, onNewGame, aside }: MatchScreenProps) {
+export default function MatchScreen({
+  controller,
+  localSeats,
+  perspective,
+  thinkingSeat,
+  onRematch,
+  onNewGame,
+  aside,
+}: MatchScreenProps) {
   const [flipped, setFlipped] = useState(false)
   const [resignFor, setResignFor] = useState<PlayerId | null>(null)
   const [resultOpen, setResultOpen] = useState(false)

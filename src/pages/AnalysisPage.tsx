@@ -38,9 +38,7 @@ export default function AnalysisPage() {
   const size = position.settings.boardSize
 
   const paintWith = (t: Tool) =>
-    t === 'erase'
-      ? null
-      : { player: (t.startsWith('p1') ? 'player1' : 'player2') as PlayerId, isKing: t.endsWith('k') }
+    t === 'erase' ? null : { player: (t.startsWith('p1') ? 'player1' : 'player2') as PlayerId, isKing: t.endsWith('k') }
 
   const onSquare = (coord: { row: number; col: number }) => {
     if (tool === 'move') board.onSquare(coord)
@@ -60,7 +58,10 @@ export default function AnalysisPage() {
       board.load(positionFromAscii(rows, position.currentPlayer))
       toast.show('Position loaded.', 'success')
     } catch (error) {
-      toast.show(error instanceof Error ? error.message.replace('positionFromAscii: ', '') : 'That position code could not be read.', 'error')
+      toast.show(
+        error instanceof Error ? error.message.replace('positionFromAscii: ', '') : 'That position code could not be read.',
+        'error',
+      )
     }
   }
 
@@ -126,12 +127,22 @@ export default function AnalysisPage() {
               )}
               <div className="panel__actions">
                 {callable && (
-                  <Button variant="primary" size="sm" icon={<Megaphone size={15} />} onClick={() => board.act({ type: 'call', pieceId: position.offenders[0].pieceId })}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Megaphone size={15} />}
+                    onClick={() => board.act({ type: 'call', pieceId: position.offenders[0].pieceId })}
+                  >
                     Call {sideNames[opponentOf(position.currentPlayer)]}
                   </Button>
                 )}
                 {position.chain.active && (
-                  <Button variant="primary" size="sm" icon={<SkipForward size={15} />} onClick={() => board.act({ type: 'end-chain' })}>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<SkipForward size={15} />}
+                    onClick={() => board.act({ type: 'end-chain' })}
+                  >
                     End turn
                   </Button>
                 )}
@@ -158,7 +169,13 @@ export default function AnalysisPage() {
                 Set up
               </h2>
               <div className="palette" role="radiogroup" aria-label="Tool">
-                <button type="button" role="radio" aria-checked={tool === 'move'} className={`palette__tool ${tool === 'move' ? 'is-active' : ''}`} onClick={() => setTool('move')}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={tool === 'move'}
+                  className={`palette__tool ${tool === 'move' ? 'is-active' : ''}`}
+                  onClick={() => setTool('move')}
+                >
                   Play moves
                 </button>
                 {tools.map((t) => (
@@ -172,7 +189,14 @@ export default function AnalysisPage() {
                     className={`palette__tool palette__tool--piece ${tool === t.id ? 'is-active' : ''}`}
                     onClick={() => setTool(t.id)}
                   >
-                    <Piece piece={{ id: `tool-${t.id}`, player: t.id.startsWith('p1') ? 'player1' : 'player2', isKing: t.id.endsWith('k') }} scale={0.8} />
+                    <Piece
+                      piece={{
+                        id: `tool-${t.id}`,
+                        player: t.id.startsWith('p1') ? 'player1' : 'player2',
+                        isKing: t.id.endsWith('k'),
+                      }}
+                      scale={0.8}
+                    />
                   </button>
                 ))}
                 <button
@@ -195,10 +219,19 @@ export default function AnalysisPage() {
                 onChange={(s) => board.load(emptyAnalysisPosition(s))}
               />
               <div className="panel__actions">
-                <Button size="sm" icon={<RotateCcw size={15} />} onClick={() => board.load({ ...createInitialState({ boardSize: size }), isFirstMove: false })}>
+                <Button
+                  size="sm"
+                  icon={<RotateCcw size={15} />}
+                  onClick={() => board.load({ ...createInitialState({ boardSize: size }), isFirstMove: false })}
+                >
                   Starting position
                 </Button>
-                <Button size="sm" variant="ghost" icon={<Eraser size={15} />} onClick={() => board.load(emptyAnalysisPosition(size))}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={<Eraser size={15} />}
+                  onClick={() => board.load(emptyAnalysisPosition(size))}
+                >
                   Clear board
                 </Button>
               </div>
@@ -209,8 +242,8 @@ export default function AnalysisPage() {
                 Position code
               </h2>
               <p className="field__help">
-                One line per row, top first: <code>a</code>/<code>A</code> {sideNames.player1} piece/king, <code>b</code>/<code>B</code>{' '}
-                {sideNames.player2}, <code>.</code> empty.
+                One line per row, top first: <code>a</code>/<code>A</code> {sideNames.player1} piece/king, <code>b</code>/
+                <code>B</code> {sideNames.player2}, <code>.</code> empty.
               </p>
               <label className="visually-hidden" htmlFor="position-code">
                 Position code

@@ -18,5 +18,4 @@ export const THEMES: Record<ThemeKey, ThemeDefinition> = {
 export const THEME_KEYS = Object.keys(THEMES) as ThemeKey[]
 export const DEFAULT_THEME: ThemeKey = 'neobrutalist'
 
-export const isThemeKey = (value: unknown): value is ThemeKey =>
-  typeof value === 'string' && value in THEMES
+export const isThemeKey = (value: unknown): value is ThemeKey => typeof value === 'string' && value in THEMES

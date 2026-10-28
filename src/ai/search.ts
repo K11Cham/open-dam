@@ -152,14 +152,7 @@ const terminalScore = (state: EngineState, ply: number): number => {
 }
 
 /** Capture-only extension, so the search does not stop mid-exchange. */
-function quiesce(
-  state: EngineState,
-  alpha: number,
-  beta: number,
-  depth: number,
-  ply: number,
-  ctx: Context,
-): number {
+function quiesce(state: EngineState, alpha: number, beta: number, depth: number, ply: number, ctx: Context): number {
   ctx.nodes++
   if (state.status.kind !== 'playing') return terminalScore(state, ply)
 
@@ -173,8 +166,7 @@ function quiesce(
 
   const captures = generateActions(resolved).filter((action) => {
     if (action.type !== 'move') return false
-    const distance =
-      Math.abs(action.to.row - action.from.row) + Math.abs(action.to.col - action.from.col)
+    const distance = Math.abs(action.to.row - action.from.row) + Math.abs(action.to.col - action.from.col)
     return distance >= 2 || resolved.board[action.to.row]?.[action.to.col] != null
   })
   if (captures.length === 0) return standPat
@@ -195,14 +187,7 @@ function quiesce(
   return alpha
 }
 
-function negamax(
-  state: EngineState,
-  depth: number,
-  alpha: number,
-  beta: number,
-  ply: number,
-  ctx: Context,
-): number {
+function negamax(state: EngineState, depth: number, alpha: number, beta: number, ply: number, ctx: Context): number {
   ctx.nodes++
   if (state.status.kind !== 'playing') return terminalScore(state, ply)
   if (performance.now() > ctx.deadline) {
@@ -304,9 +289,7 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
     for (const action of ordered) {
       const child = applyAction(state, action)
       const sameSide = child.currentPlayer === state.currentPlayer
-      const raw = sameSide
-        ? negamax(child, depth - 1, alpha, beta, 1, ctx)
-        : -negamax(child, depth - 1, -beta, -alpha, 1, ctx)
+      const raw = sameSide ? negamax(child, depth - 1, alpha, beta, 1, ctx) : -negamax(child, depth - 1, -beta, -alpha, 1, ctx)
 
       // Jitter is applied at the root only: it makes weaker tiers pick
       // plausible-but-not-best moves without corrupting the tree below.

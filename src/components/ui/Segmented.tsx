@@ -26,7 +26,10 @@ interface SegmentedProps<T extends string | number> {
 export function Segmented<T extends string | number>({ options, value, onChange, label, hideLabel, wrap }: SegmentedProps<T>) {
   const labelId = useId()
   const refs = useRef<Array<HTMLButtonElement | null>>([])
-  const activeIndex = Math.max(0, options.findIndex((o) => o.value === value))
+  const activeIndex = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  )
 
   const select = (index: number) => {
     const option = options[(index + options.length) % options.length]

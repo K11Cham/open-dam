@@ -49,7 +49,8 @@ export default function NewGamePage() {
       title: 'Online',
       badge: 'Preview',
       icon: <Globe size={18} aria-hidden />,
-      description: 'Play from two browser tabs. This uses the real online protocol; playing across devices needs the game server, which is not live yet.',
+      description:
+        'Play from two browser tabs. This uses the real online protocol; playing across devices needs the game server, which is not live yet.',
     },
   ]
 
@@ -90,7 +91,12 @@ export default function NewGamePage() {
             <h2 id="opponent-h" className="panel__title">
               Opponent
             </h2>
-            <ChoiceCards label="Who do you want to play?" choices={choices} value={setup.opponent} onChange={(opponent) => setSetup({ ...setup, opponent })} />
+            <ChoiceCards
+              label="Who do you want to play?"
+              choices={choices}
+              value={setup.opponent}
+              onChange={(opponent) => setSetup({ ...setup, opponent })}
+            />
             {setup.opponent !== 'hotseat' && (
               <Segmented
                 label="Your side"
@@ -108,7 +114,11 @@ export default function NewGamePage() {
             <h2 id="rules-h" className="panel__title">
               Rules
             </h2>
-            <RulesForm settings={settings} online={setup.opponent === 'online'} onChange={(next) => setSetup({ ...setup, settings: next })} />
+            <RulesForm
+              settings={settings}
+              online={setup.opponent === 'online'}
+              onChange={(next) => setSetup({ ...setup, settings: next })}
+            />
           </Panel>
         </div>
 

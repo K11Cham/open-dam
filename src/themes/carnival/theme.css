@@ -149,7 +149,9 @@
 }
 
 [data-theme='carnival'] .player-card.is-turn {
-  box-shadow: 0 0 0 3px var(--dam-accent), var(--dam-shadow);
+  box-shadow:
+    0 0 0 3px var(--dam-accent),
+    var(--dam-shadow);
 }
 
 [data-theme='carnival'] .player-card,

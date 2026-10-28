@@ -17,11 +17,7 @@ export function Piece({ piece, scale = 0.82, selected, offender, justPromoted }:
       className={['cv-piece', selected && 'is-selected', offender && 'is-offender'].filter(Boolean).join(' ')}
       style={{ width: `${scale * 100}%`, height: `${scale * 100}%` }}
       animate={
-        justPromoted
-          ? { rotate: [0, -14, 14, -6, 0], y: [0, -10, 0] }
-          : piece.isKing
-            ? { y: [0, -2.5, 0] }
-            : { y: 0, rotate: 0 }
+        justPromoted ? { rotate: [0, -14, 14, -6, 0], y: [0, -10, 0] } : piece.isKing ? { y: [0, -2.5, 0] } : { y: 0, rotate: 0 }
       }
       transition={
         justPromoted
@@ -33,7 +29,15 @@ export function Piece({ piece, scale = 0.82, selected, offender, justPromoted }:
     >
       <svg viewBox="0 0 48 48" className="cv-piece-svg" aria-hidden focusable="false">
         <ellipse cx="24" cy="42" rx="15" ry="3.5" className="cv-piece-shade" />
-        {!isP1 && <path d="M20 6c1-3 3-4 4-4s1 2 0 4c2-2 4-2 5-1s-1 2-3 3" stroke={edge} strokeWidth="2.2" strokeLinecap="round" fill="none" />}
+        {!isP1 && (
+          <path
+            d="M20 6c1-3 3-4 4-4s1 2 0 4c2-2 4-2 5-1s-1 2-3 3"
+            stroke={edge}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            fill="none"
+          />
+        )}
         <circle cx="24" cy="24" r="19" fill={edge} />
         <circle cx="24" cy="22" r="18" fill={body} />
         <ellipse cx="17" cy="15" rx="6.5" ry="4.5" fill="#FFFFFF" opacity="0.28" />
@@ -42,7 +46,13 @@ export function Piece({ piece, scale = 0.82, selected, offender, justPromoted }:
         <circle cx="18.9" cy="22.2" r="0.9" fill="#FFFFFF" />
         <circle cx="30.9" cy="22.2" r="0.9" fill="#FFFFFF" />
         {isP1 ? (
-          <path d="M18 29.5c1.8 2.4 4 3.6 6 3.6s4.2-1.2 6-3.6" stroke="#1B1033" strokeWidth="2" strokeLinecap="round" fill="none" />
+          <path
+            d="M18 29.5c1.8 2.4 4 3.6 6 3.6s4.2-1.2 6-3.6"
+            stroke="#1B1033"
+            strokeWidth="2"
+            strokeLinecap="round"
+            fill="none"
+          />
         ) : (
           <ellipse cx="24" cy="31" rx="2.6" ry="3" fill="#1B1033" />
         )}

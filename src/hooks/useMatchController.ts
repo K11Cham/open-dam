@@ -89,7 +89,9 @@ export function useMatchController({
   const viewPosition = reviewing ? state.timeline[reviewIndex] : position
   const toMove = position.currentPlayer
   const myTurn = !over && localSeats.includes(toMove)
-  const canAct = myTurn && !reviewing && snapshot.connection !== 'connecting' && snapshot.connection !== 'disconnected'
+  // Online, nobody moves until both players are connected.
+  const connected = snapshot.connection === 'local' || snapshot.connection === 'connected'
+  const canAct = myTurn && !reviewing && connected
 
   // -- clock flags ----------------------------------------------------------
   const flagAt = state.clock && !over ? flagTime(state.clock) : null

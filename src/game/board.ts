@@ -8,11 +8,9 @@ import type { Board, BoardType, Coord, Piece, PieceData, PlayerId } from './type
  */
 export const forwardDir = (player: PlayerId): number => (player === 'player1' ? -1 : 1)
 
-export const promotionRow = (player: PlayerId, gridSize: number): number =>
-  player === 'player1' ? 0 : gridSize - 1
+export const promotionRow = (player: PlayerId, gridSize: number): number => (player === 'player1' ? 0 : gridSize - 1)
 
-export const opponentOf = (player: PlayerId): PlayerId =>
-  player === 'player1' ? 'player2' : 'player1'
+export const opponentOf = (player: PlayerId): PlayerId => (player === 'player1' ? 'player2' : 'player1')
 
 export const ORTHOGONAL: Array<{ dr: number; dc: number }> = [
   { dr: -1, dc: 0 },
@@ -21,15 +19,13 @@ export const ORTHOGONAL: Array<{ dr: number; dc: number }> = [
   { dr: 0, dc: 1 },
 ]
 
-export const inBounds = (b: Board, row: number, col: number): boolean =>
-  row >= 0 && row < b.length && col >= 0 && col < b.length
+export const inBounds = (b: Board, row: number, col: number): boolean => row >= 0 && row < b.length && col >= 0 && col < b.length
 
 export const at = (b: Board, c: Coord): Piece => b[c.row]?.[c.col] ?? null
 
 export const cloneBoard = (b: Board): Board => b.map((row) => row.map((p) => (p ? { ...p } : null)))
 
-export const sameCoord = (a: Coord | null, b: Coord | null): boolean =>
-  !!a && !!b && a.row === b.row && a.col === b.col
+export const sameCoord = (a: Coord | null, b: Coord | null): boolean => !!a && !!b && a.row === b.row && a.col === b.col
 
 export interface BoardBuildResult {
   board: Board
@@ -40,10 +36,8 @@ export interface BoardBuildResult {
  * Odd boards use the yin/yang start: the centre square is empty and the two
  * armies interlock around it. Even boards use plain rows with a two-row gap.
  */
-export const makeInitialBoard = (
-  gridSize: number,
-  boardType: BoardType = 'yinyang',
-): BoardBuildResult => (boardType === 'yinyang' ? makeYinYangBoard(gridSize) : makeEvenBoard(gridSize))
+export const makeInitialBoard = (gridSize: number, boardType: BoardType = 'yinyang'): BoardBuildResult =>
+  boardType === 'yinyang' ? makeYinYangBoard(gridSize) : makeEvenBoard(gridSize)
 
 const makeYinYangBoard = (gridSize: number): BoardBuildResult => {
   const center = Math.floor(gridSize / 2)

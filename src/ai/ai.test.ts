@@ -68,7 +68,11 @@ describe('tactics', () => {
     const first = chooseAction(state, options('master', 400))!
     expect(first.action).toEqual({ type: 'move', from: { row: 4, col: 1 }, to: { row: 2, col: 1 } })
     const mid = applyAction(state, first.action).state
-    expect(chooseAction(mid, options('master', 400))?.action).toEqual({ type: 'move', from: { row: 2, col: 1 }, to: { row: 2, col: 3 } })
+    expect(chooseAction(mid, options('master', 400))?.action).toEqual({
+      type: 'move',
+      from: { row: 2, col: 1 },
+      to: { row: 2, col: 3 },
+    })
   })
 
   test('a lost position returns null instead of throwing', () => {
@@ -90,8 +94,12 @@ describe('time budget', () => {
 describe('offers', () => {
   test('Novice accepts any undo; nothing to undo is declined', () => {
     const state = createInitialState({ boardSize: 5 })
-    expect(decideUndoRequest({ difficulty: DIFFICULTIES.novice, aiSide: 'player2', current: state, target: state })).toBe('accept')
-    expect(decideUndoRequest({ difficulty: DIFFICULTIES.master, aiSide: 'player2', current: state, target: null })).toBe('decline')
+    expect(decideUndoRequest({ difficulty: DIFFICULTIES.novice, aiSide: 'player2', current: state, target: state })).toBe(
+      'accept',
+    )
+    expect(decideUndoRequest({ difficulty: DIFFICULTIES.master, aiSide: 'player2', current: state, target: null })).toBe(
+      'decline',
+    )
   })
 
   test('Master declines a draw when clearly winning and accepts when losing', () => {

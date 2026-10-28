@@ -209,7 +209,12 @@ export default function BoardView({
                     tabIndex={isFocusCell ? 0 : -1}
                     data-row={coord.row}
                     data-col={coord.col}
-                    className={['cell', isLight ? 'is-light' : 'is-dark', isOffender && 'is-offender', isSelected && 'is-selected']
+                    className={[
+                      'cell',
+                      isLight ? 'is-light' : 'is-dark',
+                      isOffender && 'is-offender',
+                      isSelected && 'is-selected',
+                    ]
                       .filter(Boolean)
                       .join(' ')}
                     onFocus={() => setFocusDisplay({ row: displayRow, col: displayCol })}
@@ -237,11 +242,18 @@ export default function BoardView({
                     {piece && !travelling.has(k) && draggedKey !== k && (
                       <motion.div
                         className="piece-slot"
-                        whileHover={interactive && !isTouch && canDragFrom(coord) ? { scale: theme.motion.hoverScale } : undefined}
+                        whileHover={
+                          interactive && !isTouch && canDragFrom(coord) ? { scale: theme.motion.hoverScale } : undefined
+                        }
                         whileTap={interactive && canDragFrom(coord) ? { scale: theme.motion.tapScale } : undefined}
                         transition={{ duration: 0.12 }}
                       >
-                        <Piece piece={piece} selected={isSelected} offender={isOffender} justPromoted={promotedIds.includes(piece.id)} />
+                        <Piece
+                          piece={piece}
+                          selected={isSelected}
+                          offender={isOffender}
+                          justPromoted={promotedIds.includes(piece.id)}
+                        />
                       </motion.div>
                     )}
 
@@ -292,7 +304,9 @@ export default function BoardView({
             </AnimatePresence>
           </div>
 
-          {!hideEndSequence && <EndSequence status={position.status} survivors={survivors} gridSize={size} perspective={perspective} />}
+          {!hideEndSequence && (
+            <EndSequence status={position.status} survivors={survivors} gridSize={size} perspective={perspective} />
+          )}
         </div>
       </BoardFrame>
 

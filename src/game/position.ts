@@ -9,11 +9,7 @@ import type { Board, BoardSize, EngineState, PlayerId, RuleSettings } from './ty
  * Used by the tutorial's example boards and by the tests, so both describe
  * positions the same readable way. The board size is the number of rows.
  */
-export const positionFromAscii = (
-  rows: string[],
-  toMove: PlayerId,
-  settings: Partial<RuleSettings> = {},
-): EngineState => {
+export const positionFromAscii = (rows: string[], toMove: PlayerId, settings: Partial<RuleSettings> = {}): EngineState => {
   const size = rows.length as BoardSize
   if (rows.some((row) => row.length !== size)) {
     throw new Error(`positionFromAscii: every row must be ${size} characters wide`)

@@ -34,13 +34,7 @@ export const settle = (clock: MatchClock, at: number): MatchClock => {
 }
 
 /** A turn finished at `at`: charge the mover, add increment, start `next`. */
-export const finishTurn = (
-  clock: MatchClock,
-  mover: PlayerId,
-  next: PlayerId,
-  incrementMs: number,
-  at: number,
-): MatchClock => {
+export const finishTurn = (clock: MatchClock, mover: PlayerId, next: PlayerId, incrementMs: number, at: number): MatchClock => {
   const settled = settle(clock, at)
   return {
     ...settled,

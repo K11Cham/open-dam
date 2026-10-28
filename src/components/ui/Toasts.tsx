@@ -44,7 +44,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const existing = live.current.find((t) => t.message === message)
       const id = existing?.id ?? ++counter.current
       window.clearTimeout(timers.current.get(id))
-      timers.current.set(id, window.setTimeout(() => dismiss(id), DURATION_MS[tone]))
+      timers.current.set(
+        id,
+        window.setTimeout(() => dismiss(id), DURATION_MS[tone]),
+      )
       if (existing) return
       const next = [...live.current.slice(-2), { id, message, tone }]
       live.current = next
@@ -70,7 +73,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8 }}
             >
-              {toast.tone === 'error' ? <AlertCircle size={16} /> : toast.tone === 'success' ? <CheckCircle2 size={16} /> : <Info size={16} />}
+              {toast.tone === 'error' ? (
+                <AlertCircle size={16} />
+              ) : toast.tone === 'success' ? (
+                <CheckCircle2 size={16} />
+              ) : (
+                <Info size={16} />
+              )}
               <span>{toast.message}</span>
               <button type="button" className="toast__close" aria-label="Dismiss" onClick={() => dismiss(toast.id)}>
                 <X size={14} />

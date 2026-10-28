@@ -37,7 +37,10 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
         options={SIZES.map((size) => ({
           value: size,
           label: `${size}×${size}`,
-          hint: boardTypeForSize(size) === 'yinyang' ? 'Interlocking start, centre square empty' : 'Rows start, two empty rows between',
+          hint:
+            boardTypeForSize(size) === 'yinyang'
+              ? 'Interlocking start, centre square empty'
+              : 'Rows start, two empty rows between',
         }))}
         onChange={(size) => patch({ boardSize: size, boardType: boardTypeForSize(size) })}
       />
@@ -53,9 +56,15 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
         value={settings.timeControl?.label ?? 'untimed'}
         options={[
           { value: 'untimed', label: 'Untimed' },
-          ...TIME_CONTROLS.map((tc) => ({ value: tc.label, label: tc.label, hint: `${tc.initialMs / 60000} minutes each, plus ${tc.incrementMs / 1000}s per move` })),
+          ...TIME_CONTROLS.map((tc) => ({
+            value: tc.label,
+            label: tc.label,
+            hint: `${tc.initialMs / 60000} minutes each, plus ${tc.incrementMs / 1000}s per move`,
+          })),
         ]}
-        onChange={(label) => patch({ timeControl: label === 'untimed' ? null : (TIME_CONTROLS.find((tc) => tc.label === label) ?? null) })}
+        onChange={(label) =>
+          patch({ timeControl: label === 'untimed' ? null : (TIME_CONTROLS.find((tc) => tc.label === label) ?? null) })
+        }
       />
       <p className="field__help">Minutes each + seconds added per move.</p>
 
@@ -68,7 +77,13 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
           <Segmented
             label="Crowning in the middle of a chain"
             wrap
-            value={online ? settings.promotionPolicy : settings.promotionPolicy === 'match-opponent' ? 'promote-and-continue' : settings.promotionPolicy}
+            value={
+              online
+                ? settings.promotionPolicy
+                : settings.promotionPolicy === 'match-opponent'
+                  ? 'promote-and-continue'
+                  : settings.promotionPolicy
+            }
             options={policies.map((policy) => ({ value: policy, label: PROMOTION_POLICY_LABELS[policy] }))}
             onChange={(policy) => patch({ promotionPolicy: policy })}
           />
@@ -104,7 +119,8 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
             onChange={(plies) => patch({ draw: { ...settings.draw, pliesWithoutCapture: plies === 0 ? null : plies } })}
           />
           <p className="field__help">
-            Captures are optional, so a player who is behind could otherwise avoid them forever. These rules make sure every game ends.
+            Captures are optional, so a player who is behind could otherwise avoid them forever. These rules make sure every game
+            ends.
           </p>
         </div>
       </details>

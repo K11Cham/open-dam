@@ -794,6 +794,12 @@
 
 /* ── Pages ──────────────────────────────────────────────────────────────── */
 
+.page-loading {
+  padding: var(--space-12) var(--gutter-right) var(--space-12) var(--gutter);
+  text-align: center;
+  color: var(--dam-ink-muted);
+}
+
 .page {
   max-width: var(--page-max);
   margin: 0 auto;
@@ -1239,7 +1245,7 @@
   }
   .match__board-col {
     /* Fit the board and both player cards under the top bar without scrolling. */
-    max-width: max(360px, min(680px, calc(100svh - 330px)));
+    max-width: max(360px, min(680px, calc(100svh - 380px)));
   }
   .match__side {
     position: sticky;
@@ -1619,7 +1625,7 @@
 
 .analysis__board {
   width: 100%;
-  max-width: 620px;
+  max-width: max(320px, min(620px, calc(100svh - 200px)));
   margin: 0 auto;
 }
 

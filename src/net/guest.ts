@@ -78,7 +78,11 @@ export class MatchGuest extends SessionBase {
   private tick() {
     if (this.welcomed) this.send({ type: 'ping', seat: this.seat })
     else this.send({ type: 'join', seat: this.seat })
-    if (this.welcomed && this.now() - this.lastHeardFromHost > PRESENCE_TIMEOUT_MS && this.snapshot.connection !== 'disconnected') {
+    if (
+      this.welcomed &&
+      this.now() - this.lastHeardFromHost > PRESENCE_TIMEOUT_MS &&
+      this.snapshot.connection !== 'disconnected'
+    ) {
       this.publish({ snapshot: { ...this.snapshot, connection: 'disconnected' } })
       this.welcomed = false
     }
@@ -146,7 +150,11 @@ export class MatchGuest extends SessionBase {
           return
         }
         this.publish({
-          snapshot: { ...this.snapshot, state: result.state, record: { ...record, actions: [...record.actions, message.action] } },
+          snapshot: {
+            ...this.snapshot,
+            state: result.state,
+            record: { ...record, actions: [...record.actions, message.action] },
+          },
           step: { action: message.action, events: result.events, notices: result.notices },
         })
       }

@@ -44,8 +44,7 @@ export interface EvalProfile {
 export const PIECE_VALUE = 100
 
 /** Kings gain value with board size, because their reach does. */
-export const kingValue = (boardSize: number): number =>
-  PIECE_VALUE * (2.1 + 0.18 * (boardSize - 5))
+export const kingValue = (boardSize: number): number => PIECE_VALUE * (2.1 + 0.18 * (boardSize - 5))
 
 export const WIN_SCORE = 1_000_000
 
@@ -160,11 +159,7 @@ const openLines = (state: EngineState, row: number, col: number): number => {
   return total
 }
 
-export function evaluate(
-  state: EngineState,
-  perspective: PlayerId,
-  profile: EvalProfile,
-): number {
+export function evaluate(state: EngineState, perspective: PlayerId, profile: EvalProfile): number {
   if (state.status.kind === 'win') {
     return state.status.winner === perspective ? WIN_SCORE : -WIN_SCORE
   }
@@ -182,8 +177,7 @@ export function evaluate(
   }
 
   if (profile.advancement !== 0) {
-    score +=
-      (me.advancement - them.advancement) * profile.advancement * advancementScale(settings) * 10
+    score += (me.advancement - them.advancement) * profile.advancement * advancementScale(settings) * 10
   }
 
   if (profile.backRow !== 0) {
@@ -213,15 +207,9 @@ export function evaluate(
 
   // Walking away from a chain is legal but callable, so a chain still holding
   // continuations is a small liability for the side that has to decide.
-  if (
-    profile.exposure !== 0 &&
-    state.chain.active &&
-    settings.call.abandonedChainCallable &&
-    state.chain.at
-  ) {
+  if (profile.exposure !== 0 && state.chain.active && settings.call.abandonedChainCallable && state.chain.at) {
     const remaining = getCaptures(state.board, state.currentPlayer).filter(
-      (capture) =>
-        capture.from.row === state.chain.at!.row && capture.from.col === state.chain.at!.col,
+      (capture) => capture.from.row === state.chain.at!.row && capture.from.col === state.chain.at!.col,
     ).length
     if (remaining > 0) {
       const liability = 14 * profile.exposure
