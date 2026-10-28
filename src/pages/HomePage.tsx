@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import AppShell from '../components/layout/AppShell'
 import Button from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
+import Card from '../components/ui/Card'
 import { AI_OPPONENTS } from '../data/aiOpponents'
 import { DEFAULT_SETTINGS } from '../game/settings'
 import { MODE_BLURBS, groupPoolsByMode } from '../data/ranked'
@@ -26,11 +27,10 @@ export default function HomePage() {
       <div className="dam-page">
         <Panel className="dam-hero">
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <span className="dam-tag">Draughts, but orthogonal</span>
+            <span className="dam-tag">Checkers, but orthogonal</span>
             <h1 className="dam-hero-title">Open Dam</h1>
             <p className="dam-hero-sub">
-              No diagonals. Captures are optional — and if you pass one up, your opponent can call
-              it. Kings slide the whole board and choose where they land.
+              A traditional Gambian board game, modernized.
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Button variant="primary" onClick={() => navigate('/play')}>
@@ -67,14 +67,14 @@ export default function HomePage() {
 
         <section className="dam-section">
           <div className="dam-section-head">
-            <h2 className="dam-section-title">Play the computer</h2>
+            <h2 className="dam-section-title">Quick play</h2>
             <span style={{ fontSize: 12, color: 'var(--dam-ink-muted)', maxWidth: '48ch' }}>
-              Four tiers that differ in what the engine can see, not just how far ahead it looks.
+              Get straight into a game, versus AI or a real person(doesnt exist yet tho.)
             </span>
           </div>
 
           <div className="dam-grid">
-            {AI_OPPONENTS.map((entry) => {
+            {/* {AI_OPPONENTS.map((entry) => {
               const params = settingsToParams(DEFAULT_SETTINGS)
               params.set('ai', entry.difficulty.id)
               params.set('side', 'player1')
@@ -98,51 +98,43 @@ export default function HomePage() {
                   </span>
                 </button>
               )
-            })}
+            })} */}
+
+            <Card>
+              <div className="dam-card-title">
+                <h2 className="dam-card-header">Recommended game:</h2>
+                <span className='dam-tag'>5x5 - Vs Club</span>
+                <span className='dam-tag'>Chain rules</span>
+
+                
+              </div>
+              <div>
+                <img src="/board.png" alt="" width="1024" />
+              </div>
+              <div className="dam-card-cta">
+                <Button variant="primary">Challenge</Button>
+              </div>
+            </Card>
+            <Card>
+              <div className="dam-card-title">
+                <h2 className="dam-card-header">Recommended game:</h2>
+                <span className='dam-tag'>5x5 - Vs Club</span>
+                <span className='dam-tag'>Chain rules</span>
+
+                
+              </div>
+              <div>
+                <img src="/board.png" alt="" width="1024" />
+              </div>
+              <div className="dam-card-cta">
+                <Button variant="primary">Challenge</Button>
+              </div>
+            </Card>
+            
           </div>
         </section>
 
-        {groups.map((group) => (
-          <section className="dam-section" key={group.mode}>
-            <div className="dam-section-head">
-              <h2 className="dam-section-title">{group.label}</h2>
-              <span style={{ fontSize: 12, color: 'var(--dam-ink-muted)', maxWidth: '48ch' }}>
-                {MODE_BLURBS[group.mode]}
-              </span>
-            </div>
-
-            <div className="dam-grid">
-              {group.pools.map((pool) => (
-                <Panel
-                  key={pool.id}
-                  className="dam-card"
-                  onClick={() => navigate(`/match?${settingsToParams(pool.settings).toString()}`)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      navigate(`/match?${settingsToParams(pool.settings).toString()}`)
-                    }
-                  }}
-                >
-                  <span className="dam-card-title">
-                    {pool.boardSize}×{pool.boardSize} · {pool.timeControlLabel}
-                  </span>
-                  <span className="dam-card-meta">
-                    {pool.settings.boardType === 'yinyang' ? 'Yin/yang start' : 'Row start'}
-                  </span>
-                  <span
-                    className="dam-card-meta"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto' }}
-                  >
-                    <Users size={13} />
-                    {pool.playersOnline} online · avg {pool.averageRating}
-                  </span>
-                </Panel>
-              ))}
-            </div>
-          </section>
-        ))}
+       
 
         <p style={{ fontSize: 12, color: 'var(--dam-ink-muted)', marginTop: 28 }}>
           Player counts and ratings on this page are placeholder data. Ranked matchmaking and elo
