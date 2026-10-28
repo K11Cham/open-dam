@@ -2,16 +2,7 @@ import { opponentOf } from '../game/board'
 import { applyAction, createInitialState } from '../game/engine'
 import type { EngineAction, PlayerId } from '../game/types'
 import { createMatchClock, finishTurn, pauseClock, remainingAt, resumeClock, runFor, settle, stop } from './clock'
-import type {
-  Actor,
-  MatchAction,
-  MatchConfig,
-  MatchIntent,
-  MatchNotice,
-  MatchRecord,
-  MatchState,
-  MatchStepResult,
-} from './types'
+import type { Actor, MatchAction, MatchConfig, MatchIntent, MatchNotice, MatchRecord, MatchState, MatchStepResult } from './types'
 
 /**
  * The match reducer: `(state, action) -> state`. It is the only place that
@@ -70,7 +61,13 @@ function stepEngine(state: MatchState, action: EngineAction, at: number, notices
   if (clock) {
     if (after.status.kind !== 'playing') clock = stop(clock, at)
     else if (after.currentPlayer !== before.currentPlayer) {
-      clock = finishTurn(clock, before.currentPlayer, after.currentPlayer, state.config.settings.timeControl?.incrementMs ?? 0, at)
+      clock = finishTurn(
+        clock,
+        before.currentPlayer,
+        after.currentPlayer,
+        state.config.settings.timeControl?.incrementMs ?? 0,
+        at,
+      )
     } else clock = settle(clock, at)
   }
 
@@ -109,7 +106,8 @@ export function stepMatch(state: MatchState, by: Actor, intent: MatchIntent, at:
       if (action.type === 'timeout') {
         if (by !== 'system') return refuse(state, 'Only the clock can call time.')
         if (!state.clock || state.clock.running !== action.player) return refuse(state, 'That clock is not running.')
-        if (remainingAt(state.clock, action.player, at) > FLAG_TOLERANCE_MS) return refuse(state, 'There is still time on that clock.')
+        if (remainingAt(state.clock, action.player, at) > FLAG_TOLERANCE_MS)
+          return refuse(state, 'There is still time on that clock.')
         return stepEngine(state, action, at, notices)
       }
       if (action.type === 'resign') {

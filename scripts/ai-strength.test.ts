@@ -60,23 +60,29 @@ function match(strong: DifficultyId, weak: DifficultyId, games: number) {
     const p2 = countPieces(state.board, 'player2')
     console.log(`  game ${i + 1}: ${JSON.stringify(state.status)} pieces ${p1}/${p2}`)
   }
-  console.log(`${strong} ${strongWins} – ${weakWins} ${weak} (${games - strongWins - weakWins - unfinished} draws, ${unfinished} unfinished)`)
+  console.log(
+    `${strong} ${strongWins} – ${weakWins} ${weak} (${games - strongWins - weakWins - unfinished} draws, ${unfinished} unfinished)`,
+  )
   return { strongWins, weakWins }
 }
 
-test('stronger tiers outscore weaker ones', () => {
-  const problems: string[] = []
-  for (const [strong, weak] of [
-    ['club', 'novice'],
-    ['expert', 'club'],
-    ['master', 'novice'],
-    ['master', 'expert'],
-  ] as Array<[DifficultyId, DifficultyId]>) {
-    console.log(`
+test(
+  'stronger tiers outscore weaker ones',
+  () => {
+    const problems: string[] = []
+    for (const [strong, weak] of [
+      ['club', 'novice'],
+      ['expert', 'club'],
+      ['master', 'novice'],
+      ['master', 'expert'],
+    ] as Array<[DifficultyId, DifficultyId]>) {
+      console.log(`
 ${strong} vs ${weak}`)
-    const { strongWins, weakWins } = match(strong, weak, 6)
-    if (strongWins < weakWins) problems.push(`${strong} was outscored by ${weak}`)
-    if (strong === 'master' && strongWins === 0) problems.push('Master did not win a single game against Novice')
-  }
-  expect(problems).toEqual([])
-}, 15 * 60_000)
+      const { strongWins, weakWins } = match(strong, weak, 6)
+      if (strongWins < weakWins) problems.push(`${strong} was outscored by ${weak}`)
+      if (strong === 'master' && strongWins === 0) problems.push('Master did not win a single game against Novice')
+    }
+    expect(problems).toEqual([])
+  },
+  15 * 60_000,
+)

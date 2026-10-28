@@ -22,8 +22,8 @@ export default function LeaderboardsPage() {
 
         <p className="notice">
           <Info size={16} aria-hidden />
-          Ratings start once online play has a server. Until then this page shows made-up sample players, so you can see how it will
-          look.
+          Ratings start once online play has a server. Until then this page shows made-up sample players, so you can see how it
+          will look.
         </p>
 
         <Segmented

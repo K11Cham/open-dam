@@ -64,7 +64,12 @@ export default function MoveList({ controller }: { controller: MatchController }
         <span className="moves__count">{controller.position.moves.length > 0 ? `${viewIndex} / ${lastIndex}` : ''}</span>
       </div>
 
-      <div ref={listRef} className="moves__list" tabIndex={moveRows.length ? 0 : -1} aria-label="Move list. Use the arrow keys to step through the game.">
+      <div
+        ref={listRef}
+        className="moves__list"
+        tabIndex={moveRows.length ? 0 : -1}
+        aria-label="Move list. Use the arrow keys to step through the game."
+      >
         {moveRows.length === 0 ? (
           <p className="moves__empty">No moves yet.</p>
         ) : (
@@ -92,9 +97,24 @@ export default function MoveList({ controller }: { controller: MatchController }
 
       <div className="moves__nav" role="group" aria-label="Step through the game">
         <IconButton label="First position" icon={<ChevronsLeft size={16} />} onClick={() => goTo(0)} disabled={viewIndex === 0} />
-        <IconButton label="Previous position" icon={<ChevronLeft size={16} />} onClick={() => goTo(viewIndex - 1)} disabled={viewIndex === 0} />
-        <IconButton label="Next position" icon={<ChevronRight size={16} />} onClick={() => goTo(viewIndex + 1)} disabled={viewIndex === lastIndex} />
-        <IconButton label="Latest position" icon={<ChevronsRight size={16} />} onClick={() => goTo(null)} disabled={viewIndex === lastIndex} />
+        <IconButton
+          label="Previous position"
+          icon={<ChevronLeft size={16} />}
+          onClick={() => goTo(viewIndex - 1)}
+          disabled={viewIndex === 0}
+        />
+        <IconButton
+          label="Next position"
+          icon={<ChevronRight size={16} />}
+          onClick={() => goTo(viewIndex + 1)}
+          disabled={viewIndex === lastIndex}
+        />
+        <IconButton
+          label="Latest position"
+          icon={<ChevronsRight size={16} />}
+          onClick={() => goTo(null)}
+          disabled={viewIndex === lastIndex}
+        />
       </div>
     </section>
   )

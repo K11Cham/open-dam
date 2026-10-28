@@ -24,7 +24,10 @@ interface ChoiceCardsProps<T extends string> {
 export default function ChoiceCards<T extends string>({ label, choices, value, onChange }: ChoiceCardsProps<T>) {
   const labelId = useId()
   const refs = useRef<Array<HTMLButtonElement | null>>([])
-  const active = Math.max(0, choices.findIndex((c) => c.value === value))
+  const active = Math.max(
+    0,
+    choices.findIndex((c) => c.value === value),
+  )
 
   const move = (index: number) => {
     const next = (index + choices.length) % choices.length

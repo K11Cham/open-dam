@@ -101,7 +101,11 @@ export default function HomePage() {
             </div>
             <div className="panel__actions">
               <ButtonLink
-                to={unfinished.record.config.mode === 'online' ? `/online/${unfinished.record.config.id}` : `/match/${unfinished.record.config.id}`}
+                to={
+                  unfinished.record.config.mode === 'online'
+                    ? `/online/${unfinished.record.config.id}`
+                    : `/match/${unfinished.record.config.id}`
+                }
                 variant="primary"
                 icon={<ArrowRight size={16} />}
               >
@@ -199,8 +203,8 @@ export default function HomePage() {
           </h2>
           <p>
             Open Dam was made by someone who spent eight years in The Gambia and learned the game in Kerr Jarga Jobe, in the North
-            Bank Region, where children and adults played the 5×5 version drawn in the sand. It is open source, so the rules and the
-            code are there for anyone to read and improve.
+            Bank Region, where children and adults played the 5×5 version drawn in the sand. It is open source, so the rules and
+            the code are there for anyone to read and improve.
           </p>
         </section>
       </div>
@@ -221,4 +225,3 @@ export default function HomePage() {
     </AppShell>
   )
 }
-

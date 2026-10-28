@@ -49,7 +49,10 @@ function OnlinePanel({ session, seat, inviteUrl }: { session: MatchSession; seat
 
   return (
     <section className="online-panel" aria-label="Online game">
-      <p className={`online-panel__status ${opponentHere && snapshot.connection !== 'disconnected' ? 'is-ok' : ''}`} role="status">
+      <p
+        className={`online-panel__status ${opponentHere && snapshot.connection !== 'disconnected' ? 'is-ok' : ''}`}
+        role="status"
+      >
         {snapshot.connection === 'disconnected' ? <WifiOff size={16} aria-hidden /> : <Wifi size={16} aria-hidden />}
         {status}
       </p>
@@ -60,7 +63,13 @@ function OnlinePanel({ session, seat, inviteUrl }: { session: MatchSession; seat
             Invite link
           </label>
           <div className="copy-field">
-            <input id="invite-link" className="input" readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} />
+            <input
+              id="invite-link"
+              className="input"
+              readOnly
+              value={inviteUrl}
+              onFocus={(event) => event.currentTarget.select()}
+            />
             <Button size="sm" icon={copied ? <Check size={15} /> : <Copy size={15} />} onClick={copy}>
               {copied ? 'Copied' : 'Copy'}
             </Button>
@@ -74,7 +83,17 @@ function OnlinePanel({ session, seat, inviteUrl }: { session: MatchSession; seat
   )
 }
 
-function OnlineMatch({ session, seat, inviteUrl, authoritative }: { session: MatchSession; seat: PlayerId; inviteUrl: string | null; authoritative: boolean }) {
+function OnlineMatch({
+  session,
+  seat,
+  inviteUrl,
+  authoritative,
+}: {
+  session: MatchSession
+  seat: PlayerId
+  inviteUrl: string | null
+  authoritative: boolean
+}) {
   const navigate = useNavigate()
   const toast = useToast()
   const { theme } = useTheme()
@@ -142,7 +161,9 @@ export default function OnlinePage() {
   const [params] = useSearchParams()
   const [hosted] = useState(() => {
     const active = loadActiveMatch()
-    return active && active.record.config.id === id && active.record.config.mode === 'online' && !params.has('seat') ? active.record : null
+    return active && active.record.config.id === id && active.record.config.mode === 'online' && !params.has('seat')
+      ? active.record
+      : null
   })
   const seat: PlayerId = params.get('seat') === 'player1' ? 'player1' : 'player2'
 

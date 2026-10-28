@@ -61,7 +61,12 @@ export default function Navbar() {
 
       <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} title="Open Dam" variant="drawer">
         <nav aria-label="Main" className="drawer-nav">
-          <NavLink to="/" end className={({ isActive }) => `drawer-nav__link ${isActive ? 'is-active' : ''}`} onClick={() => setMenuOpen(false)}>
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) => `drawer-nav__link ${isActive ? 'is-active' : ''}`}
+            onClick={() => setMenuOpen(false)}
+          >
             Home
           </NavLink>
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (

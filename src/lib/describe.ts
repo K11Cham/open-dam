@@ -23,7 +23,12 @@ export function outcomeTitle(status: GameStatus, perspective: PlayerId | null, n
  * Why the game ended, using the actual rule settings of this game. When
  * `perspective` names the side played on this device, that side is "you".
  */
-export function outcomeReason(status: GameStatus, settings: RuleSettings, names: Names, perspective: PlayerId | null = null): string {
+export function outcomeReason(
+  status: GameStatus,
+  settings: RuleSettings,
+  names: Names,
+  perspective: PlayerId | null = null,
+): string {
   if (status.kind === 'playing') return ''
   if (status.kind === 'draw') {
     switch (status.reason) {
@@ -95,7 +100,9 @@ export function noticeText(notice: MatchNotice, names: Names, local: PlayerId[])
     case 'offer-accepted':
       return isMine(notice.by) ? `Your ${what(notice.kind)} was accepted.` : null
     case 'offer-declined':
-      return isMine(notice.by) ? `Your ${what(notice.kind)} was declined.` : `${names[notice.by]}'s ${what(notice.kind)} was declined.`
+      return isMine(notice.by)
+        ? `Your ${what(notice.kind)} was declined.`
+        : `${names[notice.by]}'s ${what(notice.kind)} was declined.`
     case 'offer-cancelled':
       return isMine(notice.by) ? null : `${names[notice.by]} withdrew the ${what(notice.kind)} offer.`
     case 'undo-applied':

@@ -41,7 +41,10 @@ export const CHAPTERS: Chapter[] = [
             { play: 'c3-c4', caption: '{p1} moves forward, from c3 to c4.' },
             { play: 'e5-e4', caption: '{p2} moves forward too. For {p2}, forward is down the board.' },
             { play: 'c4-b4', caption: 'Sideways is always allowed: c4 to b4.' },
-            { play: 'a5-b5', caption: '{p2} steps sideways as well. Going back from b4 to b3 would be refused: pieces never retreat.' },
+            {
+              play: 'a5-b5',
+              caption: '{p2} steps sideways as well. Going back from b4 to b3 would be refused: pieces never retreat.',
+            },
           ],
         },
       },
@@ -80,7 +83,10 @@ export const CHAPTERS: Chapter[] = [
           toMove: 'player1',
           intro: '{p1}’s piece on b1 can take b2, and from there another capture opens up.',
           steps: [
-            { play: 'b1xb3', caption: '{p1} jumps b2 and lands on b3. Another capture is available from here, so it is still {p1}’s turn.' },
+            {
+              play: 'b1xb3',
+              caption: '{p1} jumps b2 and lands on b3. Another capture is available from here, so it is still {p1}’s turn.',
+            },
             { play: 'b3xd3', caption: 'The chain continues sideways: b3 jumps c3 and lands on d3. Two pieces in one turn.' },
             { play: 'a5-a4', caption: 'No more captures from d3, so the turn passes to {p2}.' },
           ],
@@ -98,7 +104,10 @@ export const CHAPTERS: Chapter[] = [
           steps: [
             { play: 'b1xb3', caption: '{p1} takes b2 and lands on b3.' },
             { play: 'end', caption: '{p1} ends the turn, leaving the capture of c3 untaken. The piece on b3 is now callable.' },
-            { play: 'call b3', caption: '{p2} calls it, and the {p1} piece on b3 is removed. Calling does not use up {p2}’s turn.' },
+            {
+              play: 'call b3',
+              caption: '{p2} calls it, and the {p1} piece on b3 is removed. Calling does not use up {p2}’s turn.',
+            },
             { play: 'a5-a4', caption: '{p2} then makes a normal move.' },
           ],
         },
@@ -137,7 +146,10 @@ export const CHAPTERS: Chapter[] = [
           toMove: 'player1',
           intro: '{p1}’s king on a3 sees {p2}’s piece on c3 along the row.',
           steps: [
-            { play: 'a3xe3', caption: 'It jumps c3 and chooses to land on e3, two squares past it. Landing on d3 would also have been legal.' },
+            {
+              play: 'a3xe3',
+              caption: 'It jumps c3 and chooses to land on e3, two squares past it. Landing on d3 would also have been legal.',
+            },
             { play: 'a5-a4', caption: '{p2} to move.' },
           ],
         },
@@ -191,7 +203,10 @@ export const CHAPTERS: Chapter[] = [
           toMove: 'player1',
           intro: 'The 5×5 start. The centre square, c3, is empty.',
           steps: [
-            { play: 'a2-c3', caption: '{p1} sends the piece on a2 straight into the centre. Only the first move may jump like this.' },
+            {
+              play: 'a2-c3',
+              caption: '{p1} sends the piece on a2 straight into the centre. Only the first move may jump like this.',
+            },
             { play: 'a3-a2', caption: '{p2} answers by stepping into the square it left.' },
           ],
         },
@@ -234,7 +249,8 @@ export const CHAPTERS: Chapter[] = [
           steps: [
             {
               play: 'c2xc4',
-              caption: '{p1} captures c3. Each side is now down to one piece, so both are crowned on the spot, and the new {p1} king can keep going.',
+              caption:
+                '{p1} captures c3. Each side is now down to one piece, so both are crowned on the spot, and the new {p1} king can keep going.',
             },
             { play: 'c4xa4', caption: 'As a king it jumps b4 along the row. {p2} has no pieces left, so {p1} wins.' },
           ],

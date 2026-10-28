@@ -108,7 +108,12 @@ export function useAnalysisBoard(onEvents: (events: GameEvent[]) => void, notify
 
   const setTurn = useCallback(
     (player: PlayerId) => {
-      commit({ ...position, currentPlayer: player, offenders: [], chain: { active: false, at: null, pendingPromotionPieceId: null, legs: [] } })
+      commit({
+        ...position,
+        currentPlayer: player,
+        offenders: [],
+        chain: { active: false, at: null, pendingPromotionPieceId: null, legs: [] },
+      })
       setSelected(null)
     },
     [position, commit],

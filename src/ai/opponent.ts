@@ -22,12 +22,7 @@ export interface UndoContext {
   target: EngineState | null
 }
 
-export function decideUndoRequest({
-  difficulty,
-  aiSide,
-  current,
-  target,
-}: UndoContext): OfferDecision {
+export function decideUndoRequest({ difficulty, aiSide, current, target }: UndoContext): OfferDecision {
   if (!target) return 'decline'
   if (current.moves.length <= difficulty.undo.graceUntilPly) return 'accept'
   if (difficulty.undo.maxSwing === Infinity) return 'accept'
@@ -42,11 +37,7 @@ export function decideUndoRequest({
   return 'accept'
 }
 
-export function decideDrawOffer(
-  difficulty: Difficulty,
-  aiSide: PlayerId,
-  state: EngineState,
-): OfferDecision {
+export function decideDrawOffer(difficulty: Difficulty, aiSide: PlayerId, state: EngineState): OfferDecision {
   const score = evaluate(state, aiSide, difficulty.profile)
   // Accept when the position is level or worse for the AI, within tolerance.
   if (score <= difficulty.drawAcceptWithin) return 'accept'

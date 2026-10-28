@@ -62,7 +62,7 @@ export function Dialog({
         return
       }
       if (event.key !== 'Tab' || !panel) return
-      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null || el === document.activeElement)
+      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)]
       if (items.length === 0) {
         event.preventDefault()
         return
@@ -112,7 +112,9 @@ export function Dialog({
             initial={isDrawer ? { x: '-100%' } : { opacity: 0, y: 16, scale: 0.97 }}
             animate={isDrawer ? { x: 0 } : { opacity: 1, y: 0, scale: 1 }}
             exit={isDrawer ? { x: '-100%' } : { opacity: 0, y: 10, scale: 0.98 }}
-            transition={isDrawer ? { type: 'spring', stiffness: 360, damping: 36 } : { type: 'spring', stiffness: 380, damping: 30 }}
+            transition={
+              isDrawer ? { type: 'spring', stiffness: 360, damping: 36 } : { type: 'spring', stiffness: 380, damping: 30 }
+            }
           >
             <div className="dialog__head">
               <h2 id={titleId} className={hideTitle ? 'visually-hidden' : 'dialog__title'}>

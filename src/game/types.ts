@@ -39,11 +39,7 @@ export interface Coord {
  * - `match-opponent`: resolves to whatever the opponent picked. Meaningless
  *   offline, so it resolves to the default locally — see `resolvePromotionPolicy`.
  */
-export type PromotionPolicy =
-  | 'promote-and-continue'
-  | 'promote-after-chain'
-  | 'end-turn-on-promotion'
-  | 'match-opponent'
+export type PromotionPolicy = 'promote-and-continue' | 'promote-after-chain' | 'end-turn-on-promotion' | 'match-opponent'
 
 /** A promotion policy with `match-opponent` already resolved away. */
 export type ResolvedPromotionPolicy = Exclude<PromotionPolicy, 'match-opponent'>
@@ -132,9 +128,7 @@ export type WinReason = 'no-pieces' | 'no-moves' | 'resignation' | 'timeout'
 export type DrawReason = 'one-each-stalemate' | 'threefold' | 'no-captures' | 'agreement'
 
 export type GameStatus =
-  | { kind: 'playing' }
-  | { kind: 'win'; winner: PlayerId; reason: WinReason }
-  | { kind: 'draw'; reason: DrawReason }
+  { kind: 'playing' } | { kind: 'win'; winner: PlayerId; reason: WinReason } | { kind: 'draw'; reason: DrawReason }
 
 /** A piece that had a capture available and whose owner declined it. */
 export interface Offender {

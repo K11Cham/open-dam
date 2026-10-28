@@ -26,8 +26,7 @@ export const DEFAULT_SETUP: GameSetup = {
   side: 'player1',
 }
 
-const isOpponent = (value: unknown): value is OpponentChoice =>
-  value === 'hotseat' || value === 'online' || isDifficultyId(value)
+const isOpponent = (value: unknown): value is OpponentChoice => value === 'hotseat' || value === 'online' || isDifficultyId(value)
 
 export function loadLastSetup(): GameSetup {
   const saved = storage.get<Partial<GameSetup>>(STORAGE_KEYS.lastSetup)

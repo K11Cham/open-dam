@@ -33,11 +33,15 @@ export default function PlayerCard({ controller, player, local, isYou, thinking,
   const isTurn = !over && toMove === player
   const pieces = countPieces(state.position.board, player)
   const kings = state.position.board.flat().filter((p) => p?.player === player && p.isKing).length
-  const undoReady = canOffer && !state.undoAskedThisTurn[player] && !state.position.chain.active && undoTargetIndex(state, player) !== null
+  const undoReady =
+    canOffer && !state.undoAskedThisTurn[player] && !state.position.chain.active && undoTargetIndex(state, player) !== null
   const drawReady = canOffer && !state.drawOfferedThisTurn[player]
 
   return (
-    <section className={['player-card', `is-${position}`, isTurn && 'is-turn'].filter(Boolean).join(' ')} aria-label={`${names[player]}${isYou ? ' (you)' : ''}`}>
+    <section
+      className={['player-card', `is-${position}`, isTurn && 'is-turn'].filter(Boolean).join(' ')}
+      aria-label={`${names[player]}${isYou ? ' (you)' : ''}`}
+    >
       <div className="player-card__id">
         <span className="player-card__token" aria-hidden>
           <Piece piece={{ id: `token-${player}`, player, isKing: false }} scale={1} />
@@ -57,17 +61,31 @@ export default function PlayerCard({ controller, player, local, isYou, thinking,
         ) : (
           isTurn && <span className="tag tag--turn">{state.position.chain.active ? 'Capturing' : 'To move'}</span>
         )}
-        {offer && offer.by === player && <span className="tag">{offer.kind === 'undo' ? 'Asked to undo' : 'Offered a draw'}</span>}
+        {offer && offer.by === player && (
+          <span className="tag">{offer.kind === 'undo' ? 'Asked to undo' : 'Offered a draw'}</span>
+        )}
       </div>
 
       {state.clock && <ClockDisplay clock={state.clock} player={player} now={now} name={names[player]} />}
 
       {local && !over && (
         <div className="player-card__actions">
-          <Button size="sm" variant="ghost" icon={<Undo2 size={15} />} disabled={!undoReady} onClick={() => controller.offer(player, 'undo')}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Undo2 size={15} />}
+            disabled={!undoReady}
+            onClick={() => controller.offer(player, 'undo')}
+          >
             Undo
           </Button>
-          <Button size="sm" variant="ghost" icon={<Handshake size={15} />} disabled={!drawReady} onClick={() => controller.offer(player, 'draw')}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Handshake size={15} />}
+            disabled={!drawReady}
+            onClick={() => controller.offer(player, 'draw')}
+          >
             Draw
           </Button>
           <Button size="sm" variant="ghost" icon={<Flag size={15} />} onClick={() => onResign(player)}>

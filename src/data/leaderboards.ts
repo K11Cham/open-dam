@@ -21,8 +21,16 @@ export interface LeaderboardBoard {
 }
 
 const names = [
-  'sulaymaan.k', 'nightjar', 'okonkwo', 'brambleline', 'quiet_rook',
-  'mmadu', 'thirteenth', 'saltflat', 'oyelaran', 'kestrelbait',
+  'sulaymaan.k',
+  'nightjar',
+  'okonkwo',
+  'brambleline',
+  'quiet_rook',
+  'mmadu',
+  'thirteenth',
+  'saltflat',
+  'oyelaran',
+  'kestrelbait',
 ]
 
 const makeEntries = (seed: number): LeaderboardEntry[] =>

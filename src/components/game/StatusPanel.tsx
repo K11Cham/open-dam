@@ -22,7 +22,14 @@ interface StatusPanelProps {
  * this game has (call a skipped capture, keep capturing or stop), any pending
  * offer, and the result with what to do next.
  */
-export default function StatusPanel({ controller, localSeats, perspective, thinkingSeat, onRematch, onNewGame }: StatusPanelProps) {
+export default function StatusPanel({
+  controller,
+  localSeats,
+  perspective,
+  thinkingSeat,
+  onRematch,
+  onNewGame,
+}: StatusPanelProps) {
   const { position, state, names, over, toMove, canAct, snapshot } = controller
   const offer = state.offer
   const you = (player: PlayerId) => perspective === player

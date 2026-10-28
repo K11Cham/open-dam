@@ -61,7 +61,11 @@ currentSection = 'Movement'
   const st = fromAscii(['.....', '.....', '..a..', '.....', '.....'], 'player1')
   const dests = destinationsFor(st, { row: 2, col: 2 })
   const set = new Set(dests.slides.map((d) => `${d.row},${d.col}`))
-  check('normal piece moves forward/left/right only', set.size === 3 && set.has('1,2') && set.has('2,1') && set.has('2,3'), [...set].join(' '))
+  check(
+    'normal piece moves forward/left/right only',
+    set.size === 3 && set.has('1,2') && set.has('2,1') && set.has('2,3'),
+    [...set].join(' '),
+  )
   check('normal piece cannot move backward', !set.has('3,2'))
 
   const diag = applyMove(st, { row: 2, col: 2 }, { row: 1, col: 1 })
@@ -84,7 +88,10 @@ currentSection = 'Captures'
   const res = applyMove(st, { row: 3, col: 2 }, { row: 1, col: 2 })
   check('short jump removes the jumped piece', !res.error && res.state.board[2][2] === null)
   check('short jump lands directly beyond', res.state.board[1][2]?.player === 'player1')
-  check('capture emits a capture event', res.events.some((e) => e.type === 'capture'))
+  check(
+    'capture emits a capture event',
+    res.events.some((e) => e.type === 'capture'),
+  )
 
   const far = applyMove(st, { row: 3, col: 2 }, { row: 0, col: 2 })
   check('normal piece cannot overshoot the landing square', !!far.error)
@@ -111,7 +118,10 @@ currentSection = 'Chain captures'
   const first = applyMove(st, { row: 4, col: 1 }, { row: 2, col: 1 })
   check('chain stays with the same player', first.state.currentPlayer === 'player1')
   check('chain is flagged active', first.state.chain.active === true)
-  check('chain-continue event emitted', first.events.some((e) => e.type === 'chain-continue'))
+  check(
+    'chain-continue event emitted',
+    first.events.some((e) => e.type === 'chain-continue'),
+  )
 
   const wrong = applyMove(first.state, { row: 2, col: 1 }, { row: 2, col: 2 })
   check('mid-chain sliding is rejected', !!wrong.error)
@@ -148,7 +158,10 @@ currentSection = 'Promotion policies'
   const r2 = applyMove(after, { row: 2, col: 1 }, { row: 0, col: 1 })
   check('promote-after-chain does not crown yet', r2.state.board[0][1]?.isKing === false)
   check('promote-after-chain flags a pending crown', r2.state.chain.pendingPromotionPieceId !== null)
-  check('promote-after-chain emits a deferred promotion', r2.events.some((e) => e.type === 'promotion' && e.deferred))
+  check(
+    'promote-after-chain emits a deferred promotion',
+    r2.events.some((e) => e.type === 'promotion' && e.deferred),
+  )
   const r2b = declineChain(r2.state)
   check('pending crown arrives when the chain ends', r2b.state.board[0][1]?.isKing === true)
 
@@ -167,7 +180,10 @@ currentSection = 'Auto-king'
   const st = fromAscii(['.....', '.b...', '..b..', '..a..', '.....'], 'player1')
   const res = applyMove(st, { row: 3, col: 2 }, { row: 1, col: 2 })
   check('lone survivor is crowned automatically', res.state.board[1][1]?.isKing === true, ascii(res.state))
-  check('auto-king emits its own event', res.events.some((e) => e.type === 'auto-king'))
+  check(
+    'auto-king emits its own event',
+    res.events.some((e) => e.type === 'auto-king'),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -185,7 +201,10 @@ currentSection = 'Calling'
   const called = applyCall(slid.state)
   check('call removes the offending piece', countPieces(called.state.board, 'player1') === 1)
   check('call does not end the turn', called.state.currentPlayer === 'player2')
-  check('call is recorded in the move list', called.state.moves.some((m) => m.kind === 'call'))
+  check(
+    'call is recorded in the move list',
+    called.state.moves.some((m) => m.kind === 'call'),
+  )
   check('call notation names the square', !!called.state.moves.find((m) => m.kind === 'call')?.notation.startsWith('!'))
 
   // scope: all
@@ -195,13 +214,24 @@ currentSection = 'Calling'
   const slid2 = applyMove(multi, { row: 4, col: 0 }, { row: 3, col: 0 })
   check('two offenders detected', slid2.state.offenders.length === 2, `${slid2.state.offenders.length}`)
   const calledAll = applyCall(slid2.state)
-  check("scope 'all' removes both", countPieces(calledAll.state.board, 'player1') === 1, `${countPieces(calledAll.state.board, 'player1')}`)
+  check(
+    "scope 'all' removes both",
+    countPieces(calledAll.state.board, 'player1') === 1,
+    `${countPieces(calledAll.state.board, 'player1')}`,
+  )
 
   // scope: choose-one needs a target when there is more than one
-  const chooseSt = { ...slid2.state, settings: { ...slid2.state.settings, call: { scope: 'choose-one' as const, abandonedChainCallable: true } } }
+  const chooseSt = {
+    ...slid2.state,
+    settings: { ...slid2.state.settings, call: { scope: 'choose-one' as const, abandonedChainCallable: true } },
+  }
   check('choose-one without a target is rejected', !!applyCall(chooseSt).error)
   const picked = applyCall(chooseSt, chooseSt.offenders[1].pieceId)
-  check('choose-one removes exactly one', countPieces(picked.state.board, 'player1') === 2, `${countPieces(picked.state.board, 'player1')}`)
+  check(
+    'choose-one removes exactly one',
+    countPieces(picked.state.board, 'player1') === 2,
+    `${countPieces(picked.state.board, 'player1')}`,
+  )
 
   // capturing discharges the obligation
   const took = applyMove(multi, { row: 3, col: 1 }, { row: 1, col: 1 })
@@ -232,7 +262,10 @@ currentSection = 'End conditions'
   const st = fromAscii(['.....', '.....', '..b..', '..a..', '.....'], 'player1')
   const win = applyMove(st, { row: 3, col: 2 }, { row: 1, col: 2 })
   check('losing every piece is a loss', win.state.status.kind === 'win' && win.state.status.winner === 'player1')
-  check('win event emitted', win.events.some((e) => e.type === 'win'))
+  check(
+    'win event emitted',
+    win.events.some((e) => e.type === 'win'),
+  )
 
   // 1v1 with no captures and no calls = tie
   const tie = fromAscii(['....b', '.....', '.....', '.....', 'a....'], 'player1')
@@ -242,11 +275,18 @@ currentSection = 'End conditions'
   // 1v1 but a capture exists -> play continues
   const live = fromAscii(['.....', '.....', '..B..', '..A..', '.....'], 'player2')
   const liveMove = applyMove(live, { row: 2, col: 2 }, { row: 1, col: 2 })
-  check('1v1 with a capture available keeps playing', liveMove.state.status.kind === 'playing', JSON.stringify(liveMove.state.status))
+  check(
+    '1v1 with a capture available keeps playing',
+    liveMove.state.status.kind === 'playing',
+    JSON.stringify(liveMove.state.status),
+  )
 
   const resigned = resign(fromAscii(['.....', '.....', '..b..', '..a..', '.....'], 'player1'), 'player1')
   check('resignation loses immediately', resigned.state.status.kind === 'win' && resigned.state.status.winner === 'player2')
-  check('resignation is recorded', resigned.state.moves.some((m) => m.kind === 'resign'))
+  check(
+    'resignation is recorded',
+    resigned.state.moves.some((m) => m.kind === 'resign'),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -257,9 +297,12 @@ currentSection = 'Draw counters'
     draw: { threefoldRepetition: false, pliesWithoutCapture: 6 },
   })
   const shuffle: Array<[number, number, number, number]> = [
-    [0, 1, 0, 2], [4, 1, 4, 2],
-    [0, 2, 0, 1], [4, 2, 4, 1],
-    [0, 1, 0, 2], [4, 1, 4, 2],
+    [0, 1, 0, 2],
+    [4, 1, 4, 2],
+    [0, 2, 0, 1],
+    [4, 2, 4, 1],
+    [0, 1, 0, 2],
+    [4, 1, 4, 2],
   ]
   for (const [fr, fc, tr, tc] of shuffle) {
     const res = applyMove(st, { row: fr, col: fc }, { row: tr, col: tc })
@@ -300,7 +343,10 @@ currentSection = 'Yin/yang opening'
 
   const s7 = createInitialState({ boardSize: 7, boardType: 'yinyang' })
   const d = destinationsFor(s7, { row: 4, col: 3 })
-  check('centre appears as a legal destination on move one', d.slides.some((c) => c.row === 3 && c.col === 3))
+  check(
+    'centre appears as a legal destination on move one',
+    d.slides.some((c) => c.row === 3 && c.col === 3),
+  )
   const d2 = destinationsFor(s7, { row: 6, col: 6 })
   check('an illegal centre placement is not offered', !d2.slides.some((c) => c.row === 3 && c.col === 3))
 }
@@ -330,7 +376,6 @@ currentSection = 'Regression: legacy direction bug'
   check('capture generator agrees with move generator', getCaptures(st.board, 'player1').length === 0)
 }
 
-
 // ---------------------------------------------------------------------------
 currentSection = 'Offenders follow their piece'
 // ---------------------------------------------------------------------------
@@ -341,7 +386,11 @@ currentSection = 'Offenders follow their piece'
   const slid = applyMove(st, { row: 3, col: 2 }, { row: 3, col: 3 })
   const offender = slid.state.offenders[0]
   check('the piece that moved is still the offender', slid.state.offenders.length === 1)
-  check('its square is updated to where it landed', offender?.at.row === 3 && offender?.at.col === 3, JSON.stringify(offender?.at))
+  check(
+    'its square is updated to where it landed',
+    offender?.at.row === 3 && offender?.at.col === 3,
+    JSON.stringify(offender?.at),
+  )
   const called = applyCall(slid.state)
   check('calling removes the piece from its new square', called.state.board[3][3] === null && !called.error)
 }
@@ -372,7 +421,11 @@ currentSection = 'Blocked side loses'
   const quiet = applyMove(callable, { row: 4, col: 0 }, { row: 3, col: 0 })
   check('a pending call keeps a blocked side alive', quiet.state.status.kind === 'playing', JSON.stringify(quiet.state.status))
   const freed = applyCall(quiet.state)
-  check('after the call the freed side plays on', !freed.error && freed.state.status.kind === 'playing', JSON.stringify(freed.state.status))
+  check(
+    'after the call the freed side plays on',
+    !freed.error && freed.state.status.kind === 'playing',
+    JSON.stringify(freed.state.status),
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -384,9 +437,16 @@ currentSection = 'Action dispatcher'
   const direct = applyMove(st, { row: 3, col: 2 }, { row: 2, col: 2 })
   check('applyAction(move) matches applyMove', JSON.stringify(viaAction.state) === JSON.stringify(direct.state))
   const timedOut = applyAction(st, { type: 'timeout', player: 'player1' })
-  check('timeout ends the game for the flagged side', timedOut.state.status.kind === 'win' && timedOut.state.status.winner === 'player2')
+  check(
+    'timeout ends the game for the flagged side',
+    timedOut.state.status.kind === 'win' && timedOut.state.status.winner === 'player2',
+  )
   check('timeout is recorded in the move list', timedOut.state.moves.at(-1)?.kind === 'timeout')
   const actions = legalActions(st)
-  check('every listed opening action is accepted', actions.every((a) => !applyAction(st, a).error), `${actions.length}`)
+  check(
+    'every listed opening action is accepted',
+    actions.every((a) => !applyAction(st, a).error),
+    `${actions.length}`,
+  )
   check('legal actions list is non-empty at the start', actions.length > 0)
 }

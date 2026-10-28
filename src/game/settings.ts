@@ -1,11 +1,4 @@
-import type {
-  BoardSize,
-  BoardType,
-  PromotionPolicy,
-  ResolvedPromotionPolicy,
-  RuleSettings,
-  TimeControl,
-} from './types'
+import type { BoardSize, BoardType, PromotionPolicy, ResolvedPromotionPolicy, RuleSettings, TimeControl } from './types'
 
 export const TIME_CONTROLS: TimeControl[] = [
   { label: '1+0', initialMs: 60_000, incrementMs: 0 },
@@ -15,8 +8,7 @@ export const TIME_CONTROLS: TimeControl[] = [
   { label: '30+10', initialMs: 1_800_000, incrementMs: 10_000 },
 ]
 
-export const boardTypeForSize = (size: BoardSize): BoardType =>
-  size % 2 === 0 ? 'even' : 'yinyang'
+export const boardTypeForSize = (size: BoardSize): BoardType => (size % 2 === 0 ? 'even' : 'yinyang')
 
 /**
  * Defaults, with reasoning for the two subjective calling toggles.
@@ -109,10 +101,8 @@ export interface SeekEntry<T = unknown> {
 }
 
 /** Filter a pool of open seeks down to the ones this player could be paired with. */
-export const filterCompatibleSeeks = <T>(
-  mine: RuleSettings,
-  pool: SeekEntry<T>[],
-): SeekEntry<T>[] => pool.filter((seek) => settingsAreCompatible(mine, seek.settings))
+export const filterCompatibleSeeks = <T>(mine: RuleSettings, pool: SeekEntry<T>[]): SeekEntry<T>[] =>
+  pool.filter((seek) => settingsAreCompatible(mine, seek.settings))
 
 export const PROMOTION_POLICY_LABELS: Record<PromotionPolicy, string> = {
   'promote-and-continue': 'Crown and continue',
@@ -122,12 +112,9 @@ export const PROMOTION_POLICY_LABELS: Record<PromotionPolicy, string> = {
 }
 
 export const PROMOTION_POLICY_BLURBS: Record<PromotionPolicy, string> = {
-  'promote-and-continue':
-    'The piece is crowned the moment it lands on the far row and keeps capturing with king movement.',
-  'promote-after-chain':
-    'The chain finishes with normal-piece movement; the crown arrives once the chain ends.',
-  'end-turn-on-promotion':
-    'Getting crowned ends your turn on the spot, even mid-chain.',
+  'promote-and-continue': 'The piece is crowned the moment it lands on the far row and keeps capturing with king movement.',
+  'promote-after-chain': 'The chain finishes with normal-piece movement; the crown arrives once the chain ends.',
+  'end-turn-on-promotion': 'Getting crowned ends your turn on the spot, even mid-chain.',
   'match-opponent':
     'Play whichever rule your opponent picked. Used for online matchmaking; on its own it means Crown and continue.',
 }

@@ -39,7 +39,11 @@ const isSeat = (value: unknown): value is Seat =>
   (value.difficulty === undefined || isDifficultyId(value.difficulty))
 
 const isAction = (value: unknown): value is MatchAction =>
-  isObject(value) && typeof value.seq === 'number' && typeof value.at === 'number' && typeof value.by === 'string' && isObject(value.intent)
+  isObject(value) &&
+  typeof value.seq === 'number' &&
+  typeof value.at === 'number' &&
+  typeof value.by === 'string' &&
+  isObject(value.intent)
 
 /** Validate the shape, normalise settings, and prove the log replays. */
 export function parseRecord(value: unknown): { record: MatchRecord; state: MatchState } | null {
