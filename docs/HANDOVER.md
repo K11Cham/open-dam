@@ -4,9 +4,12 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 
 ## Current state (2026-10-28)
 
-- `feat/overhaul` builds and `npm run verify` passes (163 tests). Every work
-  row and every verification row is done except the future server rows
-  **w25** and **w26**, which need a hosted server.
+- `feat/overhaul` builds and `npm run verify` passes (189 tests). Every work
+  row and every verification row is done except the server rows **w25** and
+  **w26**. Both are `doing`: their pure, tested parts exist (`src/net/server.ts`,
+  `websocket.ts`, `matchmaking.ts`, `src/match/rating.ts`); what is left needs
+  a hosted server, a database or accounts (see each row's note and
+  "Adding a real server" in MULTIPLAYER.md).
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
   Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
@@ -107,6 +110,29 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-28 20:45–21:05 (scheduled shift)
+
+- **Rows:** w25 → doing (first slice: `MatchServer` and `WebSocketTransport`),
+  w26 → doing (first slice: Elo ratings, `SeekQueue`, `onFinished` hook). No
+  other rows were open.
+- **Commits:** 598f49b (w25), ffe75a5 (w26), 0cbdcba (server refuses stored
+  games that do not replay instead of throwing), and this log entry.
+- **Checks:** `npm run verify` before each commit (189 tests at the end).
+  `server.test.ts` plays games end to end over a fake socket network,
+  including a dropped link, a server crash and restart, and a flag. No
+  browser check: nothing in the app uses the new code yet. `check:ai` not
+  run (no AI changes).
+- **Behaviour change to know about:** in `linkHost`, a `ping` from a client
+  whose seat claim has lapsed now wins the seat back if nobody else holds it.
+  Both reconnect tests fail without it. The two-tab online mode uses the same
+  code; its tests pass, but it was not re-checked in the browser.
+- **Notes:** this shift's session started at 02:10 and sat idle until 20:45,
+  while another session committed the 08:00–20:12 work. Check `git log`
+  before trusting the board. The next step for w25 is a Node entry point that
+  runs a WebSocket server and hands connections to `MatchServer.accept`. That
+  needs a dependency (for example `ws`) and a choice of where to host it, so
+  it is the owner's call.
 
 ### 2026-10-28 (end of game, New Game, hero)
 
