@@ -40,6 +40,7 @@ function play(red: DifficultyId, blue: DifficultyId, size: 5 | 7, seed: number):
       missCallChance: tier.missCallChance,
       callAware: tier.callAware,
       forcingExtensions: tier.forcingExtensions,
+      openingTemperature: tier.openingTemperature,
       random,
     })
     if (!result) break

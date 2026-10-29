@@ -236,7 +236,7 @@ export default function HomePage() {
                 board={PREVIEWS.learn}
                 icon={<BookOpen size={18} aria-hidden />}
                 title="Learn the rules"
-                text="Eight short chapters, with boards that play the examples out."
+                text="Eleven short chapters, with example boards to watch and puzzles to solve."
               />
               <Tile
                 to="/analysis"

@@ -17,8 +17,12 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
   Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
+- The computer now opens from a measured **opening book** (row w34), and the
+  Learn page has **puzzles** and two strategy chapters (row w35). Re-measure
+  the book with `npm run openings` after any change to the rules or the
+  evaluation (recipe in WALKTHROUGH.md Part 11).
 - With the board clear, shifts do the quality pass described in the scheduled
-  task: look for real problems, add rows (next ids **w31**, **v13**), fix them.
+  task: look for real problems, add rows (next ids **w36**, **v14**), fix them.
 - Nothing has been pushed and `main` is untouched.
 
 ## Starting a new session
@@ -114,6 +118,24 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-28 late evening (owner's requests: openings, lessons)
+
+- **Rows added and done:** w31 (Sand theme), w32 (end of game, New Game,
+  hero), w33 (sound effects) were finished earlier but missing from the board;
+  w34 (opening book), w35 (strategy lessons and puzzles), v13 (puzzles played
+  in the browser).
+- **Engine fix:** `legalActions` left out the yin/yang centre placements, so
+  the computer never used the special first move. It now lists every legal one.
+- **Opening book:** Seriñ played itself from every first move on 5×5, 7×7 and
+  9×9 (`npm run openings`, 16 games per opening on 5×5, 12 on 7×7, 8 on 9×9).
+  Each tier picks its first move by weight, sharper for stronger tiers. 9×9 is
+  still noisy at 8 games; more games there would sharpen it.
+- **Lessons:** puzzles in five existing chapters plus two new chapters, built
+  from the owner's strategy notes (the two-square trap, breaking it with a
+  supported pair, defending it). Every puzzle replays in `tutorial.test.ts`.
+- **Checks:** see the commit; puzzles were played in the browser at desktop
+  and 375 px, in Neobrutalist, Sand and Carnival.
 
 ### 2026-10-28 20:45–21:05 (scheduled shift)
 

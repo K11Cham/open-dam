@@ -56,6 +56,8 @@ export interface Difficulty {
   callAware: boolean
   /** Extra plies per line for replies forced by the calling rule. */
   forcingExtensions: number
+  /** How loosely the first move follows the opening book; lower is sharper (see openings.ts). */
+  openingTemperature: number
   profile: EvalProfile
   /** Range of simulated thinking time, in ms. */
   thinkMs: [number, number]
@@ -143,6 +145,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     missCallChance: 0.5,
     callAware: false,
     forcingExtensions: 0,
+    openingTemperature: 2,
     profile: MATERIAL_ONLY,
     thinkMs: [350, 750],
     undo: { maxSwing: Infinity, graceUntilPly: Infinity },
@@ -163,6 +166,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     missCallChance: 0.2,
     callAware: false,
     forcingExtensions: 0,
+    openingTemperature: 0.8,
     profile: GREEDY,
     thinkMs: [400, 850],
     undo: { maxSwing: 300, graceUntilPly: 10 },
@@ -183,6 +187,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     missCallChance: 0.04,
     callAware: true,
     forcingExtensions: 0,
+    openingTemperature: 0.4,
     profile: TACTICAL,
     thinkMs: [450, 950],
     undo: { maxSwing: 150, graceUntilPly: 6 },
@@ -203,6 +208,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     missCallChance: 0,
     callAware: true,
     forcingExtensions: 1,
+    openingTemperature: 0.25,
     profile: FULL,
     thinkMs: [500, 1100],
     undo: { maxSwing: 60, graceUntilPly: 4 },
@@ -223,6 +229,7 @@ export const DIFFICULTIES: Record<DifficultyId, Difficulty> = {
     missCallChance: 0,
     callAware: true,
     forcingExtensions: 2,
+    openingTemperature: 0.15,
     profile: MASTER,
     thinkMs: [500, 1200],
     undo: { maxSwing: 25, graceUntilPly: 2 },

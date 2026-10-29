@@ -47,6 +47,7 @@ every visual decision. Lower layers never import higher ones.
 | `scripts/ai-strength.test.ts`   | Tier-vs-tier matches; asserts stronger tiers outscore weaker ones. Slow; run with `npm run check:ai`.   |
 | `scripts/ai-endgames.test.ts`   | Endgame conversion from random starts (`npm run check:endgames`).                                       |
 | `scripts/ai-replay.test.ts`     | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.              |
+| `scripts/ai-openings.test.ts`   | Seriñ plays itself from every first move; the source of the opening book (`npm run openings`).          |
 | `scripts/render-sounds.test.ts` | Renders every theme's sounds to `sound-preview/` as WAV files with a listening page (`npm run sounds`). |
 
 ## `public/`
@@ -85,12 +86,13 @@ every visual decision. Lower layers never import higher ones.
 | `evaluate.ts`      | Position scoring tuned to these rules (material, mobility, advancement, back row, call exposure, threats, king reach, endgame damping, draw counters, lone-king technique, `declineCost`).                                                   |
 | `search.ts`        | Negamax with alpha-beta over the real engine: chain legs at no depth cost, greedy calls, call-aware quiescence, forced-reply extensions, transposition table, killer/history ordering, iterative deepening, root noise and bounded mistakes. |
 | `hash.ts`          | Zobrist keys for positions, used by the transposition table.                                                                                                                                                                                 |
+| `openings.ts`      | The opening book: measured scores for every yin/yang first move, and `pickOpening`, a weighted pick whose sharpness is each tier's `openingTemperature`.                                                                                     |
 | `difficulty.ts`    | The five tiers (Döff, Khàlé, Ndö, Màam, Seriñ): depth, time budget, evaluation profile, noise, mistakes, missed calls, call awareness, extensions, undo and draw attitudes; old ids mapped by `normalizeDifficultyId`.                       |
 | `opponent.ts`      | Non-move decisions: answer an undo request or a draw offer; thinking delay.                                                                                                                                                                  |
 | `client.ts`        | `searchAsync`: runs the search in a Web Worker, falling back to the main thread.                                                                                                                                                             |
 | `search.worker.ts` | The worker: receives a position, returns the chosen action.                                                                                                                                                                                  |
 | `index.ts`         | Barrel re-export.                                                                                                                                                                                                                            |
-| `ai.test.ts`       | Legality for every tier, sacrifices, lone-king finishes, missed calls, time budget, offer decisions.                                                                                                                                         |
+| `ai.test.ts`       | Legality for every tier, the opening book, sacrifices, lone-king finishes, missed calls, time budget, offer decisions.                                                                                                                       |
 
 ## `src/audio/` — sound effects (pure, except `player.ts`)
 
@@ -183,10 +185,14 @@ every visual decision. Lower layers never import higher ones.
 | `TutorialPage.tsx`          | `/learn` overview and `/learn/:chapterId`.                                     |
 | `LeaderboardsPage.tsx`      | Sample standings, labelled as such.                                            |
 | `NotFoundPage.tsx`          | Unknown addresses.                                                             |
-| `tutorial/chapters.ts`      | The eight chapters as data.                                                    |
+| `tutorial/chapters.ts`      | The eleven chapters as data: text, example boards and puzzles.                 |
 | `tutorial/script.ts`        | Example-board scripts and their step notation.                                 |
 | `tutorial/ExampleBoard.tsx` | Plays a script through the engine, step by step.                               |
-| `tutorial/tutorial.test.ts` | Replays every example.                                                         |
+| `tutorial/puzzle.ts`        | Puzzle data types and `judge`, which decides if the reader's move is right.    |
+| `tutorial/PuzzleBoard.tsx`  | A board the reader plays: feedback, scripted replies, punished mistakes.       |
+| `tutorial/progress.ts`      | Which puzzles this browser has solved (local storage).                         |
+| `tutorial/openings.ts`      | The opening puzzle's answers, read from the AI's opening book.                 |
+| `tutorial/tutorial.test.ts` | Replays every example and every puzzle's answers, mistakes and punishments.    |
 
 ## `src/themes/`
 

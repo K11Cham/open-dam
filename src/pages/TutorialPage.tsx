@@ -7,13 +7,31 @@ import { useSideNames } from '../context/useTheme'
 import { RULES_AT_A_GLANCE } from '../game/settings'
 import { usePageTitle } from '../lib/usePageTitle'
 import ExampleBoard from './tutorial/ExampleBoard'
+import PuzzleBoard from './tutorial/PuzzleBoard'
 import { CHAPTERS, findChapter } from './tutorial/chapters'
 import type { Chapter } from './tutorial/chapters'
+import { useSolvedPuzzles } from './tutorial/progress'
 
 const fill = (text: string, names: Record<'player1' | 'player2', string>) =>
   text.replaceAll('{p1}', names.player1).replaceAll('{p2}', names.player2)
 
+const puzzleIds = (chapter: Chapter) => chapter.sections.flatMap((s) => (s.puzzle ? [s.puzzle.id] : []))
+
+/** "2/3" beside a chapter, so a reader can see what is left to solve. */
+function PuzzleCount({ chapter, solved }: { chapter: Chapter; solved: readonly string[] }) {
+  const ids = puzzleIds(chapter)
+  if (ids.length === 0) return null
+  const done = ids.filter((id) => solved.includes(id)).length
+  return (
+    <span className={`chapters__puzzles ${done === ids.length ? 'is-done' : ''}`}>
+      <span className="visually-hidden">Puzzles solved: </span>
+      {done}/{ids.length}
+    </span>
+  )
+}
+
 function ChapterNav({ current }: { current?: string }) {
+  const solved = useSolvedPuzzles()
   return (
     <nav className="chapters" aria-label="Chapters">
       <NavLink to="/learn" end className={({ isActive }) => `chapters__link ${isActive ? 'is-active' : ''}`}>
@@ -30,6 +48,7 @@ function ChapterNav({ current }: { current?: string }) {
             >
               <span className="chapters__num">{index + 1}</span>
               <span>{chapter.title}</span>
+              <PuzzleCount chapter={chapter} solved={solved} />
             </NavLink>
           </li>
         ))}
@@ -40,6 +59,7 @@ function ChapterNav({ current }: { current?: string }) {
 
 function Overview() {
   const names = useSideNames()
+  const solved = useSolvedPuzzles()
   return (
     <>
       <Panel as="section" aria-labelledby="glance-h">
@@ -58,6 +78,7 @@ function Overview() {
             <Link className="card card--link" to={`/learn/${chapter.id}`}>
               <span className="card__head">
                 <span className="card__badge">Chapter {index + 1}</span>
+                <PuzzleCount chapter={chapter} solved={solved} />
               </span>
               <span className="card__title">{chapter.title}</span>
               <span className="card__text">{chapter.summary}</span>
@@ -89,6 +110,7 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
             ))}
           </div>
           {section.example && <ExampleBoard spec={section.example} label={`Example: ${section.heading}`} />}
+          {section.puzzle && <PuzzleBoard spec={section.puzzle} label={`Puzzle: ${section.heading}`} />}
         </section>
       ))}
       <nav className="lesson__pager" aria-label="Chapter navigation">
@@ -126,7 +148,10 @@ export default function TutorialPage() {
         <header className="page-head">
           <p className="eyebrow">Learn</p>
           <h1 className="page-title">How to play Dam</h1>
-          <p className="page-lede">Eight short chapters. Every example board plays real moves through the game engine.</p>
+          <p className="page-lede">
+            Short chapters, from the first move to winning plans. Watch the examples, then solve the puzzles yourself: every board
+            plays real moves through the game engine.
+          </p>
         </header>
         <div className="learn">
           <ChapterNav current={chapter?.id} />

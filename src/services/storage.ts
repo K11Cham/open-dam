@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   theme: 'openDam.theme',
   sound: 'openDam.sound',
   lastSetup: 'openDam.lastSetup',
+  puzzles: 'openDam.puzzles',
 } as const
 
 export interface StorageService {

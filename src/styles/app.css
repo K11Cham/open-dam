@@ -2513,6 +2513,110 @@
   align-self: end;
 }
 
+/* Puzzles: the status box changes colour with the verdict, so right and
+   wrong read at a glance, and the words carry the same news for screen readers. */
+.puzzle__status {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--dam-border-soft);
+  border-left-width: 4px;
+  border-radius: var(--dam-radius-sm);
+  background: var(--dam-surface);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.puzzle__status.is-goal {
+  border-left-color: var(--dam-accent);
+}
+
+.puzzle__status.is-right {
+  border-left-color: var(--dam-success);
+  background: color-mix(in srgb, var(--dam-success) 10%, var(--dam-surface));
+}
+
+.puzzle__status.is-wrong {
+  border-left-color: var(--dam-danger);
+  background: color-mix(in srgb, var(--dam-danger) 9%, var(--dam-surface));
+}
+
+.puzzle__status.is-solved {
+  border-color: var(--dam-success);
+  border-left-width: 4px;
+  background: color-mix(in srgb, var(--dam-success) 16%, var(--dam-surface));
+  animation: dam-solved 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* A small bounce and a ring that fades out: the reader did something, so the box answers. */
+@keyframes dam-solved {
+  0% {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--dam-success) 45%, transparent);
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px color-mix(in srgb, var(--dam-success) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .puzzle__status.is-solved {
+    animation: none;
+  }
+}
+
+.puzzle__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--dam-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dam-ink-muted);
+}
+
+.puzzle__count {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.puzzle__message {
+  display: block;
+}
+
+.puzzle__hint {
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--dam-border-soft);
+  color: var(--dam-ink-muted);
+  font-size: 14px;
+}
+
+.chapters__puzzles {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-family: var(--dam-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dam-ink-muted);
+  background: var(--dam-surface-2);
+}
+
+.chapters__puzzles.is-done {
+  color: var(--dam-accent-ink);
+  background: var(--dam-accent);
+}
+
+.card__head .chapters__puzzles {
+  margin-left: auto;
+}
+
 /* ── Tables ─────────────────────────────────────────────────────────────── */
 
 .table-wrap {

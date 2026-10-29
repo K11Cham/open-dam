@@ -1,3 +1,5 @@
+import { OPENING_ANSWERS, OPENING_HINT } from './openings'
+import type { PuzzleSpec } from './puzzle'
 import type { ExampleSpec } from './script'
 
 /**
@@ -7,11 +9,15 @@ import type { ExampleSpec } from './script'
  *
  * Coordinates: files a–e left to right, ranks 1–5 bottom to top. {p1} starts
  * at the bottom and moves up; {p2} starts at the top and moves down.
+ *
+ * A section can also hold a puzzle, where the reader plays {p1} and has to
+ * find the move the section teaches (see puzzle.ts).
  */
 export interface ChapterSection {
   heading: string
   paragraphs: string[]
   example?: ExampleSpec
+  puzzle?: PuzzleSpec
 }
 
 export interface Chapter {
@@ -65,6 +71,19 @@ export const CHAPTERS: Chapter[] = [
           ],
         },
       },
+      {
+        heading: 'Your turn: take it',
+        paragraphs: ['Pick up a piece by tapping it, then tap where it should go. You can also drag it.'],
+        puzzle: {
+          id: 'moving-capture',
+          rows: ['b...b', '.....', '..ba.', '.....', 'a....'],
+          toMove: 'player1',
+          goal: 'Capture the {p2} piece next to yours.',
+          hint: 'Your piece on d3 can jump sideways. Look at the square just past c3.',
+          turns: [{ accept: ['d3xb3'], praise: 'Jumped and removed.' }],
+          solved: 'That is a capture: over the piece, onto the empty square beyond it.',
+        },
+      },
     ],
   },
   {
@@ -110,6 +129,23 @@ export const CHAPTERS: Chapter[] = [
             },
             { play: 'a5-a4', caption: '{p2} then makes a normal move.' },
           ],
+        },
+      },
+      {
+        heading: 'Your turn: take three',
+        paragraphs: ['One piece, three captures, one turn. Each jump can turn a corner.'],
+        puzzle: {
+          id: 'chains-three',
+          rows: ['.....', 'b..b.', '..b..', '.b...', '.a..a'],
+          toMove: 'player1',
+          goal: 'Take three {p2} pieces in one turn with the piece on b1.',
+          hint: 'Start straight up over b2. After each landing, look forward and sideways.',
+          turns: [
+            { accept: ['b1xb3'], praise: 'One. You are still on move, so keep going.' },
+            { accept: ['b3xd3'], praise: 'Two. One more.' },
+            { accept: ['d3xd5'], praise: 'Three, and it landed on the far row, so it is crowned.' },
+          ],
+          solved: 'Three pieces in one turn, and a king at the end of it.',
         },
       },
     ],
@@ -185,6 +221,20 @@ export const CHAPTERS: Chapter[] = [
           ],
         },
       },
+      {
+        heading: 'Your turn: call it',
+        paragraphs: ['When a call is open, the pieces you can call are marked and a Call button appears.'],
+        puzzle: {
+          id: 'calling-call',
+          rows: ['b.b.b', '..b..', '..a..', '.....', 'a....'],
+          toMove: 'player2',
+          setup: ['a5-a4'],
+          goal: '{p2} just played a5 to a4, but its piece on c4 could have captured yours on c3. Punish it.',
+          hint: 'Press Call. It removes the piece that skipped the capture.',
+          turns: [{ accept: ['call'], praise: 'Called. The piece on c4 is gone.' }],
+          solved: 'Calling cost you nothing: it is still your move.',
+        },
+      },
     ],
   },
   {
@@ -207,7 +257,12 @@ export const CHAPTERS: Chapter[] = [
               play: 'a2-c3',
               caption: '{p1} sends the piece on a2 straight into the centre. Only the first move may jump like this.',
             },
-            { play: 'a3-a2', caption: '{p2} answers by stepping into the square it left.' },
+            { play: 'a3-a2', caption: '{p2} has only one legal answer: a3 steps into the square a2 left.' },
+            {
+              play: 'c3xa3',
+              caption:
+                'That empties a3, so the centre piece jumps b3 sideways into it. The Winning plans chapter goes through every first move like this.',
+            },
           ],
         },
       },
@@ -277,6 +332,26 @@ export const CHAPTERS: Chapter[] = [
         ],
       },
       {
+        heading: 'Cover the square behind',
+        paragraphs: [
+          'A piece can be jumped when an enemy is right next to it and the square on the other side is empty. So the squares behind and beside your pieces matter as much as the pieces themselves.',
+          'Two pieces one behind the other cannot be jumped from the front. Two side by side protect each other from the side. The edge of the board counts as a friend: nothing lands off the board.',
+        ],
+        puzzle: {
+          id: 'tempo-safe',
+          rows: ['.....', '.b.b.', '.....', 'aaaaa', '.....'],
+          toMove: 'player1',
+          goal: 'Move one piece forward without giving {p2} anything to capture.',
+          hint: 'Stepping up under b4 or d4 leaves an empty square behind you. Find a step with nobody waiting above it.',
+          turns: [{ accept: ['c2-c3'], test: 'safe', praise: 'Nothing for {p2} to take.' }],
+          mistakes: [
+            { play: 'b2-b3', why: 'b3 sits right under b4, and b2 behind it is now empty, so b4 jumps you.', punish: ['b4xb2'] },
+            { play: 'd2-d3', why: 'd3 sits right under d4, and d2 behind it is now empty, so d4 jumps you.', punish: ['d4xd2'] },
+          ],
+          solved: 'Before every step, ask: what is next to the square I land on, and what is behind it?',
+        },
+      },
+      {
         heading: 'Leave nothing to call',
         paragraphs: [
           'Before you move, check whether any of your pieces can capture. If one can and you play elsewhere, you are handing your opponent a free call.',
@@ -294,18 +369,347 @@ export const CHAPTERS: Chapter[] = [
         heading: 'Offer one, take two',
         paragraphs: [
           'Because a skipped capture can be called, an opponent usually takes what you offer. You can use that to pull their piece onto a square where you get a chain back.',
+          'Before you offer, check every way the bait can be taken, not only the one you want. A sacrifice that leaves an empty square behind it can be taken from the side instead.',
+        ],
+        puzzle: {
+          id: 'sacrifices-two',
+          rows: ['b...b', '.b...', 'a.b..', '.a...', '.a..a'],
+          toMove: 'player1',
+          goal: 'Give {p2} one piece so that you take two back.',
+          hint: 'Put a piece on b3, under b4, so that b4 has to jump into b2, right in front of your b1. Which piece can go there without leaving a hole that c3 can use?',
+          turns: [
+            {
+              accept: ['b2-b3'],
+              praise: 'Offered. c3 cannot take it sideways: a3 is still full.',
+              reply: 'b4xb2',
+              then: 'b4 took the bait and landed on b2, right in front of your b1. Collect.',
+            },
+            { accept: ['b1xb3'], praise: 'One back. Keep going.' },
+            { accept: ['b3xd3'], praise: 'Two for one.' },
+          ],
+          mistakes: [
+            {
+              play: 'a3-b3',
+              why: 'b3 is offered, but a3 is now empty, so c3 takes it sideways into a3 instead, and nothing of yours can take back.',
+              punish: ['c3xa3'],
+            },
+          ],
+          solved: 'The bait only works when every other way to take it is closed.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'traps',
+    title: 'Traps and breakthroughs',
+    summary: 'The two-square gap, and the supported pair that breaks it.',
+    sections: [
+      {
+        heading: 'The two-square trap',
+        paragraphs: [
+          'Put two pieces in a row with exactly two empty squares between them. Any enemy piece that steps into the gap lands next to one of yours, with an empty square beyond it, so it can be jumped sideways.',
+          'One empty square is not enough: an enemy there has nothing beyond it to land on, so it is safe and blocks you. Three is too many: the middle square is safe.',
         ],
         example: {
-          rows: ['b...b', '.b...', 'a.b..', '.....', '.a..a'],
-          toMove: 'player1',
-          intro: '{p1} wants the {p2} pieces on b4 and c3.',
+          rows: ['....b', '.b...', 'a..a.', 'a..a.', '.....'],
+          toMove: 'player2',
+          intro: '{p1} has a trap on row 3: a3, two empty squares, d3.',
           steps: [
-            { play: 'a3-b3', caption: '{p1} steps into b3, right under {p2}’s piece on b4.' },
-            { play: 'b4xb2', caption: '{p2} takes it, landing on b2. Ignoring it would have let {p1} call.' },
-            { play: 'b1xb3', caption: 'Now {p1} jumps back over b2 to b3…' },
-            { play: 'b3xd3', caption: '…and keeps going over c3 to d3. One piece given, two taken.' },
+            { play: 'b4-b3', caption: '{p2} steps into the gap, next to a3.' },
+            { play: 'a3xc3', caption: 'a3 jumps it and lands on c3, right beside d3. The trap became a solid pair.' },
+            { play: 'e5-e4', caption: 'Skipping that capture would have let {p2} call, so the trap works on its own.' },
           ],
         },
+      },
+      {
+        heading: 'Your turn: spring the trap',
+        paragraphs: [
+          'An enemy that walks in alone is a gift. If a second one stands where you land, with nothing behind it, you can take that one too.',
+        ],
+        puzzle: {
+          id: 'traps-spring',
+          rows: ['.....', '..b.b', 'ab.a.', 'a..a.', '.....'],
+          toMove: 'player1',
+          goal: '{p2} stepped into your trap on b3. Make it pay as much as you can.',
+          hint: 'Jump from a3. Then look straight up from where you land.',
+          turns: [
+            { accept: ['a3xc3'], praise: 'Taken. Now look up from c3: nothing is behind c4.' },
+            { accept: ['c3xc5'], praise: 'Two pieces, and the far row crowns you.' },
+          ],
+          solved: 'The piece on c4 had nothing behind it, so the trap paid twice.',
+        },
+      },
+      {
+        heading: 'Breaking a trap',
+        paragraphs: [
+          'A trap has a weakness: its capture lands on a fixed square. Line up two pieces in the column that capture lands in, one behind the other, and then send a third piece into the gap.',
+          'The defender has to take, or be called. The capture lands right in front of your column, your back piece stops the chain, and your front piece jumps the capturer.',
+        ],
+        puzzle: {
+          id: 'traps-break',
+          rows: ['....b', 'b..b.', '.aa..', '..a..', '.....'],
+          toMove: 'player1',
+          goal: '{p2} has a trap on row 4: a4, two empty squares, d4. Break through it.',
+          hint: 'Your column on c3 and c2 is aimed at c4, the square a4 lands on when it captures. Feed the trap from b3.',
+          turns: [
+            {
+              accept: ['b3-b4'],
+              praise: 'Bait. {p2} must take it or be called.',
+              reply: 'a4xc4',
+              then: 'a4 took it and landed on c4, right in front of your column. c2 stops it going further. Your move.',
+            },
+            { accept: ['c3xc5'], praise: 'Through, and crowned on the far row.' },
+          ],
+          mistakes: [
+            {
+              play: 'c3-c4',
+              why: 'c4 lands right beside d4, and b4 on the far side of it is empty, so d4 jumps it sideways.',
+              punish: ['d4xb4'],
+            },
+          ],
+          solved: 'One piece given, a king made. The piece on c2 mattered: it stopped a4 jumping on to c2.',
+        },
+      },
+      {
+        heading: 'Your turn: defend the trap',
+        paragraphs: [
+          'The defence is to fill the square behind where your capture lands. Then the attacker’s front piece has nowhere to land, and your capture is safe.',
+        ],
+        puzzle: {
+          id: 'traps-defend',
+          rows: ['....b', '..b..', '.bb..', 'a..a.', '.a...'],
+          toMove: 'player1',
+          goal: '{p2} is lining up on your trap (a2, gap, d2). If b3 steps in and you take it, you land on c2, and c3 jumps you into your home row. Stop that.',
+          hint: 'Your capture would land on c2. Fill the square behind it.',
+          turns: [
+            { accept: ['b1-c1'], praise: 'c1 is covered.', reply: 'b3-b2', then: 'b3 stepped into the gap anyway. Take it.' },
+            { accept: ['a2xc2'], praise: 'Taken, and c3 cannot jump you: c1 is full.' },
+          ],
+          mistakes: [
+            {
+              play: 'b1-b2',
+              why: 'That plugs the gap, but b2 now has an empty square behind it: b3 jumps into your home row and is crowned.',
+              punish: ['b3xb1'],
+            },
+          ],
+          solved: 'A trap needs a floor. Keep the squares behind its landing spots full.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'endgame',
+    title: 'Trapping a lone king',
+    summary: 'Forcing the last king to capture into a recapture, and closing the net.',
+    sections: [
+      {
+        heading: 'Why a lone king is hard to catch',
+        paragraphs: [
+          'A player down to one piece has it crowned at once, and one piece each is a draw. So winning means taking every piece, and a lone king is slippery: it crosses the board in one move and never has to stop next to you.',
+          'Its weakness is the calling rule. If the lone king can capture and does not, its last piece is called and the game is over. So a lone king that can capture effectively must. Offer it a piece where every square it can land on leads into your recapture.',
+        ],
+      },
+      {
+        heading: 'Your turn: take it or be called',
+        paragraphs: ['Men can do this too. The piece behind your bait decides where the king lands.'],
+        puzzle: {
+          id: 'endgame-men',
+          rows: ['.....', '..B..', '.....', 'a.a..', '..a..'],
+          toMove: 'player1',
+          goal: '{p2} has one king left, on c4. Win the game with your men.',
+          hint: 'Put a piece right under the king. With c1 behind, the king can only land on one square, and c1 is waiting there.',
+          turns: [
+            {
+              accept: ['c2-c3'],
+              praise: 'Offered. The king must take it or be called.',
+              reply: 'c4xc2',
+              then: 'It took, and landed on c2: the only square, because c1 is full. Finish it.',
+            },
+            { accept: ['c1xc3'], test: 'wins', praise: 'No {p2} pieces left.' },
+          ],
+          mistakes: [
+            {
+              play: 'c1-b1',
+              why: 'Now c1 is empty, so the king jumps c2 and keeps going through your row.',
+              punish: ['c4xc1', 'c1xa1', 'a1xa3'],
+            },
+            {
+              play: 'c2-d2',
+              playable: true,
+              why: 'Safe, but it threatens nothing, and the king walks away. Give it something it has to take.',
+            },
+          ],
+          solved: 'Bait in front, a floor behind: the king has to land where you can take it.',
+        },
+      },
+      {
+        heading: 'Your turn: offer a king',
+        paragraphs: ['With two kings against one, you can afford to give one away, as long as the other one takes back.'],
+        puzzle: {
+          id: 'endgame-offer',
+          rows: ['B...A', '.....', '..A..', '.....', '.....'],
+          toMove: 'player1',
+          goal: 'Two kings against one. Win in two moves.',
+          hint: 'Put a king on row 5, between {p2}’s king on a5 and yours on e5.',
+          turns: [
+            {
+              accept: ['c3-c5'],
+              praise: 'Offered. The king must jump it, and e5 blocks every landing square but d5.',
+              reply: 'a5xd5',
+              then: 'It landed on d5, right next to your king on e5. Finish it.',
+            },
+            { accept: ['e5xc5'], test: 'wins', praise: 'Caught.' },
+          ],
+          mistakes: [
+            {
+              play: 'e5-b5',
+              why: 'b5 is right next to the king with c5 empty behind it, so it jumps, and lands on the c-file above your other king, and keeps going.',
+              punish: ['a5xc5', 'c5xc1'],
+            },
+            {
+              play: 'e5-d5',
+              why: 'The king jumps d5 and lands on e5, where nothing of yours can reach it. One king each is a draw.',
+              punish: ['a5xe5'],
+            },
+          ],
+          solved: 'Giving a king away is fine when the only landing square is covered.',
+        },
+      },
+      {
+        heading: 'Your turn: close the net',
+        paragraphs: [
+          'In a corner a king has only two lines to move along. Cover both, and every move it makes walks into a capture. Or offer it a piece on one of them.',
+        ],
+        puzzle: {
+          id: 'endgame-net',
+          rows: ['B....', '.....', '....A', '.....', 'A....'],
+          toMove: 'player1',
+          goal: '{p2}’s king is in the a5 corner. Your a1 king already covers the a-file. Win in two moves.',
+          hint: 'Use the e3 king. Either cover row 5 as well, or offer it on the a-file where a1 takes back.',
+          turns: [
+            {
+              accept: ['e3-e5', 'e3-a3'],
+              praise: 'Caught.',
+              explain: {
+                'e3-e5': {
+                  text: 'Both lines are covered: e5 watches row 5 and a1 watches the a-file. Wherever the king goes, it lands next to one of your kings with an empty square behind it.',
+                  line: ['a5-b5', 'e5xa5'],
+                },
+                'e3-a3': {
+                  text: 'Offered on the a-file. The king must jump a3, and with a1 full it can only land on a2, right in front of a1.',
+                  line: ['a5xa2', 'a1xa3'],
+                },
+              },
+            },
+          ],
+          mistakes: [
+            {
+              play: 'a1-a4',
+              why: 'That gives the king a piece with empty squares behind it: it jumps a4 and lands on the a-file below, out of reach. One king each is a draw.',
+              punish: ['a5xa1'],
+            },
+          ],
+          solved: 'Drive a lone king to a corner, then take away both of its lines.',
+        },
+      },
+    ],
+  },
+  {
+    id: 'plans',
+    title: 'Winning plans',
+    summary: 'Choosing an opening, guarding the home row, and winning by blocking.',
+    sections: [
+      {
+        heading: 'Your turn: choose an opening',
+        paragraphs: [
+          'On 5×5, 7×7 and 9×9 the board starts packed, so whichever square your first move empties decides {p2}’s reply. Usually {p2} has exactly one legal answer.',
+          'Never empty your home row: a piece that reaches it is crowned. And look one move further, at what {p2}’s answer leaves behind: often the square {p2} empties is one your pieces can jump into.',
+        ],
+        puzzle: {
+          id: 'plans-opening',
+          rows: 'start',
+          toMove: 'player1',
+          goal: 'Send a piece to the centre, c3, with a strong first move. Whatever you pick, you will see why it is strong or weak.',
+          hint: OPENING_HINT,
+          turns: [
+            {
+              accept: OPENING_ANSWERS,
+              praise: 'A strong start.',
+              explain: {
+                'a2-c3': {
+                  text: '{p2}’s only move is a3 into a2, filling the hole. That empties a3, so your centre piece jumps b3 sideways into it: a piece up on move two. The {p2} piece on a2 is stuck, held by a1 and b2, with c2 stopping it jumping. {p1} won all 16 of the computer’s games from here.',
+                  line: ['a3-a2', 'c3xa3'],
+                },
+                'e2-c3': {
+                  text: '{p2}’s only move is e4 jumping e3 into the hole at e2, deep in your camp, and e1 jumps straight back. The trade is even, but {p2}’s right edge is opened while yours stays solid. {p1} won all 16.',
+                  line: ['e4xe2', 'e1xe3'],
+                },
+                'e3-c3': {
+                  text: '{p2}’s only move is e4 into e3, which leaves e4 empty behind it: e2 jumps it, and e5 takes back. An even trade that opens the edge where you have more pieces. {p1} won 14 of 16 and drew 2.',
+                  line: ['e4-e3', 'e2xe4', 'e5xe3'],
+                },
+                'd2-c3': {
+                  text: '{p2}’s only move is d4 jumping d3 into the hole at d2, and d1 jumps straight back to d3. Even material, but {p2}’s d-file is open and your centre is strong. {p1} won 14 of 16.',
+                  line: ['d4xd2', 'd1xd3'],
+                },
+              },
+            },
+          ],
+          mistakes: [
+            {
+              play: 'a1-c3',
+              why: 'That empties your home row. {p2}’s only move is a3 jumping a2 into a1, crowned on move one. You win a piece back, but a king in your camp is worth far more. {p1} lost all 16 of the computer’s games.',
+              punish: ['a3xa1'],
+            },
+            {
+              play: 'b1-c3',
+              why: 'That empties your home row. {p2}’s only move is b3 jumping b2 into b1, crowned on move one. Your pieces hem the king in for now, so it is not lost, but {p1} won only 10 of 16 and lost 6.',
+              punish: ['b3xb1'],
+            },
+            {
+              play: 'b2-c3',
+              why: '{p2}’s only move is b3 into b2, one step from your home row. a2 and c2 block each other’s jumps at it, and if b1 jumps it, b4 jumps back into b2 with b1 now empty. You spend the game guarding b1. {p1} lost all 16.',
+              punish: ['b3-b2'],
+            },
+            {
+              play: 'c2-c3',
+              playable: true,
+              why: '{p2}’s only move is c4 jumping your centre piece into c2, and c1 takes back. You have traded the centre for nothing, and the game tends to a draw: 11 of 16 were drawn.',
+              punish: ['c4xc2', 'c1xc3'],
+            },
+            {
+              play: 'd3-c3',
+              playable: true,
+              why: 'This is the one opening that gives {p2} a choice. b3 can jump your centre piece into the d3 you left, and e3 takes back: a plain trade with nothing gained. {p1} won 10 of 16 but lost 4.',
+              punish: ['b3xd3', 'e3xc3'],
+            },
+          ],
+          solved: 'In every strong opening, {p2}’s forced answer either loses a piece or opens {p2}’s own side.',
+        },
+      },
+      {
+        heading: 'Win by blocking',
+        paragraphs: [
+          'A player who cannot move, and has nothing to call, loses. Because pieces never go back, a few well-placed pieces can freeze an army without taking anything.',
+        ],
+        puzzle: {
+          id: 'plans-block',
+          rows: ['.....', '.....', 'a...a', 'b.aab', 'aa..a'],
+          toMove: 'player1',
+          goal: 'Win this game in one move, without capturing.',
+          hint: '{p2}’s piece on e2 is already stuck. The one on a2 can only go to b2.',
+          turns: [{ accept: ['b1-b2'], test: 'wins', praise: '{p2} has no move left.' }],
+          mistakes: [
+            { play: 'c2-b2', why: 'That fills b2, but c2 beside it is now empty, so a2 jumps sideways.', punish: ['a2xc2'] },
+          ],
+          solved: 'Blocked pieces count for nothing. When you have the space, look for the freeze.',
+        },
+      },
+      {
+        heading: 'Spare moves',
+        paragraphs: [
+          'Late in a game it often matters who runs out of safe moves first. Sideways steps do not commit you to anything, so they are your waiting moves. Count them for both sides before you push.',
+        ],
       },
     ],
   },
