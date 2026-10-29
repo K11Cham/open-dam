@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
+import type { CSSProperties } from 'react'
 import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
 /**
@@ -161,7 +162,7 @@ export function EndSequence({ status, survivors, gridSize, perspective }: EndSeq
   const celebrate = !reducedMotion && (drew || (winner !== null && (perspective === null || winner === perspective)))
 
   return (
-    <div className="cv-end-layer" aria-hidden>
+    <div className="cv-end-layer" style={{ '--end-cell': `${100 / gridSize}%` } as CSSProperties} aria-hidden>
       {celebrate &&
         confetti.map((bit) => (
           <motion.span

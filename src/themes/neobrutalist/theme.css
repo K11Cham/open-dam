@@ -309,9 +309,15 @@
 
 [data-theme='neobrutalist'] .nb-end-marker {
   position: absolute;
-  width: 14%;
-  height: 14%;
-  transform: translate(-50%, -50%);
+  /* Sized from the square (the layer sets --end-cell), so it fits any board size. */
+  width: calc(var(--end-cell) * 0.7);
+  height: calc(var(--end-cell) * 0.7);
+  /*
+    Centred with the translate property, not transform: framer-motion writes
+    its own inline transform for the scale and rotation, which replaced the
+    centring and left every marker hanging off the bottom-right of its piece.
+  */
+  translate: -50% -50%;
   border: 3px solid var(--dam-border);
   border-radius: 999px;
 }
