@@ -3,7 +3,7 @@ import { countPieces } from '../../game/board'
 import { formatClock } from '../../game/clock'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
-import { countOf, outcomeReason, outcomeTitle, timeControlLabel } from '../../lib/describe'
+import { countOf, outcomeReason, outcomeTitle, outcomeTone, timeControlLabel } from '../../lib/describe'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 
@@ -26,7 +26,7 @@ export default function ResultDialog({ open, onClose, controller, perspective, o
   const status = position.status
   const winner = status.kind === 'win' ? status.winner : null
   const turns = position.moves.filter((m) => m.kind === 'move' || m.kind === 'capture').length
-  const tone = status.kind === 'draw' ? 'draw' : perspective === null || winner === perspective ? 'win' : 'loss'
+  const tone = outcomeTone(status, perspective)
 
   return (
     <Dialog

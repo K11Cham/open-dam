@@ -137,6 +137,7 @@ every visual decision. Lower layers never import higher ones.
 | `game/StatusPanel.tsx`     | Whose turn, call and chain decisions, pending offers, the result.                                       |
 | `game/MoveList.tsx`        | Notation list with review controls; takes a small `MoveListSource` (match or analysis line).            |
 | `game/ResultDialog.tsx`    | End-of-game summary.                                                                                    |
+| `game/OutcomeSplash.tsx`   | The result banner played before the summary: a different staging for a win, a loss and a draw.          |
 | `game/ClockDisplay.tsx`    | One side's remaining time.                                                                              |
 | `layout/AppShell.tsx`      | Skip link, top bar, main, footer.                                                                       |
 | `layout/Navbar.tsx`        | Top bar, logo mark, navigation drawer on small screens.                                                 |
@@ -156,7 +157,7 @@ every visual decision. Lower layers never import higher ones.
 | File                        | Purpose                                                                        |
 | --------------------------- | ------------------------------------------------------------------------------ |
 | `HomePage.tsx`              | Hero, continue card, quick play, recent games, about.                          |
-| `NewGamePage.tsx`           | Opponent, side and rules; starts a game.                                       |
+| `NewGamePage.tsx`           | Mode first, then opponent or side, then rules; starts a game.                  |
 | `MatchPage.tsx`             | `/match/:id` (a saved local game) and `/match/new` (start from a link).        |
 | `OnlinePage.tsx`            | `/online/:id`: host or join an online game; invite link and connection status. |
 | `ReviewPage.tsx`            | `/review/:id`: step through a finished game.                                   |

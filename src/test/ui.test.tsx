@@ -110,7 +110,11 @@ describe('playing against the computer', () => {
     const dialog = screen.getByRole('dialog', { name: 'Resign this game?' })
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toHaveFocus()
     await user.click(within(dialog).getByRole('button', { name: 'Resign' }))
-    expect(await screen.findByRole('heading', { name: 'You lose', level: 2 })).toBeInTheDocument()
+    // The result banner plays first; Continue skips it to the summary.
+    const skip = await screen.findByRole('button', { name: 'Continue' }, { timeout: 3000 })
+    expect(skip).toHaveAccessibleDescription(/You lose\. You resigned\./)
+    await user.click(skip)
+    expect(await screen.findByRole('dialog', { name: 'You lose' })).toBeInTheDocument()
   })
 })
 
@@ -185,6 +189,18 @@ describe('new game', () => {
     for (const name of ['Döff', 'Khàlé', 'Ndö', 'Màam', 'Seriñ']) expect(screen.getByText(name)).toBeInTheDocument()
     expect(screen.getByText('the youngster')).toBeInTheDocument()
   })
+
+  test('the computer opponents only show in computer mode, and the choice survives a switch', async () => {
+    const user = userEvent.setup()
+    renderAt('/play')
+    await screen.findByRole('heading', { name: 'New game' })
+    await user.click(screen.getByRole('radio', { name: /Màam/ }))
+    await user.click(screen.getByRole('radio', { name: /Pass and play/ }))
+    expect(screen.queryByText('Seriñ')).not.toBeInTheDocument()
+    expect(screen.queryByRole('radiogroup', { name: 'Your side' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /^Computer/ }))
+    expect(screen.getByRole('radio', { name: /Màam/ })).toBeChecked()
+  })
 })
 
 describe('analysis', () => {
@@ -214,7 +230,10 @@ describe('after a game', () => {
     fireEvent.click(square('c3'))
     await user.click(screen.getAllByRole('button', { name: 'Resign' })[0])
     await user.click(within(screen.getByRole('dialog', { name: 'Resign this game?' })).getByRole('button', { name: 'Resign' }))
-    await user.click(await screen.findByRole('button', { name: 'Rematch' }))
+    await screen.findByRole('button', { name: 'Continue' }, { timeout: 3000 })
+    await user.keyboard('{Escape}')
+    const summary = await screen.findByRole('dialog', { name: /wins/ })
+    await user.click(within(summary).getByRole('button', { name: 'Rematch' }))
     await waitFor(() => expect(screen.getByText('No moves yet.')).toBeInTheDocument())
     expect(square('d3')).toHaveAccessibleName(/d3, Red piece/)
   })

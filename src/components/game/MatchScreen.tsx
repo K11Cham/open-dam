@@ -1,15 +1,17 @@
+import { AnimatePresence } from 'framer-motion'
 import { ArrowLeftRight, History } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { opponentOf } from '../../game/board'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
 import { useNow } from '../../hooks/useNow'
-import { timeControlLabel } from '../../lib/describe'
+import { outcomeReason, outcomeTitle, outcomeTone, timeControlLabel } from '../../lib/describe'
 import BoardView from '../board/BoardView'
 import { Button } from '../ui/Button'
 import { ConfirmDialog } from '../ui/Dialog'
 import MoveList from './MoveList'
+import OutcomeSplash from './OutcomeSplash'
 import PlayerCard from './PlayerCard'
 import ResultDialog from './ResultDialog'
 import StatusPanel from './StatusPanel'
@@ -27,7 +29,10 @@ interface MatchScreenProps {
   aside?: ReactNode
 }
 
-const RESULT_DELAY_MS = 900
+// The board's own end animation plays first, then the result banner, then the summary.
+const SPLASH_DELAY_MS = 1000
+// A game that was already over when the screen opened goes straight to the summary.
+const RESULT_DELAY_MS = 600
 
 /**
  * The match layout. Desktop: board column with a player card above and below,
@@ -45,8 +50,11 @@ export default function MatchScreen({
 }: MatchScreenProps) {
   const [flipped, setFlipped] = useState(false)
   const [resignFor, setResignFor] = useState<PlayerId | null>(null)
-  const [resultOpen, setResultOpen] = useState(false)
+  const [ending, setEnding] = useState<'splash' | 'summary' | null>(null)
   const { position, state, viewPosition, over, names, toMove } = controller
+  // Only a game that ends while someone is watching gets the full moment.
+  const [endsHere] = useState(!over)
+  const finishSplash = useCallback(() => setEnding('summary'), [])
   const now = useNow(!!state.clock?.running && !state.clock.paused && !over)
 
   // The side this device plays sits at the bottom; hot seat starts with Red there.
@@ -54,15 +62,17 @@ export default function MatchScreen({
   const bottom = flipped ? opponentOf(baseBottom) : baseBottom
   const top = opponentOf(bottom)
 
-  // Open the summary shortly after the game ends, once the board has played its own end animation.
   useEffect(() => {
     if (!over) return
-    const handle = window.setTimeout(() => setResultOpen(true), RESULT_DELAY_MS)
+    const handle = window.setTimeout(
+      () => setEnding(endsHere ? 'splash' : 'summary'),
+      endsHere ? SPLASH_DELAY_MS : RESULT_DELAY_MS,
+    )
     return () => {
       window.clearTimeout(handle)
-      setResultOpen(false)
+      setEnding(null)
     }
-  }, [over])
+  }, [over, endsHere])
 
   const card = (player: PlayerId, place: 'top' | 'bottom') => (
     <PlayerCard
@@ -180,9 +190,21 @@ export default function MatchScreen({
         }}
       />
 
+      <AnimatePresence>
+        {ending === 'splash' && position.status.kind !== 'playing' && (
+          <OutcomeSplash
+            key="splash"
+            tone={outcomeTone(position.status, perspective)}
+            title={outcomeTitle(position.status, perspective, names)}
+            reason={outcomeReason(position.status, position.settings, names, perspective)}
+            onDone={finishSplash}
+          />
+        )}
+      </AnimatePresence>
+
       <ResultDialog
-        open={resultOpen && !controller.reviewing}
-        onClose={() => setResultOpen(false)}
+        open={ending === 'summary' && !controller.reviewing}
+        onClose={() => setEnding(null)}
         controller={controller}
         perspective={perspective}
         onRematch={onRematch}

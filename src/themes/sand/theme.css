@@ -370,6 +370,38 @@
 
 /* ── End of game: rings drawn around the survivors ───────────────────────── */
 
+/*
+  The shared end-of-game wave hops pieces up the screen and greys the loser's
+  with a filter. On a tilted board "up" is across the sand, and a filter would
+  flatten the stacked layers, so here the winner's pieces jump off the sand and
+  the loser's tip over.
+*/
+[data-theme='sand'] .piece-slot.is-end-winner {
+  animation-name: sd-end-hop;
+}
+
+[data-theme='sand'] .piece-slot.is-end-loser {
+  animation-name: sd-end-tip;
+}
+
+@keyframes sd-end-hop {
+  0%,
+  100% {
+    translate: 0 0 0;
+  }
+  45% {
+    translate: 0 0 calc(var(--sd-step) * 18);
+  }
+}
+
+@keyframes sd-end-tip {
+  to {
+    scale: 0.88;
+    rotate: z -14deg;
+    translate: 0 4% 0;
+  }
+}
+
 [data-theme='sand'] .sd-end-layer {
   position: absolute;
   inset: 0;

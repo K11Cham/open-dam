@@ -17,13 +17,24 @@ interface ChoiceCardsProps<T extends string> {
   choices: Choice<T>[]
   value: T
   onChange: (value: T) => void
+  /** 'list' stacks the cards in one column, for a ranked set such as the computer opponents. */
+  layout?: 'grid' | 'list'
+  /** Keep the label for screen readers only, when a heading right above already says it. */
+  hideLabel?: boolean
 }
 
 /**
  * A radio group drawn as cards, for choices that need a sentence each (the
- * opponent picker). Keyboard behaviour matches native radios.
+ * mode and opponent pickers). Keyboard behaviour matches native radios.
  */
-export default function ChoiceCards<T extends string>({ label, choices, value, onChange }: ChoiceCardsProps<T>) {
+export default function ChoiceCards<T extends string>({
+  label,
+  choices,
+  value,
+  onChange,
+  layout = 'grid',
+  hideLabel = false,
+}: ChoiceCardsProps<T>) {
   const labelId = useId()
   const refs = useRef<Array<HTMLButtonElement | null>>([])
   const active = Math.max(
@@ -49,10 +60,10 @@ export default function ChoiceCards<T extends string>({ label, choices, value, o
 
   return (
     <div className="field">
-      <span id={labelId} className="field__label">
+      <span id={labelId} className={hideLabel ? 'visually-hidden' : 'field__label'}>
         {label}
       </span>
-      <div role="radiogroup" aria-labelledby={labelId} className="choices">
+      <div role="radiogroup" aria-labelledby={labelId} className={`choices choices--${layout}`}>
         {choices.map((choice, index) => {
           const checked = index === active
           return (
