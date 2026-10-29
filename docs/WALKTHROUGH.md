@@ -525,22 +525,35 @@ honour the same setting through `<MotionConfig reducedMotion="user">` in
 
 ## Part 9 — The screens (`src/pages`, `src/components`)
 
-| Route                  | Page               | Notes                                                                                                   |
-| ---------------------- | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| `/`                    | `HomePage`         | Live demo game; Continue card; quick play with board previews; recent games.                            |
-| `/play`                | `NewGamePage`      | Opponent cards, your side, rules; house rules as a summary with an edit dialog. Asks before discarding. |
-| `/match/new?…`         | `NewMatchFromLink` | Builds a game from a link, then redirects to `/match/:id`.                                              |
-| `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.        |
-| `/online/:id`          | `OnlinePage`       | Hosts (creator tab) or joins (`?seat=`).                                                                |
-| `/review/:id`          | `ReviewPage`       | A finished game, read-only, steppable.                                                                  |
-| `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eight chapters with example boards.                                                  |
-| `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                   |
-| `/leaderboards`        | `LeaderboardsPage` | Sample data until there is a server.                                                                    |
+| Route                  | Page               | Notes                                                                                                         |
+| ---------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `/`                    | `HomePage`         | Live demo game; Continue card; quick play with board previews; recent games.                                  |
+| `/play`                | `NewGamePage`      | Mode (computer, pass and play, online), then the opponent ladder or side, then rules. Asks before discarding. |
+| `/match/new?…`         | `NewMatchFromLink` | Builds a game from a link, then redirects to `/match/:id`.                                                    |
+| `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.              |
+| `/online/:id`          | `OnlinePage`       | Hosts (creator tab) or joins (`?seat=`).                                                                      |
+| `/review/:id`          | `ReviewPage`       | A finished game, read-only, steppable.                                                                        |
+| `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eight chapters with example boards.                                                        |
+| `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                         |
+| `/leaderboards`        | `LeaderboardsPage` | Sample data until there is a server.                                                                          |
 
 The match screen (`components/game/MatchScreen.tsx`) is composed of:
 `PlayerCard` ×2 (name, pieces, turn, clock, Undo/Draw/Resign), `BoardView`,
 `StatusPanel` (what's happening and the decisions you can make), `MoveList`
 (notation and review), a resign `ConfirmDialog`, and a `ResultDialog`.
+
+**The end of a game** happens in three beats. First the board reacts: the
+winner's pieces hop in a wave spreading from the last move and the loser's
+slump (classes `is-end-winner`, `is-end-loser`, `is-end-draw` on each piece
+slot, styled in `app.css`; Sand overrides them because a filter would flatten
+its 3D pieces), alongside the theme's own `EndSequence`. After a second,
+`OutcomeSplash` puts a banner across the screen, staged by `outcomeTone`: a win
+bursts with rays and confetti, a loss drops and lands with a shake before its
+last letter droops, a draw slides one piece of each side together. It closes
+after about three seconds or on Continue, a click or Escape, and then the
+`ResultDialog` opens. A game that was already over when the screen opened skips
+straight to the summary. Colours come from theme tokens only, so every theme
+gets its own version for free.
 
 **The board and accessibility.** `BoardView` is an ARIA grid: one Tab stop,
 arrow keys move between squares, Enter or Space acts, Escape clears the

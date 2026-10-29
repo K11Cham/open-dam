@@ -19,6 +19,12 @@ export function outcomeTitle(status: GameStatus, perspective: PlayerId | null, n
   return status.winner === perspective ? 'You win' : 'You lose'
 }
 
+/** How the result feels from this device: a win in hot seat counts as a win, since someone here won. */
+export function outcomeTone(status: GameStatus, perspective: PlayerId | null): 'win' | 'loss' | 'draw' {
+  if (status.kind !== 'win') return 'draw'
+  return perspective === null || status.winner === perspective ? 'win' : 'loss'
+}
+
 /**
  * Why the game ended, using the actual rule settings of this game. When
  * `perspective` names the side played on this device, that side is "you".

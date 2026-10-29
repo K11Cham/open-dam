@@ -108,6 +108,16 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
 
+### 2026-10-28 (end of game, New Game, hero)
+
+- At the owner's request: a new end-of-game moment (`OutcomeSplash`, plus a
+  wave of piece reactions on the board), see "The end of a game" in Part 9 of
+  WALKTHROUGH.md. New Game now asks for the mode first and shows the computer
+  opponents as a ladder with strength pips only in computer mode. The Home hero
+  has a short lede and the rules in three numbered lines.
+- Checked with headless Chrome frames (the app's browser pane was hidden):
+  win, loss and draw in all four themes at 1280 px, and at 390 px.
+
 ### 2026-10-28 (Sand theme)
 
 - New theme **Sand** (`src/themes/sand`), from the owner's idea of a grid drawn

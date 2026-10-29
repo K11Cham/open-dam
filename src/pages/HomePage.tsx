@@ -30,6 +30,13 @@ const PREVIEWS = {
   analysis: positionFromAscii(['b.b.b..', '.......', '..b....', '...A...', '.a...b.', '.......', 'a..a..a'], 'player1').board,
 }
 
+// Enough of the rules to start a first game; the Learn pages have the rest.
+const HERO_RULES: Array<[string, string]> = [
+  ['Straight lines only.', 'Pieces step forward or sideways, never diagonally and never back.'],
+  ['Jump to capture.', 'Leap over a piece beside you onto the empty square beyond, and keep going if you can.'],
+  ['Miss one and be called.', 'Captures are optional, but skip one and your opponent can take the piece that could have jumped.'],
+]
+
 const quickLink = (opponent: OpponentChoice) => `/match/new?${setupToParams({ ...DEFAULT_SETUP, opponent }).toString()}`
 
 const humanSide = (record: MatchRecord): PlayerId | null => {
@@ -103,9 +110,21 @@ export default function HomePage() {
               Open Dam
             </h1>
             <p className="hero__lede">
-              Dam is played across The Gambia, often on a grid drawn in the sand with sticks and stones for pieces. Pieces move
-              straight, never diagonally. Captures are optional, but skip one and your opponent can call it.
+              The game played across The Gambia on a grid drawn in the sand, with sticks against stones. Play the computer or a
+              friend, here in your browser.
             </p>
+            <ol className="hero__rules" aria-label="The rules in three lines">
+              {HERO_RULES.map(([head, text], index) => (
+                <li key={head} className="hero__rule">
+                  <span className="hero__rule-num" aria-hidden>
+                    {index + 1}
+                  </span>
+                  <span>
+                    <strong>{head}</strong> {text}
+                  </span>
+                </li>
+              ))}
+            </ol>
             <div className="hero__actions">
               <ButtonLink to="/play" variant="primary" size="lg" icon={<Play size={18} />}>
                 New game

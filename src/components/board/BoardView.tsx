@@ -164,6 +164,14 @@ export default function BoardView({
     }
   }
 
+  // At the end the pieces react in a wave spreading out from the last move (or the middle, after a resignation).
+  const ended = !hideEndSequence && position.status.kind !== 'playing'
+  const endWinner = position.status.kind === 'win' ? position.status.winner : null
+  const endOrigin = lastMove?.to ?? { row: (size - 1) / 2, col: (size - 1) / 2 }
+  const endClass = (piece: PieceData) =>
+    !ended ? '' : endWinner === null ? ' is-end-draw' : piece.player === endWinner ? ' is-end-winner' : ' is-end-loser'
+  const endDelay = (c: Coord) => `${250 + (Math.abs(c.row - endOrigin.row) + Math.abs(c.col - endOrigin.col)) * 70}ms`
+
   const survivors: Array<{ piece: PieceData; at: Coord }> = []
   position.board.forEach((row, r) =>
     row.forEach((cell, c) => {
@@ -245,8 +253,10 @@ export default function BoardView({
                       <motion.div
                         // The press effect is CSS (:active), not framer-motion's whileTap: whileTap makes
                         // the element focusable, which turned every movable piece into its own Tab stop.
-                        className={interactive && canDragFrom(coord) ? 'piece-slot is-pressable' : 'piece-slot'}
-                        style={{ '--tap-scale': theme.motion.tapScale } as CSSProperties}
+                        className={
+                          (interactive && canDragFrom(coord) ? 'piece-slot is-pressable' : 'piece-slot') + endClass(piece)
+                        }
+                        style={{ '--tap-scale': theme.motion.tapScale, '--end-delay': endDelay(coord) } as CSSProperties}
                         whileHover={
                           interactive && !isTouch && canDragFrom(coord) ? { scale: theme.motion.hoverScale } : undefined
                         }
