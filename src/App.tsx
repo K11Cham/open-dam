@@ -1,7 +1,7 @@
 import { MotionConfig } from 'framer-motion'
 import { Suspense, lazy, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ToastProvider } from './components/ui/Toasts'
 import { ThemeProvider } from './context/ThemeContext'
 import HomePage from './pages/HomePage'
@@ -89,12 +89,16 @@ export function AppProviders({ children }: { children: ReactNode }) {
   )
 }
 
+// A static copy on a host that cannot answer every path with index.html (an
+// artifact preview, a plain file server) keeps the route after a # instead.
+const Router = import.meta.env.VITE_ROUTER === 'hash' ? HashRouter : BrowserRouter
+
 export default function App() {
   return (
     <AppProviders>
-      <BrowserRouter>
+      <Router>
         <AppRoutes />
-      </BrowserRouter>
+      </Router>
     </AppProviders>
   )
 }
