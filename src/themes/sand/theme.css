@@ -276,7 +276,7 @@
 
 [data-theme='sand'] .sd-shadow.is-long {
   width: 104%;
-  height: 36%;
+  height: 20%;
 }
 
 /* A stone's top: sunlight on one side, fading into a soft grain. */
@@ -305,16 +305,47 @@
   transform: rotateZ(90deg);
 }
 
-[data-theme='sand'] .sd-stick {
-  border-radius: 18% / 50%;
+/* Which end is the thin tip varies from stick to stick. */
+[data-theme='sand'] .sd-twig.is-flipped {
+  scale: -1 1;
 }
 
-/* A stick's top: pale cut ends, a shine along its length, and bark lines. */
+/*
+  The outline: a thin tip on the left widening to the snapped end on the
+  right, both ends broken unevenly rather than rounded. Rounded, even ends
+  were what made the old sticks look like cigars.
+*/
+[data-theme='sand'] .sd-stick {
+  clip-path: polygon(0% 32%, 3% 24%, 50% 11%, 100% 0%, 96% 40%, 100% 64%, 97% 100%, 50% 89%, 3% 76%, 1% 54%);
+}
+
+/* A side shoot, growing from the twig's centre line and tapering to its tip. */
+[data-theme='sand'] .sd-shoot {
+  transform-origin: 0 50%;
+  transform: translate(0, -50%) rotate(var(--sd-shoot-turn)) translateZ(calc(var(--sd-z) * var(--sd-step)));
+  clip-path: polygon(0% 0%, 100% 30%, 96% 50%, 100% 70%, 0% 100%);
+}
+
+/*
+  A stick's top is matte: grain running along its length, two dark knots, and
+  pale wood showing where it snapped. No shine, and no bands across it.
+*/
 [data-theme='sand'] .sd-stick.is-top {
   background-image:
-    linear-gradient(90deg, #ecd3a6 0 5%, transparent 5% 95%, #ecd3a6 95%),
-    linear-gradient(180deg, transparent 12%, rgb(255 236 200 / 0.42) 32%, transparent 55%),
-    repeating-linear-gradient(90deg, transparent 0 8px, rgb(60 30 10 / 0.16) 8px 9px, transparent 9px 17px);
+    radial-gradient(3% 42% at 31% 50%, rgb(45 25 8 / 0.6), transparent),
+    radial-gradient(2.5% 38% at 68% 42%, rgb(45 25 8 / 0.5), transparent), linear-gradient(90deg, transparent 95%, #dcc195 95%),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 20%,
+      rgb(40 22 8 / 0.28) 20% 27%,
+      transparent 27% 50%,
+      rgb(255 236 210 / 0.12) 50% 58%,
+      transparent 58% 70%
+    );
+}
+
+[data-theme='sand'] .sd-shoot.is-top {
+  background-image: repeating-linear-gradient(180deg, transparent 0 30%, rgb(40 22 8 / 0.25) 30% 42%, transparent 42% 70%);
 }
 
 /* ── Marks in the sand ───────────────────────────────────────────────────── */
