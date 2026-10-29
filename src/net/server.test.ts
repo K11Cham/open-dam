@@ -3,6 +3,7 @@ import { legalActions } from '../game/engine'
 import { makeSettings } from '../game/settings'
 import type { PlayerId, RuleSettings } from '../game/types'
 import { newRating, rateGame, ratedScore } from '../match/rating'
+import { createRecord } from '../match/session'
 import type { Rating } from '../match/rating'
 import type { MatchRecord } from '../match/types'
 import { MatchGuest } from './guest'
@@ -191,6 +192,32 @@ describe('match server', () => {
     expect(sent).toEqual([])
     raw.receive(JSON.stringify({ v: PROTOCOL_VERSION, matchId: 'nope', from: 'a', type: 'join', seat: 'player1' }))
     expect(sent.map((m) => m.type)).toEqual(['closed'])
+
+    // A pass-and-play game is not the server's to host.
+    const local = createRecord({
+      mode: 'local',
+      settings: makeSettings({ boardSize: 5 }),
+      seats: { player1: { kind: 'human', name: '' }, player2: { kind: 'remote', name: '' } },
+    })
+    store.save(local)
+    raw.receive(JSON.stringify({ v: PROTOCOL_VERSION, matchId: local.config.id, from: 'a', type: 'join', seat: 'player2' }))
+
+    // Nor is a stored game that no longer replays (Blue moving first).
+    const broken = createRecord({
+      mode: 'online',
+      settings: makeSettings({ boardSize: 5 }),
+      seats: { player1: { kind: 'remote', name: '' }, player2: { kind: 'remote', name: '' } },
+    })
+    broken.actions.push({
+      seq: 1,
+      at: 0,
+      by: 'player2',
+      intent: { type: 'engine', action: { type: 'resign', player: 'player1' } },
+    })
+    store.save(broken)
+    raw.receive(JSON.stringify({ v: PROTOCOL_VERSION, matchId: broken.config.id, from: 'a', type: 'join', seat: 'player2' }))
+
+    expect(sent.map((m) => m.type)).toEqual(['closed', 'closed', 'closed'])
     expect(server.openRooms).toEqual([])
     server.close()
   })
