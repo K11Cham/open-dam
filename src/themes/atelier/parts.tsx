@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import type { CSSProperties } from 'react'
 import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
 /**
@@ -52,7 +53,7 @@ export function EndSequence({ status, survivors, gridSize, perspective }: EndSeq
   const good = winner !== null && (perspective === null || winner === perspective)
 
   return (
-    <div className="at-end-layer" aria-hidden>
+    <div className="at-end-layer" style={{ '--end-cell': `${100 / gridSize}%` } as CSSProperties} aria-hidden>
       {survivors.map(({ piece, at }, index) => {
         const isWinnerPiece = winner !== null && piece.player === winner
         return (
