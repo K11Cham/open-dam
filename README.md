@@ -34,9 +34,11 @@ The full rules, with example boards, are on the **Learn** page.
 - Play a friend on the same device.
 - Play online between two browser tabs (preview; a server comes next).
 - Pick a board from 5×5 to 9×9, a clock, and house rules.
+- Learn the rules and some strategy, with puzzles to solve on small boards.
 - Review finished games move by move; study positions on the analysis board.
 - Choose between four themes: Neobrutalist Pop, Atelier, Carnival, and Sand, a 3D board drawn in the sand with stones
   against sticks.
+- Hear each theme's own sound effects, synthesised in code.
 - Play with the keyboard or a screen reader.
 
 ## Running it
@@ -65,6 +67,7 @@ npm run verify
 - `codebase.md` — every file and what it does.
 - `docs/HANDOVER.md` — how to pick up work, and the work log.
 - `docs/MULTIPLAYER.md` — the match log, the online protocol, and adding a server.
+- `docs/SOUNDS.md` — how the sound effects are made and which recordings may be added.
 
 ## Stack
 
