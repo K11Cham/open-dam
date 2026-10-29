@@ -302,9 +302,52 @@
   align-self: flex-start;
 }
 
+/*
+  Long labels or many options. Every option starts from zero width and grows
+  to share the row, but never below its longest word (min-content), so labels
+  wrap inside their segment and a new row starts only when even single words
+  no longer fit. Plain flex-wrap dropped a whole option onto a row of its own.
+*/
 .seg--wrap {
+  display: flex;
   flex-wrap: wrap;
+  width: 100%;
   overflow: visible;
+}
+
+.seg--wrap .seg__option {
+  flex: 1 1 0;
+  min-width: min-content;
+  white-space: normal;
+  line-height: 1.25;
+  padding-block: var(--space-2);
+  text-align: center;
+}
+
+/*
+  When many options cannot share one row, split them evenly (2 + 2, 3 + 3,
+  3 + 2) instead of filling the first row and leaving one alone on the next.
+  Measured against the group's own width, so it works in a panel or a dialog.
+*/
+.seg--wrap {
+  container-type: inline-size;
+}
+
+@container (max-width: 23rem) {
+  .seg--wrap:has(> :nth-child(4):last-child) > .seg__option {
+    flex-basis: 40%;
+  }
+
+  .seg--wrap:has(> :nth-child(5)) > .seg__option {
+    flex-basis: 30%;
+  }
+}
+
+.seg__option {
+  white-space: normal;
+  line-height: 1.25;
+  padding-block: var(--space-2);
+  text-align: center;
 }
 
 .seg__option {
