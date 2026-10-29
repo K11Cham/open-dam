@@ -428,6 +428,10 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
   room per match, both seats remote, the record saved after every action, and
   the server's own clock calling flags. `server.test.ts` plays games through
   it end to end, including a server crash and restart.
+- `matchmaking.ts` is the queue a server would pair players from, and
+  `src/match/rating.ts` the Elo arithmetic it would rate finished games with
+  (through `MatchServer`'s `onFinished`). The leaderboard page still shows
+  sample data.
 
 ---
 
@@ -591,17 +595,17 @@ replays every example.
 
 Where the tests are and what they protect:
 
-| File                                  | Protects                                                                                                         |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `src/game/engine.test.ts`             | Every rule branch                                                                                                |
-| `src/ai/ai.test.ts`                   | Legal play for every tier, sacrifices, lone-king finishes, missed calls, time budget, offers                     |
-| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                             |
-| `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                               |
-| `src/net/server.test.ts`              | The match server end to end: sync, refusals, spoofed ids, dropped links, restarts, flags, the WebSocket client   |
-| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal                                                                                  |
-| `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                |
-| `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs |
-| `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                 |
+| File                                  | Protects                                                                                                            |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src/game/engine.test.ts`             | Every rule branch                                                                                                   |
+| `src/ai/ai.test.ts`                   | Legal play for every tier, sacrifices, lone-king finishes, missed calls, time budget, offers                        |
+| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                                |
+| `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                                  |
+| `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), matchmaking, rating hook |
+| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal                                                                                     |
+| `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                   |
+| `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs    |
+| `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                    |
 
 CI (`.github/workflows/ci.yml`) runs `verify` on every push and pull request.
 

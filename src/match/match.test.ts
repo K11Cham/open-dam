@@ -4,6 +4,7 @@ import { makeSettings } from '../game/settings'
 import type { EngineState } from '../game/types'
 import { remainingAt } from './clock'
 import { createMatchState, replay, stepMatch, undoTargetIndex } from './reducer'
+import { expectedScore, newRating, rateGame, ratedScore, ratingPool } from './rating'
 import { MatchHost, createRecord } from './session'
 import { loadActiveMatch, parseRecord, resumeAfterGap, saveActiveMatch } from './storage'
 import type { MatchConfig, MatchRecord } from './types'
@@ -200,5 +201,46 @@ describe('records', () => {
     const state = replay(host.getSnapshot().record)
     expect(state.timeline[0].moves).toHaveLength(0)
     expect(state.timeline).toHaveLength(2)
+  })
+})
+
+describe('ratings', () => {
+  test('an even game moves both ratings by half the K factor, and they stay balanced', () => {
+    const [a, b] = rateGame(newRating(), newRating(), 1)
+    expect(a).toEqual({ rating: 1520, games: 1 })
+    expect(b).toEqual({ rating: 1480, games: 1 })
+    expect(expectedScore(1500, 1500)).toBe(0.5)
+  })
+
+  test('beating a much stronger player gains more than beating a weaker one', () => {
+    const upset = rateGame({ rating: 1400, games: 30 }, { rating: 1800, games: 30 }, 1)[0].rating - 1400
+    const expected = rateGame({ rating: 1800, games: 30 }, { rating: 1400, games: 30 }, 1)[0].rating - 1800
+    expect(upset).toBeGreaterThan(15)
+    expect(expected).toBeLessThan(5)
+    // A draw against a stronger player still gains.
+    expect(rateGame({ rating: 1400, games: 30 }, { rating: 1800, games: 30 }, 0.5)[0].rating).toBeGreaterThan(1400)
+  })
+
+  test('pools separate board sizes and clocks', () => {
+    expect(ratingPool(makeSettings({ boardSize: 5 }))).toBe('5x5:untimed')
+    expect(
+      ratingPool(makeSettings({ boardSize: 9, timeControl: { initialMs: 180_000, incrementMs: 2_000, label: '3+2' } })),
+    ).toBe('9x9:3+2')
+  })
+
+  test('only finished games where both sides moved are rated', () => {
+    const { host } = hostAt(newRecord())
+    expect(ratedScore(host.getSnapshot().state)).toBeNull()
+
+    // Resigning before the opponent has moved is an abort, not a result.
+    const early = hostAt(newRecord()).host
+    early.submit('player1', anyMove(early.getSnapshot().state.position))
+    early.submit('player2', { type: 'engine', action: { type: 'resign', player: 'player2' } })
+    expect(ratedScore(early.getSnapshot().state)).toBeNull()
+
+    host.submit('player1', anyMove(host.getSnapshot().state.position))
+    host.submit('player2', anyMove(host.getSnapshot().state.position))
+    host.submit('player1', { type: 'engine', action: { type: 'resign', player: 'player1' } })
+    expect(ratedScore(host.getSnapshot().state)).toBe(0)
   })
 })
