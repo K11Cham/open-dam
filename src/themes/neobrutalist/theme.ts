@@ -54,11 +54,13 @@ const tokens: ThemeTokens = {
   '--dam-p2-edge': '#111111',
   '--dam-crown': '#FFD23F',
 
-  '--dam-font-display': "'Archivo Black', 'Arial Black', system-ui, sans-serif",
+  // Fat 1970s poster type with quirky letters, in normal case: the usual heavy
+  // grotesque in capitals read as a template.
+  '--dam-font-display': "'Bowlby One', 'Arial Black', system-ui, sans-serif",
   '--dam-font-body': "'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",
   '--dam-font-mono': "'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace",
-  '--dam-display-transform': 'uppercase',
-  '--dam-display-spacing': '0.02em',
+  '--dam-display-transform': 'none',
+  '--dam-display-spacing': '0',
   '--dam-display-weight': '400',
 }
 

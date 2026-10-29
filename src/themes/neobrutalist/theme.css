@@ -1,6 +1,6 @@
 /*
   Neobrutalist Pop. Thick black outlines, flat offset shadows, loud flat
-  colour, uppercase display type. Everything is scoped to this theme.
+  colour, fat poster display type. Everything is scoped to this theme.
   Signature move: controls physically "press" — they lift on hover and sink
   into their shadow when pushed.
 */
@@ -20,9 +20,7 @@
 /* Buttons: slabs that press. */
 [data-theme='neobrutalist'] .btn {
   box-shadow: 3px 3px 0 0 var(--dam-border);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -94,15 +92,6 @@
   transform: translate(-3px, -3px);
   box-shadow: var(--dam-shadow-lg);
   background: var(--dam-surface);
-}
-
-[data-theme='neobrutalist'] .card__title,
-[data-theme='neobrutalist'] .panel__title,
-[data-theme='neobrutalist'] .status__title,
-[data-theme='neobrutalist'] .moves__title,
-[data-theme='neobrutalist'] .lesson__heading,
-[data-theme='neobrutalist'] .dialog__title {
-  text-transform: uppercase;
 }
 
 [data-theme='neobrutalist'] .hero__title {

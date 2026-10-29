@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 // Fonts are bundled with the app rather than loaded from a font CDN: no
 // third-party requests, and they work offline. A face only downloads when a
 // theme actually uses it.
-import '@fontsource/archivo-black/400.css'
+import '@fontsource/bowlby-one/400.css'
 import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import '@fontsource-variable/inter'
