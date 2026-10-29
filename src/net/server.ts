@@ -273,9 +273,16 @@ export class MatchServer {
     } catch {
       return null
     }
-    // Only online games with both seats remote belong on a server.
-    if (!record || SEATS.some((seat) => record.config.seats[seat].kind !== 'remote')) return null
-    const room = new Room(record, { store: this.store, serverId: this.serverId, now: this.now, onFinished: this.onFinished })
+    if (!record) return null
+    let room: Room
+    try {
+      // Only online games with both seats remote belong on a server.
+      if (SEATS.some((seat) => record.config.seats[seat].kind !== 'remote')) return null
+      // A stored record that no longer replays throws here; it is refused rather than taking the server down.
+      room = new Room(record, { store: this.store, serverId: this.serverId, now: this.now, onFinished: this.onFinished })
+    } catch {
+      return null
+    }
     this.rooms.set(matchId, room)
     return room
   }
