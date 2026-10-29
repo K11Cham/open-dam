@@ -90,38 +90,83 @@ function Pebble({ shape, size, base }: { shape: string; size: number; base: numb
   )
 }
 
-/** A round twig seen end-on: narrow at the bottom and top, widest in the middle. */
-const STICK_PROFILE = [0.62, 0.9, 1, 0.84]
+/**
+ * A twig seen end-on, bottom layer to top: round, so narrower at the bottom.
+ * Thin for its length on purpose: a fat, even, rounded stick reads as a cigar.
+ */
+const STICK_PROFILE = [0.7, 1, 0.86]
+/** Thickness of the twig, as a share of the piece. */
+const STICK_THICKNESS = 14
 
 function Stick({ id, king }: { id: string; king: boolean }) {
   const angle = (jitter(id) < 0.5 ? -1 : 1) * (26 + jitter(id, 1) * 28)
-  const length = 0.9 + jitter(id, 2) * 0.1
+  const length = 0.92 + jitter(id, 2) * 0.12
   return (
     <div className="sd-token" style={vars({ '--sd-turn': `${angle.toFixed(1)}deg` })}>
       <span className="sd-shadow is-long" />
       <span className="sd-body">
-        <Twig length={length} base={0} />
-        {king && <Twig length={length * 0.94} base={STICK_PROFILE.length} cross />}
+        <Twig id={id} length={length} base={0} />
+        {king && <Twig id={`${id}:king`} length={length * 0.94} base={STICK_PROFILE.length} cross />}
       </span>
     </div>
   )
 }
 
-function Twig({ length, base, cross = false }: { length: number; base: number; cross?: boolean }) {
+/**
+ * One twig: tapered from a thin tip to a thicker snapped end (the clip-path in
+ * theme.css), grain and knots along its length, and on most twigs a short
+ * side shoot, the surest sign it came off a tree.
+ */
+function Twig({ id, length, base, cross = false }: { id: string; length: number; base: number; cross?: boolean }) {
+  const flipped = jitter(id, 3) < 0.5
+  const shoot =
+    jitter(id, 4) < 0.75
+      ? {
+          // Where along the twig it grows (0 is the middle, 1 the thick end), and to which side.
+          along: 0.1 + jitter(id, 5) * 0.45,
+          turn: (jitter(id, 6) < 0.5 ? -1 : 1) * (28 + jitter(id, 7) * 14),
+          length: 0.2 + jitter(id, 8) * 0.1,
+        }
+      : null
+  const top = STICK_PROFILE.length - 1
+  const shade = (k: number) =>
+    // Weathered, not polished: the top is the stick's own brown greyed a little; lower layers fall into shadow.
+    k === top
+      ? 'color-mix(in srgb, var(--dam-p2) 80%, #77705f)'
+      : `color-mix(in srgb, var(--dam-p2) ${Math.round(35 + (k / top) * 50)}%, var(--dam-p2-edge))`
+
   return (
-    <span className={cross ? 'sd-twig is-cross' : 'sd-twig'}>
+    <span className={['sd-twig', cross && 'is-cross', flipped && 'is-flipped'].filter(Boolean).join(' ')}>
       {STICK_PROFILE.map((width, k) => (
         <span
           key={k}
-          className={k === STICK_PROFILE.length - 1 ? 'sd-layer sd-stick is-top' : 'sd-layer sd-stick'}
+          className={k === top ? 'sd-layer sd-stick is-top' : 'sd-layer sd-stick'}
           style={vars({
             width: `${length * 100}%`,
-            height: `${width * 26}%`,
-            backgroundColor: `color-mix(in srgb, var(--dam-p2) ${Math.round(35 + (k / (STICK_PROFILE.length - 1)) * 65)}%, var(--dam-p2-edge))`,
+            height: `${width * STICK_THICKNESS}%`,
+            backgroundColor: shade(k),
             '--sd-z': base + k + 1,
           })}
         />
       ))}
+      {shoot &&
+        STICK_PROFILE.slice(1).map((width, i) => {
+          const k = i + 1
+          return (
+            <span
+              key={`shoot-${k}`}
+              className={k === top ? 'sd-layer sd-shoot is-top' : 'sd-layer sd-shoot'}
+              style={vars({
+                left: `${50 + shoot.along * length * 50}%`,
+                width: `${shoot.length * 100}%`,
+                height: `${width * STICK_THICKNESS * 0.6}%`,
+                backgroundColor: shade(k),
+                '--sd-z': base + k + 1,
+                '--sd-shoot-turn': `${shoot.turn.toFixed(1)}deg`,
+              })}
+            />
+          )
+        })}
     </span>
   )
 }
