@@ -41,46 +41,74 @@ export function Piece({ piece, scale = 0.84, selected, offender, justPromoted }:
   )
 }
 
-/** Uneven outlines, so no two stones on the board look cut from the same mould. */
+/**
+ * Lumpy outlines, so no two pebbles look cut from the same mould. Bumpier than
+ * a circle on purpose: smooth, even ovals read as skimming stones.
+ */
 const STONE_SHAPES = [
-  '47% 53% 44% 56% / 52% 45% 55% 48%',
-  '55% 45% 52% 48% / 46% 54% 47% 53%',
-  '50% 50% 42% 58% / 56% 48% 52% 44%',
-  '44% 56% 54% 46% / 50% 43% 57% 50%',
-  '52% 48% 47% 53% / 43% 55% 45% 57%',
+  '41% 59% 46% 54% / 57% 42% 58% 43%',
+  '58% 42% 55% 45% / 44% 58% 42% 56%',
+  '49% 51% 37% 63% / 60% 46% 54% 40%',
+  '38% 62% 57% 43% / 50% 39% 61% 50%',
+  '55% 45% 42% 58% / 40% 57% 43% 60%',
+  '46% 54% 60% 40% / 55% 47% 53% 45%',
 ]
-const STONE_LAYERS = 8
+const STONE_LAYERS = 10
+
+/**
+ * The colours pebbles come in, mixed into the side's grey: warm brown-grey,
+ * blue-grey, a paler grey and plain. Never far enough towards brown to be
+ * mistaken for a stick.
+ */
+const STONE_TINTS = ['#7C6B58', '#626669', '#8C857B', '#6A655E']
 
 function Stone({ id, king }: { id: string; king: boolean }) {
-  const shape = Math.floor(jitter(id) * STONE_SHAPES.length)
-  const size = 0.8 + jitter(id, 2) * 0.12
+  // Pebbles sit smaller and taller than the old flat stones: chunky, not wide.
+  const size = 0.62 + jitter(id, 2) * 0.14
   return (
     <div className="sd-token" style={vars({ '--sd-turn': `${Math.round(jitter(id, 1) * 360)}deg` })}>
-      <span className="sd-shadow" />
+      <span className="sd-shadow is-pebble" />
       <span className="sd-body">
-        <Pebble shape={STONE_SHAPES[shape]} size={size} base={0} />
-        {king && <Pebble shape={STONE_SHAPES[(shape + 2) % STONE_SHAPES.length]} size={size * 0.64} base={STONE_LAYERS - 1} />}
+        <Pebble id={id} size={size} base={0} />
+        {king && <Pebble id={`${id}:king`} size={size * 0.7} base={STONE_LAYERS - 2} />}
       </span>
     </div>
   )
 }
 
-/** One stone: layers that narrow towards the top make the dome, and get lighter where the sun hits. */
-function Pebble({ shape, size, base }: { shape: string; size: number; base: number }) {
+/**
+ * One pebble, built from stacked layers. They narrow towards a rounded top,
+ * lean a little to one side, and each is turned and nudged slightly, so the
+ * sides come out knobbly rather than turned on a lathe.
+ */
+function Pebble({ id, size, base }: { id: string; size: number; base: number }) {
+  const shape = STONE_SHAPES[Math.floor(jitter(id) * STONE_SHAPES.length)]
+  const tint = STONE_TINTS[Math.floor(jitter(id, 3) * STONE_TINTS.length)]
+  const tintAmount = 20 + Math.round(jitter(id, 4) * 25)
+  // Most pebbles are a little longer one way than the other.
+  const stretch = 1 + jitter(id, 5) * 0.22
+  const lean = { x: (jitter(id, 6) - 0.5) * 10, y: (jitter(id, 7) - 0.5) * 10 }
+  const colour = `color-mix(in srgb, var(--dam-p1) ${100 - tintAmount}%, ${tint})`
+
   return (
     <>
       {Array.from({ length: STONE_LAYERS }, (_, k) => {
         const t = k / (STONE_LAYERS - 1)
-        const radius = size * Math.sqrt(1 - (t * 0.78) ** 2)
+        // Close to a half-ellipsoid: the top is small and round, not a flat plateau.
+        const radius = size * Math.sqrt(1 - (t * 0.9) ** 2)
+        const wobble = (jitter(id, 20 + k) - 0.5) * 2.4
         return (
           <span
             key={k}
             className={k === STONE_LAYERS - 1 ? 'sd-layer sd-pebble is-top' : 'sd-layer sd-pebble'}
             style={vars({
-              width: `${radius * 100}%`,
-              height: `${radius * 100}%`,
+              left: `${50 + lean.x * t + wobble}%`,
+              top: `${50 + lean.y * t - wobble / 2}%`,
+              width: `${radius * stretch * 100}%`,
+              height: `${(radius / stretch) * 100}%`,
               borderRadius: shape,
-              backgroundColor: `color-mix(in srgb, var(--dam-p1) ${Math.round(45 + t * 55)}%, var(--dam-p1-edge))`,
+              '--sd-spin': `${((jitter(id, 40 + k) - 0.5) * 16).toFixed(1)}deg`,
+              backgroundColor: `color-mix(in srgb, ${colour} ${Math.round(40 + t * 60)}%, var(--dam-p1-edge))`,
               '--sd-z': base + k + 1,
             })}
           />
