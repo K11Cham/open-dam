@@ -530,7 +530,7 @@ export const CHAPTERS: Chapter[] = [
           mistakes: [
             {
               play: 'c1-b1',
-              why: 'Now c1 is empty, so the king jumps c2 and keeps going through your row.',
+              why: 'Now c1 is empty, so the king jumps c2, lands on c1, and runs on to take every piece you have.',
               punish: ['c4xc1', 'c1xa1', 'a1xa3'],
             },
             {
