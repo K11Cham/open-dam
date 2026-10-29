@@ -371,26 +371,3 @@
   height: 14px;
   border-radius: 3px;
 }
-
-[data-theme='carnival'] .cv-end-halo {
-  position: absolute;
-  /* Sized from the square (the layer sets --end-cell), so it fits any board size. */
-  width: calc(var(--end-cell) * 0.9);
-  height: calc(var(--end-cell) * 0.9);
-  /*
-    Centred with the translate property, not transform: framer-motion writes
-    its own inline transform for the scale and rotation, which replaced the
-    centring and left every marker hanging off the bottom-right of its piece.
-  */
-  translate: -50% -50%;
-  border-radius: 999px;
-  border: 4px solid;
-}
-
-[data-theme='carnival'] .cv-end-halo.is-p1 {
-  border-color: var(--dam-p1);
-}
-
-[data-theme='carnival'] .cv-end-halo.is-p2 {
-  border-color: var(--dam-p2);
-}

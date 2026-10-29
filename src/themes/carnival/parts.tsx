@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
-import type { CSSProperties } from 'react'
 import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
 /**
@@ -140,12 +139,12 @@ const seeded = (seed: number) => {
   }
 }
 
-/** Confetti for a win you care about; halos for the survivors either way. */
-export function EndSequence({ status, survivors, gridSize, perspective }: EndSequenceProps) {
+/** Confetti for a win you care about, or a draw. */
+export function EndSequence({ status, gridSize, perspective }: EndSequenceProps) {
   // With reduced motion the confetti could only flash in place, so it is left out.
   const reducedMotion = useReducedMotion()
   const confetti = useMemo(() => {
-    const rand = seeded(survivors.length + gridSize + 7)
+    const rand = seeded(gridSize + 7)
     return Array.from({ length: 26 }, (_, i) => ({
       id: i,
       left: rand() * 100,
@@ -154,7 +153,7 @@ export function EndSequence({ status, survivors, gridSize, perspective }: EndSeq
       rotate: rand() * 720 - 360,
       hue: ['var(--dam-accent)', 'var(--dam-p1)', 'var(--dam-p2)', 'var(--dam-success)'][i % 4],
     }))
-  }, [survivors.length, gridSize])
+  }, [gridSize])
 
   if (status.kind === 'playing') return null
   const drew = status.kind === 'draw'
@@ -162,7 +161,7 @@ export function EndSequence({ status, survivors, gridSize, perspective }: EndSeq
   const celebrate = !reducedMotion && (drew || (winner !== null && (perspective === null || winner === perspective)))
 
   return (
-    <div className="cv-end-layer" style={{ '--end-cell': `${100 / gridSize}%` } as CSSProperties} aria-hidden>
+    <div className="cv-end-layer" aria-hidden>
       {celebrate &&
         confetti.map((bit) => (
           <motion.span
@@ -174,26 +173,6 @@ export function EndSequence({ status, survivors, gridSize, perspective }: EndSeq
             transition={{ duration: 2.2, delay: bit.delay, ease: 'easeIn' }}
           />
         ))}
-
-      {survivors.map(({ piece, at }, index) => {
-        const isWinnerPiece = winner !== null && piece.player === winner
-        return (
-          <motion.span
-            key={piece.id}
-            className={`cv-end-halo ${isWinnerPiece ? 'is-winner' : ''} ${piece.player === 'player1' ? 'is-p1' : 'is-p2'}`}
-            style={{ left: `${((at.col + 0.5) / gridSize) * 100}%`, top: `${((at.row + 0.5) / gridSize) * 100}%` }}
-            initial={{ scale: 0.3, opacity: 0 }}
-            animate={
-              drew
-                ? { scale: [0.3, 1.5, 1.2], opacity: [0, 0.7, 0], rotate: [0, 12, -12, 0] }
-                : isWinnerPiece
-                  ? { scale: [0.3, 2.2, 1.6], opacity: [0, 0.9, 0] }
-                  : { scale: [0.3, 0.9, 0.2], opacity: [0, 0.6, 0], rotate: [0, 180] }
-            }
-            transition={{ duration: 1.5, delay: 0.1 + index * 0.07, ease: 'easeOut' }}
-          />
-        )
-      })}
     </div>
   )
 }

@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import type { CSSProperties } from 'react'
 import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
 /**
@@ -46,33 +45,14 @@ export function BoardFrame({ children }: BoardFrameProps) {
  * Nothing flashes. The winner's pieces get a slowly expanding rule, the
  * loser's barely register, and a line is ruled under the board.
  */
-export function EndSequence({ status, survivors, gridSize, perspective }: EndSequenceProps) {
+export function EndSequence({ status, perspective }: EndSequenceProps) {
   if (status.kind === 'playing') return null
   const drew = status.kind === 'draw'
   const winner = status.kind === 'win' ? status.winner : null
   const good = winner !== null && (perspective === null || winner === perspective)
 
   return (
-    <div className="at-end-layer" style={{ '--end-cell': `${100 / gridSize}%` } as CSSProperties} aria-hidden>
-      {survivors.map(({ piece, at }, index) => {
-        const isWinnerPiece = winner !== null && piece.player === winner
-        return (
-          <motion.span
-            key={piece.id}
-            className={`at-end-ring ${isWinnerPiece ? 'is-winner' : ''}`}
-            style={{ left: `${((at.col + 0.5) / gridSize) * 100}%`, top: `${((at.row + 0.5) / gridSize) * 100}%` }}
-            initial={{ scale: 0.2, opacity: 0 }}
-            animate={
-              drew
-                ? { scale: [0.2, 1.6], opacity: [0, 0.35, 0] }
-                : isWinnerPiece
-                  ? { scale: [0.2, 2.6], opacity: [0, 0.55, 0] }
-                  : { scale: [0.2, 0.6], opacity: [0, 0.2, 0] }
-            }
-            transition={{ duration: 1.4, delay: index * 0.09, ease: [0.16, 1, 0.3, 1] }}
-          />
-        )
-      })}
+    <div className="at-end-layer" aria-hidden>
       <motion.span
         className={`at-end-rule ${drew ? 'is-draw' : good ? 'is-good' : 'is-bad'}`}
         initial={{ scaleX: 0 }}

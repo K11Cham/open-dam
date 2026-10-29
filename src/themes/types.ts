@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react'
 import type { ThemeSounds } from '../audio/types'
-import type { Coord, GameStatus, PieceData, PlayerId } from '../game/types'
+import type { GameStatus, PieceData, PlayerId } from '../game/types'
 
 /**
  * A theme is a complete visual language, not a palette:
@@ -106,8 +106,6 @@ export interface BoardFrameProps {
 
 export interface EndSequenceProps {
   status: GameStatus
-  /** Board coordinates of the surviving pieces, already in display orientation. */
-  survivors: Array<{ piece: PieceData; at: Coord }>
   gridSize: number
   /**
    * The side whose win counts as "ours" on this device, or null when both

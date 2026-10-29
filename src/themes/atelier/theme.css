@@ -336,25 +336,6 @@
   pointer-events: none;
 }
 
-[data-theme='atelier'] .at-end-ring {
-  position: absolute;
-  /* Sized from the square (the layer sets --end-cell), so it fits any board size. */
-  width: calc(var(--end-cell) * 0.8);
-  height: calc(var(--end-cell) * 0.8);
-  /*
-    Centred with the translate property, not transform: framer-motion writes
-    its own inline transform for the scale and rotation, which replaced the
-    centring and left every marker hanging off the bottom-right of its piece.
-  */
-  translate: -50% -50%;
-  border-radius: 999px;
-  border: 1px solid var(--dam-ink-muted);
-}
-
-[data-theme='atelier'] .at-end-ring.is-winner {
-  border-color: var(--dam-ink);
-}
-
 [data-theme='atelier'] .at-end-rule {
   position: absolute;
   left: 0;
