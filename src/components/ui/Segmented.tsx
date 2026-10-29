@@ -15,7 +15,11 @@ interface SegmentedProps<T extends string | number> {
   /** Visible group label. */
   label: string
   hideLabel?: boolean
-  /** Lay options out as wrapping chips instead of a single joined bar. */
+  /**
+   * For long labels or many options: the options share out the full width,
+   * labels wrap inside their segment, and a new row starts only when even
+   * single words no longer fit.
+   */
   wrap?: boolean
 }
 

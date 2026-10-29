@@ -79,6 +79,15 @@
   border-radius: 999px;
 }
 
+/* A pill only holds one row; a grid of choices gets rounded corners instead. */
+[data-theme='carnival'] .seg--wrap {
+  border-radius: var(--dam-radius-lg);
+}
+
+[data-theme='carnival'] .seg--wrap .seg__option {
+  border-radius: var(--dam-radius);
+}
+
 [data-theme='carnival'] .seg__option.is-active {
   background: var(--dam-accent);
   color: var(--dam-accent-ink);
