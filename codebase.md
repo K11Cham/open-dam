@@ -100,20 +100,22 @@ every visual decision. Lower layers never import higher ones.
 | `session.ts`    | The observable `MatchSession` interface, `MatchHost` (authoritative), `createRecord`, ids.                                        |
 | `setup.ts`      | The New Game form's result (`GameSetup`) and its URL form; builds records from it.                                                |
 | `storage.ts`    | Validate, save and load the active match; archive finished games; pause the clock across a closed app.                            |
-| `match.test.ts` | Turn ownership, offers, undo, clocks, replay, storage round trips.                                                                |
+| `rating.ts`     | Elo ratings per pool (board size and clock) and which finished games count. Pure; a server applies it.                            |
+| `match.test.ts` | Turn ownership, offers, undo, clocks, replay, storage round trips, ratings.                                                       |
 
 ## `src/net/` — online play (transport-agnostic)
 
-| File             | Purpose                                                                                                      |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| `protocol.ts`    | Wire messages between guests and the host; heartbeat timings.                                                |
-| `transport.ts`   | `Transport` interface; `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id. |
-| `hostLink.ts`    | Connects a `MatchHost` to a transport: binds seats, forwards guest intents, broadcasts actions and presence. |
-| `guest.ts`       | `MatchGuest`: mirrors a remote host's log, sends intents, resynchronises on gaps.                            |
-| `websocket.ts`   | `WebSocketTransport`: a browser's link to a match server; queues while down, reconnects with backoff.        |
-| `server.ts`      | `MatchServer`: a server's match logic without the network (rooms, saving, server clock flags).               |
-| `net.test.ts`    | Join, sync both ways, refusals, seat ownership, reconnect.                                                   |
-| `server.test.ts` | Server rooms end to end over a fake socket network: sync, refusals, spoofing, reconnect, restart, flags.     |
+| File             | Purpose                                                                                                                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `protocol.ts`    | Wire messages between guests and the host; heartbeat timings.                                                                       |
+| `transport.ts`   | `Transport` interface; `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id.                        |
+| `hostLink.ts`    | Connects a `MatchHost` to a transport: binds seats, forwards guest intents, broadcasts actions and presence.                        |
+| `guest.ts`       | `MatchGuest`: mirrors a remote host's log, sends intents, resynchronises on gaps.                                                   |
+| `websocket.ts`   | `WebSocketTransport`: a browser's link to a match server; queues while down, reconnects with backoff.                               |
+| `server.ts`      | `MatchServer`: a server's match logic without the network (rooms, saving, server clock flags).                                      |
+| `net.test.ts`    | Join, sync both ways, refusals, seat ownership, reconnect.                                                                          |
+| `matchmaking.ts` | `SeekQueue`: pairs compatible seeks within a rating window that widens with waiting; resolves "match opponent".                     |
+| `server.test.ts` | Server rooms end to end over a fake socket network (sync, refusals, spoofing, reconnect, restart, flags); matchmaking; rating hook. |
 
 ## `src/hooks/` — React adapters
 

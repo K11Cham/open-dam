@@ -120,7 +120,7 @@ interface Transport {
 ## Adding a real server
 
 The browser code does not need to change shape. Steps 1, 2 and 4 are written
-and tested; the rest need a host to run on.
+and tested, as are the pure halves of 8 and 9; the rest need a host to run on.
 
 1. **WebSocket transport — done.** `WebSocketTransport` in
    `src/net/websocket.ts` sends JSON, checks every frame with `isNetMessage`,
@@ -153,9 +153,22 @@ player } }` as `system` at `flagTime(state.clock)`, retrying shortly if a
    `WebSocketTransport`.
 7. **Identity.** Replace the per-tab client id with an authenticated user id
    when binding seats in `linkHost`.
-8. **Matchmaking.** `settingsAreCompatible` and `filterCompatibleSeeks` in
-   `src/game/settings.ts` already define which rule sets can be paired;
-   `resolvePromotionPolicy` resolves the "match opponent" option.
+8. **Matchmaking — queue done.** `SeekQueue` in `src/net/matchmaking.ts`
+   pairs two seeks whose rules agree (`settingsAreCompatible`) and whose
+   ratings are within a window that starts at 100 points and widens by 50
+   every 5 s of waiting, up to 500. It prefers the closest rating, never pairs
+   a player with themselves, picks who moves first at random, and resolves
+   "match opponent" with `agreedSettings`. Call `sweep(now)` every few
+   seconds; turn each pairing into a game with `MatchServer.createMatch`.
+   Still to do: messages for posting and cancelling a seek, and telling both
+   players where their game is.
+9. **Ratings — arithmetic done.** `src/match/rating.ts` has Elo per pool
+   (board size and time control; K 40 for the first 20 games, then 20) and
+   `ratedScore`, which skips unfinished games and games where a side never
+   moved. `MatchServer`'s `onFinished(record, state)` fires once per game,
+   after the final save, which is where a server rates it. Still to do:
+   storing ratings, and the leaderboard reading them instead of
+   `src/data/leaderboards.ts`.
 
 Rows w25 and w26 on the handover board track the server and ratings work.
 

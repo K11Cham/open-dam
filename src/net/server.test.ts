@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { legalActions } from '../game/engine'
+import { makeSettings } from '../game/settings'
 import type { PlayerId, RuleSettings } from '../game/types'
+import { newRating, rateGame, ratedScore } from '../match/rating'
+import type { Rating } from '../match/rating'
 import type { MatchRecord } from '../match/types'
 import { MatchGuest } from './guest'
+import { SeekQueue, agreedSettings, ratingWindow } from './matchmaking'
+import type { Seek } from './matchmaking'
 import { PROTOCOL_VERSION } from './protocol'
 import type { NetMessage } from './protocol'
 import { MatchServer } from './server'
@@ -331,5 +336,115 @@ describe('WebSocketTransport', () => {
     socket.onmessage?.({ data: JSON.stringify(ping) } as MessageEvent)
     expect(received).toEqual([ping])
     transport.close()
+  })
+})
+
+describe('matchmaking', () => {
+  const seek = (id: string, rating: number, since = 0, settings: Partial<RuleSettings> = { boardSize: 5 }): Seek => ({
+    id,
+    playerId: `p-${id}`,
+    settings: makeSettings(settings),
+    rating,
+    since,
+  })
+
+  test('pairs two compatible seeks straight away and takes them off the queue', () => {
+    const queue = new SeekQueue({ random: () => 0 })
+    expect(queue.add(seek('a', 1500), 0)).toBeNull()
+    const pairing = queue.add(seek('b', 1550), 0)!
+    expect(pairing.seats.player1.id).toBe('b')
+    expect(pairing.seats.player2.id).toBe('a')
+    expect(queue.waiting).toHaveLength(0)
+  })
+
+  test('never pairs incompatible rules or a player with themselves', () => {
+    const queue = new SeekQueue()
+    queue.add(seek('a', 1500), 0)
+    expect(queue.add(seek('b', 1500, 0, { boardSize: 7 }), 0)).toBeNull()
+    expect(queue.add({ ...seek('c', 1500), playerId: 'p-a' }, 0)).toBeNull()
+    // The player's new seek replaced their old one.
+    expect(queue.waiting.map((s) => s.id)).toEqual(['b', 'c'])
+  })
+
+  test('a wide rating gap waits until both windows have grown', () => {
+    const queue = new SeekQueue()
+    queue.add(seek('a', 1500, 0), 0)
+    queue.add(seek('b', 1800, 0), 0)
+    expect(ratingWindow(0)).toBe(100)
+    expect(queue.sweep(10_000)).toHaveLength(0) // window 200
+    const pairings = queue.sweep(20_000) // window 300
+    expect(pairings).toHaveLength(1)
+    expect(queue.waiting).toHaveLength(0)
+  })
+
+  test('prefers the closest rating', () => {
+    const queue = new SeekQueue()
+    queue.add(seek('far', 1590), 0)
+    queue.add(seek('near', 1510, 0, { boardSize: 5, promotionPolicy: 'end-turn-on-promotion' }), 0)
+    queue.add(seek('near-ok', 1420), 0)
+    const pairing = queue.add(seek('me', 1500), 0)!
+    const ids = [pairing.seats.player1.id, pairing.seats.player2.id]
+    expect(ids).toContain('near-ok')
+  })
+
+  test('"match opponent" takes the other side’s promotion rule', () => {
+    const queue = new SeekQueue({ random: () => 0.9 })
+    queue.add(seek('a', 1500, 0, { boardSize: 5, promotionPolicy: 'match-opponent' }), 0)
+    const pairing = queue.add(seek('b', 1500, 0, { boardSize: 5, promotionPolicy: 'promote-after-chain' }), 0)!
+    expect(pairing.settings.promotionPolicy).toBe('promote-after-chain')
+    expect(
+      agreedSettings(makeSettings({ promotionPolicy: 'match-opponent' }), makeSettings({ promotionPolicy: 'match-opponent' }))
+        .promotionPolicy,
+    ).not.toBe('match-opponent')
+  })
+
+  test('a pairing becomes a server game, and the server reports the result once for rating', async () => {
+    const { store } = memoryStore()
+    const finished: number[] = []
+    const ratings = new Map<string, Rating>()
+    const server = new MatchServer({
+      store,
+      onFinished: (record, state) => {
+        const score = ratedScore(state)
+        finished.push(record.actions.length)
+        if (score === null) return
+        const [a, b] = rateGame(ratings.get('red') ?? newRating(), ratings.get('blue') ?? newRating(), score)
+        ratings.set('red', a)
+        ratings.set('blue', b)
+      },
+    })
+    const queue = new SeekQueue({ random: () => 0 })
+    queue.add(seek('red', 1500), 0)
+    const pairing = queue.add(seek('blue', 1500), 0)!
+    const matchId = server.createMatch(pairing.settings)
+    const net = new FakeNet(server)
+    const join = (seat: PlayerId, clientId: string) => {
+      const guest = new MatchGuest({ matchId, seat, clientId })
+      guest.connect(new WebSocketTransport('wss://example.test', { createSocket: net.createSocket }))
+      return guest
+    }
+    const red = join('player1', 'red-tab')
+    const blue = join('player2', 'blue-tab')
+    await flush()
+    playOne(red, 'player1')
+    await flush()
+    playOne(blue, 'player2')
+    await flush()
+    red.submit('player1', { type: 'engine', action: { type: 'resign', player: 'player1' } })
+    await flush()
+    expect(finished).toEqual([3])
+    expect(ratings.get('blue')?.rating).toBe(1520)
+    expect(ratings.get('red')?.rating).toBe(1480)
+
+    // Reopening the finished game does not report it again.
+    red.dispose()
+    blue.dispose()
+    for (const socket of net.sockets) socket.cut()
+    const again = join('player1', 'red-tab')
+    await flush()
+    expect(server.hostOf(matchId)).not.toBeNull()
+    expect(finished).toEqual([3])
+    again.dispose()
+    server.close()
   })
 })

@@ -3,7 +3,7 @@ import type { PlayerId, RuleSettings } from '../game/types'
 import { flagTime } from '../match/clock'
 import { isOver } from '../match/reducer'
 import { MatchHost, createRecord } from '../match/session'
-import type { MatchRecord } from '../match/types'
+import type { MatchRecord, MatchState } from '../match/types'
 import { linkHost } from './hostLink'
 import { PROTOCOL_VERSION, isNetMessage } from './protocol'
 import type { GuestMessage, NetMessage } from './protocol'
@@ -41,7 +41,15 @@ export interface MatchServerOptions {
   now?: () => number
   /** The id the server signs its own messages with. */
   serverId?: string
+  /**
+   * Called once when a game ends, after its final record is saved. This is
+   * where a server rates the game (`ratedScore` and `rateGame` in
+   * src/match/rating.ts), so results never come from a browser.
+   */
+  onFinished?: (record: MatchRecord, state: MatchState) => void
 }
+
+type RoomOptions = Required<Omit<MatchServerOptions, 'onFinished'>> & Pick<MatchServerOptions, 'onFinished'>
 
 /** What `accept` returns: give it each text frame, and tell it when the connection closes. */
 export interface ServerConnection {
@@ -76,14 +84,20 @@ class Room implements Transport {
   private readonly now: () => number
   private readonly serverId: string
 
-  constructor(record: MatchRecord, store: MatchStore, serverId: string, now: () => number) {
+  constructor(record: MatchRecord, options: RoomOptions) {
+    const { store, serverId, now, onFinished } = options
     this.now = now
     this.serverId = serverId
     this.host = new MatchHost(record, { now, connection: 'waiting-for-opponent' })
+    // A room reopened on a finished game must not report it again.
+    let finished = isOver(this.host.getSnapshot().state)
     this.stopWatching = this.host.subscribe((update) => {
-      if (update.step) {
-        store.save(update.snapshot.record)
-        this.scheduleFlag()
+      if (!update.step) return
+      store.save(update.snapshot.record)
+      this.scheduleFlag()
+      if (!finished && isOver(update.snapshot.state)) {
+        finished = true
+        onFinished?.(update.snapshot.record, update.snapshot.state)
       }
     })
     this.unlink = linkHost(this.host, this, { hostSeat: null, clientId: serverId, now })
@@ -172,12 +186,14 @@ export class MatchServer {
   private readonly store: MatchStore
   private readonly now: () => number
   private readonly serverId: string
+  private readonly onFinished: MatchServerOptions['onFinished']
   private rooms = new Map<string, Room>()
 
   constructor(options: MatchServerOptions) {
     this.store = options.store
     this.now = options.now ?? Date.now
     this.serverId = options.serverId ?? 'server'
+    this.onFinished = options.onFinished
   }
 
   /** Start a new online game with both seats open to whoever joins first. Returns its id. */
@@ -259,7 +275,7 @@ export class MatchServer {
     }
     // Only online games with both seats remote belong on a server.
     if (!record || SEATS.some((seat) => record.config.seats[seat].kind !== 'remote')) return null
-    const room = new Room(record, this.store, this.serverId, this.now)
+    const room = new Room(record, { store: this.store, serverId: this.serverId, now: this.now, onFinished: this.onFinished })
     this.rooms.set(matchId, room)
     return room
   }

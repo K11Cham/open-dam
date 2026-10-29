@@ -57,9 +57,9 @@ export const makeSettings = (partial: Partial<RuleSettings> = {}): RuleSettings 
 /**
  * `match-opponent` only means something once there is an opponent to ask.
  *
- * ONLINE HOOK: when real online play lands, the lobby should call this with the
- * opponent's *resolved* policy so the joining player adopts it. Offline it
- * falls through to the default. Both players choosing `match-opponent` is a
+ * Online, the matchmaking queue (`agreedSettings` in src/net/matchmaking.ts)
+ * calls this with the opponent's *resolved* policy so the player adopts it.
+ * Offline it falls through to the default. Both players choosing `match-opponent` is a
  * deliberate no-op: it resolves to the default for both, so they still agree.
  */
 export const resolvePromotionPolicy = (
@@ -76,8 +76,8 @@ export const resolvePromotionPolicy = (
  * toggles all have to line up; `match-opponent` is the one wildcard, since a
  * player choosing it has said they will take whatever the other side uses.
  *
- * There is no matchmaking service yet — this is the data-model half of it, used
- * by the (mock) ranked lobby and ready for a real queue later.
+ * The server's matchmaking queue (`SeekQueue` in src/net/matchmaking.ts) pairs
+ * seeks with this.
  */
 export const settingsAreCompatible = (a: RuleSettings, b: RuleSettings): boolean => {
   if (a.boardSize !== b.boardSize) return false
