@@ -6,6 +6,7 @@ import { ButtonLink } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import Panel from '../components/ui/Panel'
 import { useToast } from '../components/ui/Toasts'
+import { useSound } from '../context/useSound'
 import { useSideNames, useTheme } from '../context/useTheme'
 import type { PlayerId } from '../game/types'
 import { useAIPlayer } from '../hooks/useAIPlayer'
@@ -25,6 +26,7 @@ function LocalMatch({ record }: { record: MatchRecord }) {
   const toast = useToast()
   const { theme } = useTheme()
   const sideNames = useSideNames()
+  const sound = useSound()
   const [host] = useState(() => new MatchHost(record))
   useMatchPersistence(host)
 
@@ -40,6 +42,7 @@ function LocalMatch({ record }: { record: MatchRecord }) {
     sideNames,
     captureDurationMs: theme.motion.captureDurationMs,
     notify: toast.show,
+    onCue: sound.play,
   })
   const thinking = useAIPlayer(host, aiSeat, aiSeat ? seats[aiSeat].difficulty : undefined)
   usePageTitle(controller.over ? 'Game over' : perspective && controller.myTurn ? 'Your move' : 'Game')

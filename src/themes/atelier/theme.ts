@@ -1,5 +1,6 @@
 import type { ThemeDefinition, ThemeTokens } from '../types'
 import { BoardFrame, CellDecor, EndSequence, Piece } from './parts'
+import { sounds } from './sounds'
 import './theme.css'
 
 /**
@@ -77,4 +78,5 @@ export const atelierTheme: ThemeDefinition = {
   },
   sides: { player1: { name: 'Black' }, player2: { name: 'White' } },
   boardGap: 0,
+  sounds,
 }

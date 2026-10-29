@@ -5,6 +5,7 @@
  *
  * Keys in use:
  *   openDam.theme          theme choice
+ *   openDam.sound          sound effects on or off, and their volume
  *   openDam.lastSetup      the last New Game form (rules, opponent, side)
  *   openDam.activeMatch    the unfinished match, as a replayable record
  *   openDam.archive        the last 20 finished matches
@@ -13,6 +14,7 @@
 
 export const STORAGE_KEYS = {
   theme: 'openDam.theme',
+  sound: 'openDam.sound',
   lastSetup: 'openDam.lastSetup',
 } as const
 

@@ -7,6 +7,8 @@ import { Button } from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
 import Segmented from '../components/ui/Segmented'
 import { useToast } from '../components/ui/Toasts'
+import { cueForStep } from '../audio/cues'
+import { useSound } from '../context/useSound'
 import { useSideNames, useTheme, useThemeParts } from '../context/useTheme'
 import { opponentOf } from '../game/board'
 import { canCall, createInitialState } from '../game/engine'
@@ -31,7 +33,19 @@ export default function AnalysisPage() {
   const sideNames = useSideNames()
   const toast = useToast()
   const animations = useBoardAnimations(theme.motion.captureDurationMs)
-  const board = useAnalysisBoard(animations.ingest, (message) => toast.show(message, 'error'))
+  const sound = useSound()
+  const board = useAnalysisBoard(
+    (events) => {
+      animations.ingest(events)
+      // Results here are only a note in the panel, so no end-of-game fanfare.
+      const cue = cueForStep(events, [], [], { endings: false })
+      if (cue) sound.play(cue)
+    },
+    (message) => {
+      toast.show(message, 'error')
+      sound.play('illegal')
+    },
+  )
   const [tool, setTool] = useState<Tool>('move')
   const [flipped, setFlipped] = useState(false)
   const [code, setCode] = useState('')

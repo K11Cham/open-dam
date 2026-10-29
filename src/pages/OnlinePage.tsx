@@ -5,6 +5,7 @@ import MatchScreen from '../components/game/MatchScreen'
 import AppShell from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/ui/Toasts'
+import { useSound } from '../context/useSound'
 import { useSideNames, useTheme } from '../context/useTheme'
 import { opponentOf } from '../game/board'
 import type { PlayerId } from '../game/types'
@@ -98,6 +99,7 @@ function OnlineMatch({
   const toast = useToast()
   const { theme } = useTheme()
   const sideNames = useSideNames()
+  const sound = useSound()
   const controller = useMatchController({
     session,
     localSeats: [seat],
@@ -105,6 +107,7 @@ function OnlineMatch({
     sideNames,
     captureDurationMs: theme.motion.captureDurationMs,
     notify: toast.show,
+    onCue: sound.play,
   })
   usePageTitle(controller.over ? 'Game over' : controller.myTurn ? 'Your move' : 'Online game')
 

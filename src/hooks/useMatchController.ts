@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { cueForStep } from '../audio/cues'
+import type { SoundCue } from '../audio/types'
 import { canCall as engineCanCall, destinationsFor } from '../game/engine'
 import type { Destinations } from '../game/engine'
 import { toMoveRows } from '../game/notation'
@@ -24,6 +26,8 @@ export interface MatchControllerOptions {
   captureDurationMs: number
   /** Where messages for people go (toasts). */
   notify: (message: string, tone?: 'info' | 'error' | 'success') => void
+  /** Called with the sound each step (or refusal) should make; the screen decides how it sounds. */
+  onCue?: (cue: SoundCue) => void
 }
 
 /**
@@ -39,6 +43,7 @@ export function useMatchController({
   sideNames,
   captureDurationMs,
   notify,
+  onCue,
 }: MatchControllerOptions) {
   const animations = useBoardAnimations(captureDurationMs)
   const [selected, setSelected] = useState<Coord | null>(null)
@@ -49,9 +54,14 @@ export function useMatchController({
   const dragOrigin = useRef(false)
 
   const snapshot = useMatchSession(session, (update: SessionUpdate) => {
-    if (update.error) notify(update.error, 'error')
+    if (update.error) {
+      notify(update.error, 'error')
+      onCue?.('illegal')
+    }
     if (!update.step) return
     const { action, events, notices } = update.step
+    const cue = cueForStep(events, notices, localSeats)
+    if (cue) onCue?.(cue)
     const fromThisDevice = action.by !== 'system' && localSeats.includes(action.by)
     // A dragged piece is already where it is going; replaying its travel would look like a glitch.
     animations.ingest(events, { skipTravel: fromThisDevice && dragOrigin.current })

@@ -1,5 +1,6 @@
 import type { ThemeDefinition, ThemeTokens } from '../types'
 import { BoardFrame, CellDecor, EndSequence, Piece } from './parts'
+import { sounds } from './sounds'
 import './theme.css'
 
 /** Fine grains of sand: SVG noise tinted brown, used on the page and on the board. */
@@ -82,4 +83,5 @@ export const sandTheme: ThemeDefinition = {
   },
   sides: { player1: { name: 'Stone' }, player2: { name: 'Stick' } },
   boardGap: 0,
+  sounds,
 }

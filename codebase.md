@@ -12,40 +12,42 @@ every visual decision. Lower layers never import higher ones.
 
 ## Root
 
-| File                                                       | Purpose                                                                                                |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `README.md`                                                | What the project is, how to run it, where to read next.                                                |
-| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                           |
-| `codebase.md`                                              | This file.                                                                                             |
-| `LICENSE`                                                  | MIT licence.                                                                                           |
-| `index.html`                                               | Vite entry document (meta tags, root element).                                                         |
-| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `verify`. |
-| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, Vitest settings.                                |
-| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                            |
-| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references; the app is `strict`.                                                    |
-| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                     |
-| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                          |
-| `.gitattributes`                                           | Normalises line endings to LF.                                                                         |
-| `.gitignore`                                               | Ignore rules.                                                                                          |
-| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                           |
-| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                    |
+| File                                                       | Purpose                                                                                                          |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `README.md`                                                | What the project is, how to run it, where to read next.                                                          |
+| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                     |
+| `codebase.md`                                              | This file.                                                                                                       |
+| `LICENSE`                                                  | MIT licence.                                                                                                     |
+| `index.html`                                               | Vite entry document (meta tags, root element).                                                                   |
+| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `verify`. |
+| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, Vitest settings.                                          |
+| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                      |
+| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references; the app is `strict`.                                                              |
+| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                               |
+| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                    |
+| `.gitattributes`                                           | Normalises line endings to LF.                                                                                   |
+| `.gitignore`                                               | Ignore rules.                                                                                                    |
+| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                     |
+| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                              |
 
 ## `docs/`
 
-| File                                      | Purpose                                                                 |
-| ----------------------------------------- | ----------------------------------------------------------------------- |
-| `docs/WALKTHROUGH.md`                     | The guided tour: how everything connects, with traces and exercises.    |
-| `docs/HANDOVER.md`                        | How to pick up work: the board, the rules of the branch, the shift log. |
-| `docs/MULTIPLAYER.md`                     | The match log, the wire protocol, and how to add a real server.         |
-| `docs/audit/2026-10-27-codebase-audit.md` | The audit that started the overhaul (describes the old code).           |
+| File                                      | Purpose                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| `docs/WALKTHROUGH.md`                     | The guided tour: how everything connects, with traces and exercises.                 |
+| `docs/HANDOVER.md`                        | How to pick up work: the board, the rules of the branch, the shift log.              |
+| `docs/MULTIPLAYER.md`                     | The match log, the wire protocol, and how to add a real server.                      |
+| `docs/SOUNDS.md`                          | How the sound effects work, how to tune them, and which recorded sounds may be used. |
+| `docs/audit/2026-10-27-codebase-audit.md` | The audit that started the overhaul (describes the old code).                        |
 
 ## `scripts/`
 
-| File                          | Purpose                                                                                               |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `scripts/ai-strength.test.ts` | Tier-vs-tier matches; asserts stronger tiers outscore weaker ones. Slow; run with `npm run check:ai`. |
-| `scripts/ai-endgames.test.ts` | Endgame conversion from random starts (`npm run check:endgames`).                                     |
-| `scripts/ai-replay.test.ts`   | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.            |
+| File                            | Purpose                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `scripts/ai-strength.test.ts`   | Tier-vs-tier matches; asserts stronger tiers outscore weaker ones. Slow; run with `npm run check:ai`.   |
+| `scripts/ai-endgames.test.ts`   | Endgame conversion from random starts (`npm run check:endgames`).                                       |
+| `scripts/ai-replay.test.ts`     | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.              |
+| `scripts/render-sounds.test.ts` | Renders every theme's sounds to `sound-preview/` as WAV files with a listening page (`npm run sounds`). |
 
 ## `public/`
 
@@ -89,6 +91,16 @@ every visual decision. Lower layers never import higher ones.
 | `search.worker.ts` | The worker: receives a position, returns the chosen action.                                                                                                                                                                                  |
 | `index.ts`         | Barrel re-export.                                                                                                                                                                                                                            |
 | `ai.test.ts`       | Legality for every tier, sacrifices, lone-king finishes, missed calls, time budget, offer decisions.                                                                                                                                         |
+
+## `src/audio/` — sound effects (pure, except `player.ts`)
+
+| File            | Purpose                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| `types.ts`      | Cues, synthesis recipes, recorded sounds with credits, allowed licences.                     |
+| `synth.ts`      | Renders a recipe to samples (no Web Audio needed) and encodes WAV.                           |
+| `cues.ts`       | `cueForStep`: which one sound a game step makes.                                             |
+| `player.ts`     | Plays sounds through Web Audio, caching each; the sound setting (on/off, volume) as a store. |
+| `audio.test.ts` | Synth guarantees, cue choice, and every theme having an audible sound for every cue.         |
 
 ## `src/match/` — a game as an action log (pure, except `storage.ts`)
 
@@ -147,6 +159,7 @@ every visual decision. Lower layers never import higher ones.
 | `layout/AppShell.tsx`      | Skip link, top bar, main, footer.                                                                       |
 | `layout/Navbar.tsx`        | Top bar, logo mark, navigation drawer on small screens.                                                 |
 | `layout/ThemeMenu.tsx`     | Theme picker menu with swatches.                                                                        |
+| `layout/SoundToggle.tsx`   | Sound effects on/off button in the top bar.                                                             |
 | `layout/navItems.ts`       | Navigation destinations.                                                                                |
 | `settings/RulesForm.tsx`   | Board and clock settings, and the house rules as a summary with an edit dialog.                         |
 | `ui/Button.tsx`            | `Button`, `ButtonLink`, `IconButton`.                                                                   |
@@ -183,21 +196,23 @@ every visual decision. Lower layers never import higher ones.
 | `registry.ts`       | The four themes and the default.                                                                        |
 | `<theme>/theme.ts`  | Tokens, motion, side names.                                                                             |
 | `<theme>/parts.tsx` | Piece, square decoration, board frame, end-of-game sequence.                                            |
+| `<theme>/sounds.ts` | The theme's sound for every cue, as synthesis recipes (plain data, no CSS or React).                    |
 | `<theme>/theme.css` | The theme's signature styles, scoped to `[data-theme='<theme>']`.                                       |
 | `themes.test.ts`    | Guards the end-of-game markers' centring (they must use `translate`, which framer-motion leaves alone). |
 
 ## Elsewhere in `src/`
 
-| File                            | Purpose                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------- |
-| `context/ThemeContext.tsx`      | Applies the theme's tokens to `<html>` and provides it.                     |
-| `context/themeContextObject.ts` | The context object and its type.                                            |
-| `context/useTheme.ts`           | `useTheme`, `useThemeParts`, `useSideNames`.                                |
-| `lib/describe.ts`               | Every sentence the game says about itself: outcomes, notices, spoken moves. |
-| `lib/usePageTitle.ts`           | Sets the browser tab title.                                                 |
-| `services/storage.ts`           | Safe wrapper around localStorage; key list.                                 |
-| `data/leaderboards.ts`          | Sample leaderboard data.                                                    |
-| `styles/base.css`               | Reset, document defaults, focus ring, utilities, reduced motion.            |
-| `styles/app.css`                | Structure for every component, using theme tokens only.                     |
-| `test/setup.ts`                 | Test environment setup (jest-dom, cleanup, browser API stubs).              |
-| `test/ui.test.tsx`              | UI tests through the real routes.                                           |
+| File                            | Purpose                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| `context/ThemeContext.tsx`      | Applies the theme's tokens to `<html>` and provides it.                      |
+| `context/themeContextObject.ts` | The context object and its type.                                             |
+| `context/useTheme.ts`           | `useTheme`, `useThemeParts`, `useSideNames`.                                 |
+| `context/useSound.ts`           | `useSound`: play a cue in the current theme's voice, and the on/off setting. |
+| `lib/describe.ts`               | Every sentence the game says about itself: outcomes, notices, spoken moves.  |
+| `lib/usePageTitle.ts`           | Sets the browser tab title.                                                  |
+| `services/storage.ts`           | Safe wrapper around localStorage; key list.                                  |
+| `data/leaderboards.ts`          | Sample leaderboard data.                                                     |
+| `styles/base.css`               | Reset, document defaults, focus ring, utilities, reduced motion.             |
+| `styles/app.css`                | Structure for every component, using theme tokens only.                      |
+| `test/setup.ts`                 | Test environment setup (jest-dom, cleanup, browser API stubs).               |
+| `test/ui.test.tsx`              | UI tests through the real routes.                                            |
