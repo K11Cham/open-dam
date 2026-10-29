@@ -776,7 +776,21 @@ export const legalActions = (state: EngineState): EngineAction[] => {
     return out
   }
   for (const c of getCaptures(state.board, player)) out.push({ type: 'move', from: c.from, to: c.to })
-  for (const m of getSimpleMoves(state.board, player)) out.push({ type: 'move', from: m.from, to: m.to })
+  const centre = centreSquare(state.settings.boardSize)
+  for (const m of getSimpleMoves(state.board, player)) {
+    // An ordinary step into the centre is still bound by the opening rule.
+    const check = centrePlacementCheck(state, m.from, m.to)
+    if (!check.applicable || check.legal) out.push({ type: 'move', from: m.from, to: m.to })
+  }
+  // The yin/yang opening lets any piece jump to the centre, so the search and
+  // the opening book must see those placements too, not only the adjacent steps.
+  for (let row = 0; row < state.board.length; row++) {
+    for (let col = 0; col < state.board.length; col++) {
+      const from = { row, col }
+      if (Math.abs(row - centre.row) + Math.abs(col - centre.col) === 1) continue
+      if (centrePlacementCheck(state, from, centre).legal) out.push({ type: 'move', from, to: centre })
+    }
+  }
   return out
 }
 

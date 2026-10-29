@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import { applyAction, createInitialState, legalActions } from '../game/engine'
+import { coordToNotation } from '../game/notation'
 import { positionFromAscii } from '../game/position'
-import type { EngineAction, EngineState } from '../game/types'
+import type { BoardSize, EngineAction, EngineState } from '../game/types'
 import { DIFFICULTIES, DIFFICULTY_IDS } from './difficulty'
 import type { DifficultyId } from './difficulty'
 import { decideDrawOffer, decideUndoRequest } from './opponent'
 import { WIN_SCORE } from './evaluate'
+import { OPENING_BOOK, pickOpening } from './openings'
 import { chooseAction } from './search'
 
 /** Deterministic random source so these tests never flake. */
@@ -30,6 +32,7 @@ const options = (id: DifficultyId, budgetMs = 150) => {
     missCallChance: d.missCallChance,
     callAware: d.callAware,
     forcingExtensions: d.forcingExtensions,
+    openingTemperature: d.openingTemperature,
     random: seeded(7),
   }
 }
@@ -51,6 +54,55 @@ describe('every tier only plays legal actions', () => {
       }
     })
   }
+})
+
+describe('openings', () => {
+  const sizes = [5, 7, 9] as BoardSize[]
+  const openingName = (action: EngineAction | null, size: number) =>
+    action?.type === 'move' ? coordToNotation(action.from.row, action.from.col, size) : null
+
+  test('the book covers every odd board and names only legal openings', () => {
+    for (const size of sizes) {
+      const book = OPENING_BOOK[size]
+      expect(book, `${size}`).toBeDefined()
+      const start = createInitialState({ boardSize: size })
+      const legal = legalActions(start).map((a) => openingName(a, size))
+      for (const square of Object.keys(book!)) expect(legal, `${size}: ${square}`).toContain(square)
+    }
+  })
+
+  test('sharper tiers pick stronger openings, but not always the same one', () => {
+    for (const size of sizes) {
+      const book = OPENING_BOOK[size]!
+      const start = createInitialState({ boardSize: size })
+      const average = (id: DifficultyId) => {
+        const random = seeded(11)
+        const picks = Array.from({ length: 300 }, () =>
+          openingName(pickOpening(start, DIFFICULTIES[id].openingTemperature, random), size),
+        )
+        return { mean: picks.reduce((sum, p) => sum + book[p!], 0) / picks.length, distinct: new Set(picks).size }
+      }
+      const serin = average('serin')
+      const doff = average('doff')
+      expect(serin.mean, `${size}`).toBeGreaterThan(doff.mean)
+      expect(serin.distinct, `${size}`).toBeGreaterThan(1)
+      expect(doff.distinct, `${size}`).toBeGreaterThan(serin.distinct)
+    }
+  })
+
+  test('the book is only for player one’s first move on an odd board', () => {
+    const start = createInitialState({ boardSize: 5 })
+    const first = pickOpening(start, 0.15, seeded(3))!
+    const reply = applyAction(start, first).state
+    expect(pickOpening(reply, 0.15, seeded(3))).toBeNull()
+    expect(pickOpening(createInitialState({ boardSize: 6 }), 0.15, seeded(3))).toBeNull()
+  })
+
+  test('the computer plays its first move from the book', () => {
+    const start = createInitialState({ boardSize: 5 })
+    const result = chooseAction(start, options('serin'))!
+    expect(Object.keys(OPENING_BOOK[5]!)).toContain(openingName(result.action, 5))
+  })
 })
 
 describe('tactics', () => {

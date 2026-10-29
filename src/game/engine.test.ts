@@ -349,6 +349,14 @@ currentSection = 'Yin/yang opening'
   )
   const d2 = destinationsFor(s7, { row: 6, col: 6 })
   check('an illegal centre placement is not offered', !d2.slides.some((c) => c.row === 3 && c.col === 3))
+
+  // The search and the opening book read legalActions, so the placements must be there.
+  const opening = legalActions(st).filter((a) => a.type === 'move' && a.to.row === 2 && a.to.col === 2)
+  check('every legal centre placement is a legal action', opening.length === 9, `${opening.length}`)
+  check(
+    'every listed centre placement is accepted',
+    opening.every((a) => !applyAction(st, a).error),
+  )
 }
 
 // ---------------------------------------------------------------------------

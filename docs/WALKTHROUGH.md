@@ -196,7 +196,10 @@ This is the heart. Read it in this order:
    many moves without a capture → draw.
 7. `applyAction(state, action)` — a switch that routes any `EngineAction` to the
    functions above. This is the single entry point everything else uses.
-8. `legalActions(state)` — every legal action; the AI and tests use it.
+8. `legalActions(state)` — every legal action; the AI and tests use it. On
+   an odd board's first move that includes every legal jump to the centre,
+   not only the two neighbouring steps. Until 2026-10-28 it left those out,
+   so the computer never used the special opening.
 
 **Why pure functions?** Because `applyMove` returns a _new_ state and never
 modifies the old one, keeping history is trivial (just keep the old states),
@@ -300,6 +303,28 @@ The weaker tiers make "near miss" mistakes: when they slip, they pick a move
 that scored almost as well, the way a person misjudges rather than throws a
 piece away. Old tier ids (`novice`, `club`, `expert`, `master`) in saved games
 and links map to their successors through `normalizeDifficultyId`.
+
+### The first move: `openings.ts`
+
+On 5×5, 7×7 and 9×9 the first move may send any piece to the empty centre.
+The board is packed, so the square that move empties decides the reply,
+which is usually forced. The search cannot tell these openings apart: their
+consequences come dozens of plies later, and at the root they all score about
+even. So the first move comes from an **opening book** instead: Seriñ played
+itself from every opening (`npm run openings`), and each opening's score is
+(wins − losses) / games for the first player.
+
+The computer does not simply play the best one. `pickOpening` gives each
+opening a weight of e^(score / temperature) and picks at random by weight.
+Each tier has its own `openingTemperature`: Seriñ's 0.15 almost always picks
+one of the top openings but varies between them, while Döff's 2 leans towards
+the good ones but plays nearly anything. The pick happens before a tier's
+deliberate mistakes, so the temperature alone sets how often it opens badly.
+
+What the games showed on 5×5: emptying your home row (a1) hands over a king on
+move one, and emptying b2 lets a piece settle where your own pieces block each
+other's jumps; both lost every game. The Learn page's opening puzzle reads its
+answers from the same book, so re-measuring updates both.
 
 ### Other decisions: `opponent.ts`
 
@@ -553,7 +578,7 @@ replace them.
 | `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.              |
 | `/online/:id`          | `OnlinePage`       | Hosts (creator tab) or joins (`?seat=`).                                                                      |
 | `/review/:id`          | `ReviewPage`       | A finished game, read-only, steppable.                                                                        |
-| `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eight chapters with example boards.                                                        |
+| `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eleven chapters with example boards and puzzles; solved puzzles are counted per chapter.   |
 | `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                         |
 | `/leaderboards`        | `LeaderboardsPage` | Sample data until there is a server.                                                                          |
 
@@ -589,6 +614,22 @@ opened them.
 through the engine, so an example can never show an illegal move. A test
 replays every example.
 
+**Tutorial puzzles** turn a lesson into something you do. The reader plays the
+first side on a small board (`PuzzleBoard`) and has to find the move the
+section teaches. `judge` in `puzzle.ts` decides: a move is right if it is one
+of the puzzle's answers, or if it passes the puzzle's test (`safe`: the
+opponent has nothing to capture afterwards; `wins`: the game is won). A right
+move gets praise and the opponent's scripted reply. A tempting wrong move that
+the puzzle lists gets an explanation, and then the board plays the move that
+punishes it, because seeing the capture land teaches more than a sentence.
+Hint, Try again and Show me are always at hand. Solved puzzles are remembered
+in local storage (`progress.ts`) and counted beside each chapter. The last three
+chapters teach strategy (Traps and breakthroughs, Trapping a lone king,
+Winning plans): the
+two-square trap, breaking it with a supported column, defending it by filling
+the square behind its landing spot, choosing an opening, and winning by
+blocking.
+
 ---
 
 ## Part 10 — Tools and tests
@@ -605,17 +646,18 @@ replays every example.
 | `npm run sounds`         | Render every theme's sounds to WAV        |
 | `npm run check:endgames` | Endgame conversion from random starts     |
 | `npm run replay`         | Print one computer game ply by ply        |
+| `npm run openings`       | Measure every first move (the book)       |
 
 Where the tests are and what they protect:
 
 | File                                  | Protects                                                                                                            |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `src/game/engine.test.ts`             | Every rule branch                                                                                                   |
-| `src/ai/ai.test.ts`                   | Legal play for every tier, sacrifices, lone-king finishes, missed calls, time budget, offers                        |
+| `src/ai/ai.test.ts`                   | Legal play for every tier, the opening book, sacrifices, lone-king finishes, missed calls, time budget, offers      |
 | `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                                |
 | `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                                  |
 | `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), matchmaking, rating hook |
-| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal                                                                                     |
+| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal; every puzzle's answers, mistakes and punishments replay and are judged correctly   |
 | `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                   |
 | `src/audio/audio.test.ts`             | Synth output, which sound a step makes, every theme has every sound                                                 |
 | `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs    |
@@ -642,8 +684,21 @@ side names and a `theme.css` scoped to `[data-theme='<key>']`. Add it to
 `ThemeKey` in `themes/types.ts` and to `THEMES` in `themes/registry.ts`. Check
 every screen in it.
 
-**Add an AI tier.** Add an entry to `DIFFICULTIES` in `ai/difficulty.ts` and
-its id to `DIFFICULTY_IDS`. It appears on New game and Home automatically.
+**Add a lesson or a puzzle.** Add a section to a chapter in
+`pages/tutorial/chapters.ts`. An `example` is a script the reader watches; a
+`puzzle` is a position the reader plays, with its answers (`accept`, or a
+`test`), the opponent's replies, and tempting `mistakes` with the moves that
+punish them. Give the puzzle a new `id`: solved puzzles are remembered by it.
+The tutorial test replays it; if a square is wrong, it fails and says which
+step.
+
+**Re-measure the openings.** After a change to the rules or the evaluation,
+run `SIZE=5 GAMES=8 npm run openings` (and 7, 9; `SHARD`/`SHARDS` split the
+work across processes, `OFFSET` adds games with new seeds), and copy the
+scores into `OPENING_BOOK` in `ai/openings.ts`.
+
+**Add an AI tier.** Add an entry to `DIFFICULTIES` in `ai/difficulty.ts`
+(including an `openingTemperature`) and its id to `DIFFICULTY_IDS`. It appears on New game and Home automatically.
 Add it to the matches in `scripts/ai-strength.test.ts`. If you rename one, map the
 old id in `normalizeDifficultyId` so saved games and links keep working.
 

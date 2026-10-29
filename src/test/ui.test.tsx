@@ -165,6 +165,27 @@ describe('learn', () => {
     expect(await screen.findByRole('heading', { name: 'Chain captures', level: 2 })).toBeInTheDocument()
     expect(screen.getAllByRole('grid').length).toBeGreaterThan(0)
   })
+
+  test('a puzzle explains and punishes a wrong move, then counts a solve', async () => {
+    const user = userEvent.setup()
+    storage.remove(STORAGE_KEYS.puzzles)
+    renderAt('/learn/tempo')
+    const board = await screen.findByRole('grid', { name: 'Puzzle: Cover the square behind' })
+    const cell = (name: string) => within(board).getByRole('gridcell', { name: new RegExp(`^${name},`) })
+
+    // b3 steps up under b4 with nothing behind it.
+    tap(cell('b2'))
+    fireEvent.click(cell('b3'))
+    expect(await screen.findByText(/b3 sits right under b4/)).toBeInTheDocument()
+    await waitFor(() => expect(cell('b2')).toHaveAccessibleName(/Blue piece/), { timeout: 3000 })
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    tap(cell('c2'))
+    fireEvent.click(cell('c3'))
+    expect(await screen.findByText(/Nothing for Blue to take/)).toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Chapters' })).getByText('1/1')).toBeInTheDocument()
+    expect(storage.get<string[]>(STORAGE_KEYS.puzzles)).toContain('tempo-safe')
+  })
 })
 
 describe('new game', () => {

@@ -30,7 +30,7 @@ export interface ExampleSpec {
   steps: ExampleStep[]
 }
 
-export function initialPosition(spec: ExampleSpec): EngineState {
+export function initialPosition(spec: Pick<ExampleSpec, 'rows' | 'size' | 'settings' | 'toMove'>): EngineState {
   if (spec.rows === 'start') return createInitialState({ boardSize: spec.size ?? 5, ...spec.settings })
   return positionFromAscii(spec.rows, spec.toMove, spec.settings)
 }

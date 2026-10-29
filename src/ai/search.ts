@@ -4,6 +4,7 @@ import type { EngineAction, EngineState } from '../game/types'
 import { WIN_SCORE, declineCost, evaluate, kingValue } from './evaluate'
 import type { EvalProfile } from './evaluate'
 import { hashPosition } from './hash'
+import { pickOpening } from './openings'
 
 /**
  * Negamax with alpha-beta over the real engine. Every node is produced by the
@@ -69,6 +70,11 @@ export interface SearchOptions {
   callAware?: boolean
   /** Extra plies allowed per line for forced replies (see point 4 above). */
   forcingExtensions?: number
+  /**
+   * How loosely the first move follows the opening book (see openings.ts).
+   * Lower is sharper. Left out, the search picks the first move itself.
+   */
+  openingTemperature?: number
   /** Remember scored positions between branches (default on; off is for measuring). */
   transpositionTable?: boolean
   /** Defaults to Math.random; tests pass a seeded source. */
@@ -415,6 +421,14 @@ export function chooseAction(state: EngineState, options: SearchOptions): Search
         blundered: false,
       }
     }
+  }
+
+  // The opening comes from the book: the search sees every opening as even.
+  // It runs before the blunder roll, so on move one the temperature alone sets
+  // how often a tier picks a weak opening.
+  if (options.openingTemperature !== undefined) {
+    const opening = pickOpening(state, options.openingTemperature, random)
+    if (opening) return { action: opening, score: 0, nodes: 0, depthReached: 0, blundered: false }
   }
 
   const actions = generateActions(state)
