@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion'
-import type { CSSProperties } from 'react'
 import { Star } from 'lucide-react'
 import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
 
@@ -41,41 +40,20 @@ export function BoardFrame({ children }: BoardFrameProps) {
   return <div className="nb-board-frame">{children}</div>
 }
 
-/** The board flashes, then the surviving pieces jolt in place. */
-export function EndSequence({ status, survivors, gridSize, perspective }: EndSequenceProps) {
+/** The board flashes; the pieces themselves react through the shared end-of-game wave. */
+export function EndSequence({ status, perspective }: EndSequenceProps) {
   if (status.kind === 'playing') return null
   const drew = status.kind === 'draw'
   const won = status.kind === 'win' && (perspective === null || status.winner === perspective)
 
   return (
-    <div className="nb-end-layer" style={{ '--end-cell': `${100 / gridSize}%` } as CSSProperties} aria-hidden>
+    <div className="nb-end-layer" aria-hidden>
       <motion.div
         className={`nb-end-flash ${drew ? 'is-draw' : won ? 'is-win' : 'is-loss'}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.85, 0] }}
         transition={{ duration: 0.7, times: [0, 0.25, 1] }}
       />
-      {survivors.map(({ piece, at }, index) => {
-        const isWinner = status.kind === 'win' && piece.player === status.winner
-        return (
-          <motion.span
-            key={piece.id}
-            className={`nb-end-marker ${piece.player === 'player1' ? 'is-p1' : 'is-p2'}`}
-            style={{ left: `${((at.col + 0.5) / gridSize) * 100}%`, top: `${((at.row + 0.5) / gridSize) * 100}%` }}
-            initial={{ scale: 0, rotate: -20 }}
-            // Each marker is a solid disc over its piece, so it stamps and then
-            // fades away; left on, it hid every piece's face after the game.
-            animate={
-              drew
-                ? { scale: [0, 1.1, 0.95], rotate: [0, 8, -8, 0], opacity: [1, 1, 1, 0] }
-                : isWinner
-                  ? { scale: [0, 1.4, 1], rotate: [0, 18, -10, 0], y: [0, -14, 0], opacity: [1, 1, 1, 0] }
-                  : { scale: [0, 1, 0.8], rotate: [0, 0, 90], opacity: [1, 1, 0.35, 0] }
-            }
-            transition={{ duration: 1.2, delay: 0.15 + index * 0.05, ease: 'easeOut' }}
-          />
-        )
-      })}
     </div>
   )
 }

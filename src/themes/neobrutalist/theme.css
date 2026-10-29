@@ -306,26 +306,3 @@
 [data-theme='neobrutalist'] .nb-end-flash.is-draw {
   background: var(--dam-ink-muted);
 }
-
-[data-theme='neobrutalist'] .nb-end-marker {
-  position: absolute;
-  /* Sized from the square (the layer sets --end-cell), so it fits any board size. */
-  width: calc(var(--end-cell) * 0.7);
-  height: calc(var(--end-cell) * 0.7);
-  /*
-    Centred with the translate property, not transform: framer-motion writes
-    its own inline transform for the scale and rotation, which replaced the
-    centring and left every marker hanging off the bottom-right of its piece.
-  */
-  translate: -50% -50%;
-  border: 3px solid var(--dam-border);
-  border-radius: 999px;
-}
-
-[data-theme='neobrutalist'] .nb-end-marker.is-p1 {
-  background: var(--dam-p1);
-}
-
-[data-theme='neobrutalist'] .nb-end-marker.is-p2 {
-  background: var(--dam-p2);
-}

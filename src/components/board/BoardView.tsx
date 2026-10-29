@@ -172,13 +172,6 @@ export default function BoardView({
     !ended ? '' : endWinner === null ? ' is-end-draw' : piece.player === endWinner ? ' is-end-winner' : ' is-end-loser'
   const endDelay = (c: Coord) => `${250 + (Math.abs(c.row - endOrigin.row) + Math.abs(c.col - endOrigin.col)) * 70}ms`
 
-  const survivors: Array<{ piece: PieceData; at: Coord }> = []
-  position.board.forEach((row, r) =>
-    row.forEach((cell, c) => {
-      if (cell) survivors.push({ piece: cell, at: toDisplay({ row: r, col: c }) })
-    }),
-  )
-
   return (
     <div className="board-wrap">
       <BoardFrame gridSize={size}>
@@ -318,9 +311,7 @@ export default function BoardView({
             </AnimatePresence>
           </div>
 
-          {!hideEndSequence && (
-            <EndSequence status={position.status} survivors={survivors} gridSize={size} perspective={perspective} />
-          )}
+          {!hideEndSequence && <EndSequence status={position.status} gridSize={size} perspective={perspective} />}
         </div>
       </BoardFrame>
 

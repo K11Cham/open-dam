@@ -1,7 +1,7 @@
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
-import type { BoardFrameProps, CellDecorProps, EndSequenceProps, PieceViewProps } from '../types'
+import type { BoardFrameProps, CellDecorProps, PieceViewProps } from '../types'
 
 /**
  * Dam as it is played under a tree: a grid scratched into the sand, stones
@@ -195,32 +195,11 @@ export function BoardFrame({ gridSize, children }: BoardFrameProps) {
   )
 }
 
-/** At the end, rings are drawn in the sand around the pieces still standing: bold for the winner's. */
-export function EndSequence({ status, survivors, gridSize, perspective }: EndSequenceProps) {
-  const reducedMotion = useReducedMotion()
-  if (status.kind === 'playing') return null
-  const winner = status.kind === 'win' ? status.winner : null
-  const good = winner !== null && (perspective === null || winner === perspective)
-
-  return (
-    <svg className="sd-end-layer" viewBox={`0 0 ${gridSize} ${gridSize}`} aria-hidden focusable="false">
-      {survivors.map(({ piece, at }, index) => {
-        const isWinnerPiece = winner !== null && piece.player === winner
-        return (
-          <motion.circle
-            key={piece.id}
-            cx={at.col + 0.5}
-            cy={at.row + 0.5}
-            r={isWinnerPiece ? 0.46 : 0.4}
-            className={['sd-end-ring', isWinnerPiece && 'is-winner', isWinnerPiece && good && 'is-good']
-              .filter(Boolean)
-              .join(' ')}
-            initial={reducedMotion ? false : { pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.2 + index * 0.08, ease: 'easeInOut' }}
-          />
-        )
-      })}
-    </svg>
-  )
+/**
+ * Nothing is drawn over the board at the end: the winner's pieces jump off
+ * the sand and the loser's tip over (theme.css), and the outcome splash says
+ * the rest.
+ */
+export function EndSequence() {
+  return null
 }

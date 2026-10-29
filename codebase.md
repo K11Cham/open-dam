@@ -190,15 +190,14 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/themes/`
 
-| File                | Purpose                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------- |
-| `types.ts`          | The theme contract: tokens, parts, motion, side names.                                                  |
-| `registry.ts`       | The four themes and the default.                                                                        |
-| `<theme>/theme.ts`  | Tokens, motion, side names.                                                                             |
-| `<theme>/parts.tsx` | Piece, square decoration, board frame, end-of-game sequence.                                            |
-| `<theme>/sounds.ts` | The theme's sound for every cue, as synthesis recipes (plain data, no CSS or React).                    |
-| `<theme>/theme.css` | The theme's signature styles, scoped to `[data-theme='<theme>']`.                                       |
-| `themes.test.ts`    | Guards the end-of-game markers' centring (they must use `translate`, which framer-motion leaves alone). |
+| File                | Purpose                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `types.ts`          | The theme contract: tokens, parts, motion, side names.                               |
+| `registry.ts`       | The four themes and the default.                                                     |
+| `<theme>/theme.ts`  | Tokens, motion, side names.                                                          |
+| `<theme>/parts.tsx` | Piece, square decoration, board frame, end-of-game sequence.                         |
+| `<theme>/sounds.ts` | The theme's sound for every cue, as synthesis recipes (plain data, no CSS or React). |
+| `<theme>/theme.css` | The theme's signature styles, scoped to `[data-theme='<theme>']`.                    |
 
 ## Elsewhere in `src/`
 
