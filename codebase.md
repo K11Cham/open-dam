@@ -12,23 +12,24 @@ every visual decision. Lower layers never import higher ones.
 
 ## Root
 
-| File                                                       | Purpose                                                                                                          |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `README.md`                                                | What the project is, how to run it, where to read next.                                                          |
-| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                     |
-| `codebase.md`                                              | This file.                                                                                                       |
-| `LICENSE`                                                  | MIT licence.                                                                                                     |
-| `index.html`                                               | Vite entry document (meta tags, root element).                                                                   |
-| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `verify`. |
-| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, Vitest settings.                                          |
-| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                      |
-| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references; the app is `strict`.                                                              |
-| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                               |
-| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                    |
-| `.gitattributes`                                           | Normalises line endings to LF.                                                                                   |
-| `.gitignore`                                               | Ignore rules.                                                                                                    |
-| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                     |
-| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                              |
+| File                                                       | Purpose                                                                                                                          |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`                                                | What the project is, how to run it, where to read next.                                                                          |
+| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                                     |
+| `codebase.md`                                              | This file.                                                                                                                       |
+| `LICENSE`                                                  | MIT licence.                                                                                                                     |
+| `index.html`                                               | Vite entry document (meta tags, root element).                                                                                   |
+| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `build:static`, `verify`. |
+| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, Vitest settings.                                                          |
+| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                                      |
+| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references; the app is `strict`.                                                                              |
+| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                                               |
+| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                                    |
+| `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                            |
+| `.gitattributes`                                           | Normalises line endings to LF.                                                                                                   |
+| `.gitignore`                                               | Ignore rules.                                                                                                                    |
+| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                     |
+| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                              |
 
 ## `docs/`
 

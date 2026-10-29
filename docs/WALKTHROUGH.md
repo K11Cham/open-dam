@@ -516,7 +516,7 @@ the `<html>` element and sets `data-theme="<key>"`.
 Some differences can't be done with CSS alone, so a theme also provides React
 components (`parts.tsx`): `Piece` (a flat disc, an open ring, a painted
 festival token, or a 3D stone or stick), `CellDecor` (how legal moves are marked), `BoardFrame`,
-and `EndSequence` (the end-of-game animation on the board).
+and `EndSequence` (the end-of-game animation on the board; Sand has none).
 
 ### A 3D theme: Sand
 
@@ -527,10 +527,13 @@ into sand, stones against sticks. It is 3D with plain CSS, no WebGL:
   between it and a piece's layers sets `transform-style: preserve-3d`, and
   none of them may use `overflow`, `opacity`, `filter` or a mask, which would
   flatten the scene.
-- A piece is a stack of thin layers, each lifted with `translateZ`. Layers
-  that narrow towards the top make a stone's dome; a stick's layers are widest
-  in the middle, like a round twig. A king is a second stone on top, or a
-  second stick laid across.
+- A piece is a stack of thin layers, each lifted with `translateZ`. A stone
+  is a rough pebble: its layers share one of a few lumpy outlines and narrow
+  towards the top, and a noise texture gives it grain. A stick is a twig cut
+  out with `clip-path`: tapered, knotted, snapped at the ends, sometimes with a
+  side shoot. Shape, size, tint and turn come from a hash of the piece's id,
+  so every piece looks different but keeps its look all game. A king is a
+  smaller pebble on top, or a second twig laid across.
 - Layer height, `--sd-step`, is set from the board's width with container
   units (`cqw`), so pieces keep their proportions on every screen. Away from
   the board (player cards, the analysis palette), a piece tilts itself.
@@ -637,7 +640,7 @@ blocking.
 | Command                  | What it runs                              |
 | ------------------------ | ----------------------------------------- |
 | `npm run dev`            | Vite dev server with hot reload           |
-| `npm test`               | Vitest: ~160 tests in a few seconds       |
+| `npm test`               | Vitest: ~230 tests in a few seconds       |
 | `npm run typecheck`      | TypeScript in strict mode                 |
 | `npm run lint`           | ESLint                                    |
 | `npm run format`         | Prettier                                  |
@@ -710,6 +713,12 @@ belongs in the menu.
 
 **Add a sentence the game says.** Put it in `src/lib/describe.ts`, so all
 screens and announcements stay consistent.
+
+**Play a copy on a phone.** `npm run build:static` writes `dist-static/`:
+relative paths, and routes after a `#` (`VITE_ROUTER=hash` from `.env.static`),
+so it runs on any static host, including a private Claude artifact (publish
+`index.html` as the page and everything else beside it). Normal builds keep
+clean URLs. Online play needs a server, so it does not work there.
 
 **Add an online server.** Follow "Adding a real server" in
 `docs/MULTIPLAYER.md`.

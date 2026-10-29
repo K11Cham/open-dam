@@ -2,7 +2,7 @@
 
 How to pick up work on Open Dam, whether you are a person or an agent.
 
-## Current state (2026-10-28)
+## Current state (2026-10-29)
 
 - `feat/overhaul` builds and `npm run verify` passes (232 tests). Every work
   row and every verification row is done except the server rows **w25** and
@@ -23,7 +23,14 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   evaluation (recipe in WALKTHROUGH.md Part 11).
 - With the board clear, shifts do the quality pass described in the scheduled
   task: look for real problems, add rows (next ids **w36**, **v14**), fix them.
-- Nothing has been pushed and `main` is untouched.
+- `feat/overhaul` is on GitHub: the owner asked for it to be pushed on
+  2026-10-29. `main` is untouched; to release, open a pull request from
+  `feat/overhaul` into `main`.
+- The owner plays a private copy on their phone:
+  https://claude.ai/artifact/MxbYGWhJ7w14nSmmoj3e33 (only the owner can open
+  it). To bring it up to date, run `npm run build:static` and republish
+  `dist-static` to that link (recipe in WALKTHROUGH.md Part 11). Online play
+  does not work there.
 
 ## Starting a new session
 
@@ -64,7 +71,9 @@ change a row's status and notes directly on the page.
   **`pre-overhaul-2026-10-27`** and branch **`backup/pre-overhaul-2026-10-27`**
   (which also includes the uncommitted Home page work that existed then).
 - Commit finished work on `feat/overhaul`. Do not push, force-push, rewrite
-  history, or delete branches and tags unless the owner asks.
+  history, or delete branches and tags unless the owner asks. The owner
+  pushed `feat/overhaul` once (2026-10-29); that does not make later pushes
+  routine, so leave pushing to them.
 - To bring the work into `main`, open a pull request from `feat/overhaul`.
 
 ## Before you change anything
@@ -87,7 +96,7 @@ change a row's status and notes directly on the page.
   `src/styles/app.css`; a theme-specific look goes in that theme's `theme.css`.
 - Words the game shows about outcomes, offers and moves live in
   `src/lib/describe.ts`.
-- Check UI changes in the browser at desktop and 375px width, in all three
+- Check UI changes in the browser at desktop and 375px width, in all four
   themes. The Claude desktop app can start the dev server from
   `.claude/launch.json` ("open-dam dev").
 - `npm run verify` before every commit. `npm run check:ai` after any change to
@@ -97,14 +106,15 @@ change a row's status and notes directly on the page.
 
 ## Commands
 
-| Command            | What it does                                 |
-| ------------------ | -------------------------------------------- |
-| `npm run dev`      | Dev server at http://localhost:5173          |
-| `npm run verify`   | Typecheck, lint, format check, tests, build  |
-| `npm test`         | Unit and UI tests (about 150, a few seconds) |
-| `npm run check:ai` | AI strength match between tiers (slow)       |
-| `npm run format`   | Apply Prettier formatting                    |
-| `npm run build`    | Production build into `dist/`                |
+| Command                | What it does                                    |
+| ---------------------- | ----------------------------------------------- |
+| `npm run dev`          | Dev server at http://localhost:5173             |
+| `npm run verify`       | Typecheck, lint, format check, tests, build     |
+| `npm test`             | Unit and UI tests (about 230, a few seconds)    |
+| `npm run check:ai`     | AI strength match between tiers (slow)          |
+| `npm run format`       | Apply Prettier formatting                       |
+| `npm run build`        | Production build into `dist/`                   |
+| `npm run build:static` | A copy for any static host, into `dist-static/` |
 
 ## Scheduled shifts
 
@@ -118,6 +128,33 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-28 evening to 2026-10-29 (owner's live requests, release)
+
+- **End of game:** the small circles drawn under every piece when a game ends
+  are gone (7cd3294; 85b08ae had only re-centred them). The hop and slump
+  wave, the Neobrutalist flash, the Atelier rule and the Carnival confetti
+  remain; Sand has no `EndSequence`.
+- **Sounds:** every theme has a sound for every cue, synthesised in code
+  (09b945d). They were then rebuilt from band-limited waves and filtered,
+  because the first version sounded bitcrushed (0c2afcf). See
+  `docs/SOUNDS.md`. They still need a person's ear: `npm run sounds`.
+- **Sand pieces:** sticks are tapered twigs with knots, snapped ends and
+  sometimes a side shoot (b2de765); stones are lumpy, grainy pebbles
+  (2ab6d35).
+- **House rules:** a choice group too wide for one row no longer strands one
+  option on a row of its own, in every theme (2ab84a8).
+- **Font:** Neobrutalist headings use Bowlby One in normal case, and nothing
+  in that theme is forced into capitals (ba036ca). The small labels above page
+  titles ("PLAY") are still capitals in every theme.
+- **Phone copy:** `npm run build:static` (0566118) builds a copy with hash
+  routes and relative paths. The owner plays it from a private artifact (link
+  in Current state) and confirmed it works.
+- **Release:** at the owner's request, `feat/overhaul` was pushed to GitHub.
+  `main` is untouched and no pull request was opened.
+- **Checks:** `npm run verify` before each commit (232 tests). Each UI change
+  was checked in the in-app browser at desktop and 375 px in all four themes.
+- **Next up:** unchanged, w25's local `ws` server.
 
 ### 2026-10-28 late evening (owner's requests: openings, lessons)
 
