@@ -1,5 +1,6 @@
 import type { ThemeDefinition, ThemeTokens } from '../types'
 import { BoardFrame, CellDecor, EndSequence, Piece } from './parts'
+import { sounds } from './sounds'
 import './theme.css'
 
 /**
@@ -76,4 +77,5 @@ export const neobrutalistTheme: ThemeDefinition = {
   },
   sides: { player1: { name: 'Red' }, player2: { name: 'Blue' } },
   boardGap: 0,
+  sounds,
 }

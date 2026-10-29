@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
+import type { ThemeSounds } from '../audio/types'
 import type { Coord, GameStatus, PieceData, PlayerId } from '../game/types'
 
 /**
@@ -12,6 +13,8 @@ import type { Coord, GameStatus, PieceData, PlayerId } from '../game/types'
  *   4. `sides`   — what the two sides are called in this theme. The pieces
  *                  are black and white in Atelier, so calling them "Red" and
  *                  "Blue" there would be wrong.
+ *   5. `sounds`  — what the game sounds like: one sound per cue, kept in the
+ *                  theme's own `sounds.ts` (plain data, see src/audio).
  *
  * Structural rules better expressed in CSS live in each theme's stylesheet,
  * scoped to `[data-theme="<key>"]` so one theme can never leak into another.
@@ -148,4 +151,5 @@ export interface ThemeDefinition {
   sides: Record<PlayerId, SideStyle>
   /** Board grid gap in px — a structural, not cosmetic, difference. */
   boardGap: number
+  sounds: ThemeSounds
 }

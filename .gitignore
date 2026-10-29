@@ -24,5 +24,8 @@ dist-ssr
 *.sw?
 .enginecheck/
 
+# WAV previews from `npm run sounds`
+sound-preview/
+
 # Personal Claude Code settings (permissions for unattended runs)
 .claude/settings.local.json

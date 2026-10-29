@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Dialog } from '../ui/Dialog'
 import { IconButton } from '../ui/Button'
+import SoundToggle from './SoundToggle'
 import ThemeMenu from './ThemeMenu'
 import { NAV_ITEMS } from './navItems'
 
@@ -55,6 +56,7 @@ export default function Navbar() {
         </nav>
 
         <div className="topbar__end">
+          <SoundToggle />
           <ThemeMenu />
         </div>
       </div>

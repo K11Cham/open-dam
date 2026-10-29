@@ -1,5 +1,6 @@
 import type { ThemeDefinition, ThemeTokens } from '../types'
 import { BoardFrame, CellDecor, EndSequence, Piece } from './parts'
+import { sounds } from './sounds'
 import './theme.css'
 
 /**
@@ -77,4 +78,5 @@ export const carnivalTheme: ThemeDefinition = {
   },
   sides: { player1: { name: 'Coral' }, player2: { name: 'Sky' } },
   boardGap: 4,
+  sounds,
 }

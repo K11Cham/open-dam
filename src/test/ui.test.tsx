@@ -273,3 +273,17 @@ describe('themes', () => {
     expect(square('a1')).toHaveAccessibleName(new RegExp(`a1, ${THEMES[key].sides.player1.name}`))
   })
 })
+
+describe('sound', () => {
+  test('the sound toggle reports its state and remembers it', async () => {
+    const user = userEvent.setup()
+    renderAt('/')
+    const toggle = screen.getByRole('button', { name: 'Sound effects' })
+    const before = toggle.getAttribute('aria-pressed') === 'true'
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-pressed', String(!before))
+    expect(storage.get<{ enabled: boolean }>(STORAGE_KEYS.sound)?.enabled).toBe(!before)
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-pressed', String(before))
+  })
+})

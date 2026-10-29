@@ -54,7 +54,7 @@ flowchart TB
 | Network | `src/net`                     | No                 | Send a match between browsers                                       |
 | Hooks   | `src/hooks`                   | Yes                | Connect the pure layers to React components                         |
 | UI      | `src/components`, `src/pages` | Yes                | What you see and click                                              |
-| Themes  | `src/themes`, `src/styles`    | Partly             | Colours, shapes, motion                                             |
+| Themes  | `src/themes`, `src/styles`    | Partly             | Colours, shapes, motion, sound                                      |
 
 Why this matters: the bottom four layers are **pure TypeScript**. They can be
 tested in milliseconds without a browser, they could run on a server
@@ -531,6 +531,18 @@ honour the same setting through `<MotionConfig reducedMotion="user">` in
 
 ---
 
+### Sound
+
+Each theme also has a voice: `src/themes/<theme>/sounds.ts` gives one sound
+for every cue (move, capture, crown, call, illegal, offer, win, lose, draw).
+The sounds are synthesised from short recipes, so they belong to the project
+and need no licence. `src/audio/cues.ts` picks the one sound a game step
+makes; `useMatchController` reports it through `onCue`, and the page plays it
+with `useSound()` (`src/context/useSound.ts`), which knows the current theme
+and whether sound is on. `npm run sounds` renders them all to WAV files to
+listen to. `docs/SOUNDS.md` explains the recipes and which recorded sounds may
+replace them.
+
 ## Part 9 — The screens (`src/pages`, `src/components`)
 
 | Route                  | Page               | Notes                                                                                                         |
@@ -590,6 +602,7 @@ replays every example.
 | `npm run format`         | Prettier                                  |
 | `npm run verify`         | All of the above, then a production build |
 | `npm run check:ai`       | Tier-vs-tier matches (several minutes)    |
+| `npm run sounds`         | Render every theme's sounds to WAV        |
 | `npm run check:endgames` | Endgame conversion from random starts     |
 | `npm run replay`         | Print one computer game ply by ply        |
 
@@ -604,6 +617,7 @@ Where the tests are and what they protect:
 | `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), matchmaking, rating hook |
 | `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal                                                                                     |
 | `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                   |
+| `src/audio/audio.test.ts`             | Synth output, which sound a step makes, every theme has every sound                                                 |
 | `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs    |
 | `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                    |
 
