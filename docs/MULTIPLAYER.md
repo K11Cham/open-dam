@@ -105,6 +105,8 @@ interface Transport {
   "Online (preview)" mode today.
 - `MemoryHub` / `MemoryTransport` simulate a network in tests (asynchronous,
   JSON-copied messages).
+- `WebSocketTransport` (`src/net/websocket.ts`) connects a browser to a match
+  server. Nothing in the app uses it yet; see below.
 
 ## What exists today
 
@@ -117,28 +119,41 @@ interface Transport {
 
 ## Adding a real server
 
-The browser code does not need to change shape. The steps:
+The browser code does not need to change shape. Steps 1, 2 and 4 are written
+and tested; the rest need a host to run on.
 
-1. **Write a WebSocket transport** in `src/net/` implementing `Transport`:
-   connect to `wss://…/matches/<id>`, `JSON.stringify` on send, parse and check
-   with `isNetMessage` on receive, reconnect with backoff.
-2. **Run the host on the server.** In Node, create a `MatchHost` from the
-   stored record and attach it with `linkHost(host, serverTransport, …)`. Make
-   both seats `remote`. `src/game`, `src/match` and `src/net` have no browser
+1. **WebSocket transport — done.** `WebSocketTransport` in
+   `src/net/websocket.ts` sends JSON, checks every frame with `isNetMessage`,
+   queues messages while the socket is down (up to 32), and reconnects with
+   doubling delays (0.5 s up to 15 s) until closed.
+2. **The server's match logic — done.** `MatchServer` in `src/net/server.ts`
+   does everything except listen on a port. Give each new connection to
+   `accept(socket)`, pass every text frame to `receive`, and call `drop` when
+   it closes. It opens one room per match from a `MatchStore`, runs a
+   `MatchHost` linked with `linkHost(host, room, { hostSeat: null, … })`, sends
+   a snapshot to each new connection, frees a seat as soon as its connection
+   closes, and closes the room when the last one leaves. `createMatch`
+   starts a game with both seats `remote`. A connection keeps the first
+   client id it uses, so it cannot act for another client. A ping from a guest
+   whose seat claim was lost (for example after a server restart) wins the
+   seat back if nobody else holds it.
+3. **Listen on a port.** Still to do: a small Node entry point that runs a
+   WebSocket server (for example with the `ws` package) and hands connections
+   to `MatchServer`. `src/game`, `src/match` and `src/net` have no browser
    dependencies and run unchanged in Node.
-3. **Make both browsers guests.** `OnlinePage` currently hosts in the creating
-   tab; with a server, every player uses `MatchGuest` with the WebSocket
-   transport.
-4. **Use the server's clock.** The host stamps `at` with its own time, so with a
-   server host, time is server time. The server also needs a timer that
-   submits `{ type: 'engine', action: { type: 'timeout', player } }` as
-   `system` at `flagTime(state.clock)`, which is what `useMatchController`
-   does for a browser host today.
-5. **Persist records** in a database keyed by match id. Saving the full record
-   after each action is simple and small (a long game is a few hundred actions).
-6. **Identity.** Replace the per-tab client id with an authenticated user id
+4. **Use the server's clock — done.** The room's host stamps `at` with server
+   time, and the room submits `{ type: 'engine', action: { type: 'timeout',
+player } }` as `system` at `flagTime(state.clock)`, retrying shortly if a
+   timer fires a hair early.
+5. **Persist records.** `MatchStore` is the seam: `save` is called after
+   every accepted action with the full record (a long game is a few hundred
+   actions). Back it with a database keyed by match id.
+6. **Make both browsers guests.** `OnlinePage` currently hosts in the creating
+   tab; with a server, every player uses `MatchGuest` with
+   `WebSocketTransport`.
+7. **Identity.** Replace the per-tab client id with an authenticated user id
    when binding seats in `linkHost`.
-7. **Matchmaking.** `settingsAreCompatible` and `filterCompatibleSeeks` in
+8. **Matchmaking.** `settingsAreCompatible` and `filterCompatibleSeeks` in
    `src/game/settings.ts` already define which rule sets can be paired;
    `resolvePromotionPolicy` resolves the "match opponent" option.
 

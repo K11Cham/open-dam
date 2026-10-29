@@ -5,8 +5,8 @@ import type { GuestMessage, HostMessage } from './protocol'
 import type { Transport } from './transport'
 
 export interface HostLinkOptions {
-  /** The seat the host's own player sits in. */
-  hostSeat: PlayerId
+  /** The seat the host's own player sits in, or null when the host is a server that plays neither side. */
+  hostSeat: PlayerId | null
   /** The host tab's client id. */
   clientId: string
   now?: () => number
@@ -41,7 +41,7 @@ export function linkHost(host: MatchHost, transport: Transport, options: HostLin
   const onlineMap = (): Record<PlayerId, boolean> => {
     const t = now()
     const online: Record<PlayerId, boolean> = { player1: false, player2: false }
-    online[options.hostSeat] = true
+    if (options.hostSeat) online[options.hostSeat] = true
     for (const [seat, claim] of claims) online[seat] = t - claim.lastSeen < PRESENCE_TIMEOUT_MS
     return online
   }
@@ -64,18 +64,27 @@ export function linkHost(host: MatchHost, transport: Transport, options: HostLin
     const ownedBySender = claim?.clientId === message.from
     const claimIsStale = !claim || t - claim.lastSeen >= PRESENCE_TIMEOUT_MS
 
+    const seatSender = () => {
+      claims.set(seat, { clientId: message.from, lastSeen: t })
+      send({ type: 'welcome', to: message.from, seat, record: host.getSnapshot().record })
+      refreshPresence()
+    }
+
     switch (message.type) {
       case 'join':
         if (!ownedBySender && !claimIsStale) {
           send({ type: 'seat-taken', to: message.from, seat })
           return
         }
-        claims.set(seat, { clientId: message.from, lastSeen: t })
-        send({ type: 'welcome', to: message.from, seat, record: host.getSnapshot().record })
-        refreshPresence()
+        seatSender()
         return
       case 'ping':
         if (ownedBySender) claim.lastSeen = t
+        // A guest that still thinks it is seated, but whose claim this host
+        // lost (a restarted server, or a long silence), gets the seat back if
+        // nobody else took it. Otherwise it would wait for a host that keeps
+        // ignoring it.
+        else if (claimIsStale) seatSender()
         return
       case 'leave':
         if (ownedBySender) {

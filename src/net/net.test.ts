@@ -4,6 +4,7 @@ import { makeSettings } from '../game/settings'
 import { MatchHost, createRecord } from '../match/session'
 import { MatchGuest } from './guest'
 import { linkHost } from './hostLink'
+import { PROTOCOL_VERSION } from './protocol'
 import { MemoryHub } from './transport'
 
 const flush = async () => {
@@ -85,6 +86,21 @@ describe('host and guest over a transport', () => {
     await flush()
     expect(errors[0]).toMatch(/already playing/)
     intruder.dispose()
+    unlink()
+    guest.dispose()
+  })
+
+  test('a heartbeat from another client does not take a held seat', async () => {
+    const { hub, record, host, unlink, guest } = setup()
+    await flush()
+    const sent: string[] = []
+    const other = hub.connect()
+    other.onMessage((message) => sent.push(message.type))
+    other.send({ v: PROTOCOL_VERSION, matchId: record.config.id, from: 'other-tab', type: 'ping', seat: 'player2' })
+    await flush()
+    expect(sent).not.toContain('welcome')
+    expect(host.getSnapshot().online.player2).toBe(true)
+    other.close()
     unlink()
     guest.dispose()
   })

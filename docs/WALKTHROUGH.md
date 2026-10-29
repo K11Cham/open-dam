@@ -417,13 +417,17 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
 - Other devices are **guests** (`MatchGuest`). They send intents and apply the
   actions the host broadcasts. They never decide anything themselves, so two
   devices can never disagree about the game.
-- `protocol.ts` lists the messages; `transport.ts` moves them. Today the
-  transport is a `BroadcastChannel`, which only reaches tabs in the same
-  browser. A WebSocket transport to a server is the next step, and nothing
-  above the transport needs to change.
+- `protocol.ts` lists the messages; `transport.ts` moves them. Today the app
+  uses a `BroadcastChannel`, which only reaches tabs in the same browser.
 - `hostLink.ts` is the host-side "server logic": binding a browser tab to a
   seat, forwarding its intents to the reducer, broadcasting accepted actions,
   and tracking who is online through heartbeats.
+- The server side is written but not yet hosted. `websocket.ts` is the
+  browser's end of a link to a server (it reconnects by itself), and
+  `server.ts` is everything a server does apart from listening on a port: one
+  room per match, both seats remote, the record saved after every action, and
+  the server's own clock calling flags. `server.test.ts` plays games through
+  it end to end, including a server crash and restart.
 
 ---
 
@@ -593,6 +597,7 @@ Where the tests are and what they protect:
 | `src/ai/ai.test.ts`                   | Legal play for every tier, sacrifices, lone-king finishes, missed calls, time budget, offers                     |
 | `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                             |
 | `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                               |
+| `src/net/server.test.ts`              | The match server end to end: sync, refusals, spoofed ids, dropped links, restarts, flags, the WebSocket client   |
 | `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal                                                                                  |
 | `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                |
 | `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs |
