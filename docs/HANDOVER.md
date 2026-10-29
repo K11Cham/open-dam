@@ -4,7 +4,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 
 ## Current state (2026-10-28)
 
-- `feat/overhaul` builds and `npm run verify` passes (189 tests). Every work
+- `feat/overhaul` builds and `npm run verify` passes (232 tests). Every work
   row and every verification row is done except the server rows **w25** and
   **w26**. Both are `doing`: their pure, tested parts exist (`src/net/server.ts`,
   `websocket.ts`, `matchmaking.ts`, `src/match/rating.ts`); what is left needs
@@ -134,8 +134,15 @@ commits, checks run, notes for the next shift.
 - **Lessons:** puzzles in five existing chapters plus two new chapters, built
   from the owner's strategy notes (the two-square trap, breaking it with a
   supported pair, defending it). Every puzzle replays in `tutorial.test.ts`.
-- **Checks:** see the commit; puzzles were played in the browser at desktop
-  and 375 px, in Neobrutalist, Sand and Carnival.
+- **Checks:** `npm run verify` (232 tests) and `npm run check:ai` (tiers in
+  order: khale 6–0 doff, ndo 6–0 khale, maam 6–0 ndo, serin 4–1–1 maam). Every
+  puzzle was played in the in-app browser at desktop and 375 px, in
+  Neobrutalist, Sand and Carnival, mistakes included (row v13). Test progress
+  was cleared from the in-app browser afterwards.
+- **Owner review fixed:** the sacrifice example let the defender take the bait
+  sideways, and the opening puzzle rejected moves without saying why. Both are
+  fixed; every first move now explains itself, and a test checks no puzzle
+  solution leaves the opponent an immediate capture.
 
 ### 2026-10-28 20:45–21:05 (scheduled shift)
 
