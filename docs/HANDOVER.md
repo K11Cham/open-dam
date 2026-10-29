@@ -10,6 +10,10 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   `websocket.ts`, `matchmaking.ts`, `src/match/rating.ts`); what is left needs
   a hosted server, a database or accounts (see each row's note and
   "Adding a real server" in MULTIPLAYER.md).
+- **Next up (owner approved, 2026-10-28):** w25's next step. Add the `ws`
+  dependency and a small Node entry point that hands connections to
+  `MatchServer.accept`, with an in-memory store, runnable locally through an
+  npm script.
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
   Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
