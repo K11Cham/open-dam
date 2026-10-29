@@ -104,13 +104,16 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/net/` — online play (transport-agnostic)
 
-| File           | Purpose                                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| `protocol.ts`  | Wire messages between guests and the host; heartbeat timings.                                                |
-| `transport.ts` | `Transport` interface; `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id. |
-| `hostLink.ts`  | Connects a `MatchHost` to a transport: binds seats, forwards guest intents, broadcasts actions and presence. |
-| `guest.ts`     | `MatchGuest`: mirrors a remote host's log, sends intents, resynchronises on gaps.                            |
-| `net.test.ts`  | Join, sync both ways, refusals, seat ownership, reconnect.                                                   |
+| File             | Purpose                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `protocol.ts`    | Wire messages between guests and the host; heartbeat timings.                                                |
+| `transport.ts`   | `Transport` interface; `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id. |
+| `hostLink.ts`    | Connects a `MatchHost` to a transport: binds seats, forwards guest intents, broadcasts actions and presence. |
+| `guest.ts`       | `MatchGuest`: mirrors a remote host's log, sends intents, resynchronises on gaps.                            |
+| `websocket.ts`   | `WebSocketTransport`: a browser's link to a match server; queues while down, reconnects with backoff.        |
+| `server.ts`      | `MatchServer`: a server's match logic without the network (rooms, saving, server clock flags).               |
+| `net.test.ts`    | Join, sync both ways, refusals, seat ownership, reconnect.                                                   |
+| `server.test.ts` | Server rooms end to end over a fake socket network: sync, refusals, spoofing, reconnect, restart, flags.     |
 
 ## `src/hooks/` — React adapters
 
