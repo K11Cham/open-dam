@@ -644,6 +644,7 @@ blocking.
 | `npm run verify`         | All of the above, then a production build |
 | `npm run check:ai`       | Tier-vs-tier matches (several minutes)    |
 | `npm run sounds`         | Render every theme's sounds to WAV        |
+| `npm run build:static`   | A copy for any static host (hash routes)  |
 | `npm run check:endgames` | Endgame conversion from random starts     |
 | `npm run replay`         | Print one computer game ply by ply        |
 | `npm run openings`       | Measure every first move (the book)       |
