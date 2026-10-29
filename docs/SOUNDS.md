@@ -29,6 +29,13 @@ a start time, a rise, a fall, a volume and optional filters.
 `src/audio/synth.ts` turns a recipe into samples; `src/audio/player.ts` plays
 them through Web Audio and keeps each one after its first use.
 
+The synthesiser builds square, saw and triangle waves from their harmonics,
+stopping at 10 kHz, rather than drawing their hard-edged shapes. Drawn
+shapes alias: overtones too high for the sample rate fold back as gritty,
+off-key noise, which sounds bitcrushed. Its filters are 12 dB/octave, and
+every voice is rolled off above 9 kHz so noise does not hiss. A test checks
+that nothing between a wave's harmonics comes within 50 dB of the note.
+
 Because the sounds are made from numbers in this repository, nobody else owns
 them: no licence, no attribution, nothing to download, and almost nothing
 added to the app's size.

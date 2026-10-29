@@ -11,6 +11,23 @@ const RATE = 8_000
 const PLAYBACK_RATE = 44_100
 
 const peak = (samples: Float32Array) => samples.reduce((max, s) => Math.max(max, Math.abs(s)), 0)
+
+/** How strong one frequency is in a stretch of samples (Goertzel over a Hann window). */
+const level = (samples: Float32Array, rate: number, freq: number) => {
+  const w = (2 * Math.PI * freq) / rate
+  const coeff = 2 * Math.cos(w)
+  let s1 = 0
+  let s2 = 0
+  for (let i = 0; i < samples.length; i++) {
+    const hann = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (samples.length - 1))
+    const s0 = samples[i] * hann + coeff * s1 - s2
+    s2 = s1
+    s1 = s0
+  }
+  return Math.sqrt(s1 * s1 + s2 * s2 - coeff * s1 * s2)
+}
+
+const decibels = (ratio: number) => 20 * Math.log10(ratio)
 const rms = (samples: Float32Array) => Math.sqrt(samples.reduce((sum, s) => sum + s * s, 0) / Math.max(1, samples.length))
 
 describe('synth', () => {
@@ -41,6 +58,30 @@ describe('synth', () => {
   test('a runaway recipe is cut off', () => {
     const endless: SoundRecipe = { voices: [{ wave: 'sine', freq: 440, attack: 0.01, decay: 60, gain: 0.5 }] }
     expect(recipeDuration(endless)).toBe(MAX_SOUND_SECONDS)
+  })
+
+  // Aliasing is what makes a synthesised square or saw sound gritty and "bitcrushed": overtones
+  // above what the sample rate can hold fold back down as tones between the real harmonics.
+  test.each(['square', 'saw', 'triangle'] as const)('a %s wave has nothing between its harmonics', (wave) => {
+    const f0 = 1234
+    const tone = renderRecipe({ voices: [{ wave, freq: f0, attack: 0.001, decay: 10, gain: 0.5 }] }, PLAYBACK_RATE)
+    const steady = tone.subarray(441, 441 + 8192)
+    const fundamental = level(steady, PLAYBACK_RATE, f0)
+    let worst = 0
+    for (let f = 200; f < 9000; f += 37) {
+      const nearestHarmonic = Math.round(f / f0) * f0
+      if (Math.abs(f - nearestHarmonic) < 150) continue
+      worst = Math.max(worst, level(steady, PLAYBACK_RATE, f))
+    }
+    expect(decibels(worst / fundamental)).toBeLessThan(-50)
+  })
+
+  test('nothing sizzles above 14 kHz', () => {
+    const hiss: SoundRecipe = { voices: [{ wave: 'noise', attack: 0.001, decay: 1, gain: 0.5, highpass: 2000 }] }
+    const samples = renderRecipe(hiss, PLAYBACK_RATE).subarray(441, 441 + 8192)
+    const presence = level(samples, PLAYBACK_RATE, 4000)
+    const sizzle = level(samples, PLAYBACK_RATE, 18000)
+    expect(decibels(sizzle / presence)).toBeLessThan(-12)
   })
 
   test('encodes a playable 16-bit WAV', () => {
