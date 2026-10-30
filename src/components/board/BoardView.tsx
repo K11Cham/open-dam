@@ -20,6 +20,8 @@ export interface BoardViewProps {
   animations: BoardAnimation[]
   promotedIds: string[]
   lastMove: { from: Coord; to: Coord } | null
+  /** A move queued for when the turn comes back, marked on both squares. */
+  premove?: { from: Coord; to: Coord } | null
   onAnimationComplete?: (id: string) => void
   /** False while reviewing, after the game, or when it is not this device's turn. */
   interactive: boolean
@@ -65,6 +67,7 @@ export default function BoardView({
   animations,
   promotedIds,
   lastMove,
+  premove = null,
   onAnimationComplete,
   interactive,
   canDragFrom,
@@ -134,6 +137,8 @@ export default function BoardView({
     if (captureSet.has(key(coord))) parts.push('capture lands here')
     if (piece && offenderIds.has(piece.id)) parts.push('can be called')
     if (lastMove && (key(lastMove.from) === key(coord) || key(lastMove.to) === key(coord))) parts.push('last move')
+    if (premove && key(premove.from) === key(coord)) parts.push('premove from here')
+    if (premove && key(premove.to) === key(coord)) parts.push('premove to here')
     return parts.join(', ')
   }
 
@@ -199,6 +204,7 @@ export default function BoardView({
                 const isOffender = !!piece && offenderIds.has(piece.id)
                 const isFocusCell = displayRow === clampedFocus.row && displayCol === clampedFocus.col
                 const isLastMove = !!lastMove && (key(lastMove.from) === k || key(lastMove.to) === k)
+                const isPremove = !!premove && (key(premove.from) === k || key(premove.to) === k)
 
                 return (
                   <div
@@ -219,6 +225,7 @@ export default function BoardView({
                       isLight ? 'is-light' : 'is-dark',
                       isOffender && 'is-offender',
                       isSelected && 'is-selected',
+                      isPremove && 'is-premove',
                     ]
                       .filter(Boolean)
                       .join(' ')}

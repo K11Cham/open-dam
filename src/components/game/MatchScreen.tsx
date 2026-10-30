@@ -118,8 +118,9 @@ export default function MatchScreen({
             animations={controller.reviewing ? [] : controller.animations}
             promotedIds={controller.promotedIds}
             lastMove={controller.lastMove}
+            premove={controller.premove}
             onAnimationComplete={controller.completeAnimation}
-            interactive={controller.canAct}
+            interactive={controller.canAct || controller.canPremove}
             canDragFrom={controller.canDragFrom}
             onSquare={controller.onSquare}
             onDrop={controller.onDrop}

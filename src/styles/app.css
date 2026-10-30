@@ -2216,6 +2216,12 @@
   box-shadow: var(--dam-shadow);
 }
 
+/* A queued premove: both squares outlined in the theme's highlight, dashed so it reads as "not yet". */
+.cell.is-premove {
+  outline: 3px dashed var(--dam-highlight);
+  outline-offset: -5px;
+}
+
 /* The pieces on the board answer too: the winner's hop in a wave spreading from the last move, the loser's slump. */
 .piece-slot.is-end-winner {
   animation: dam-end-hop 620ms var(--end-delay, 0ms) cubic-bezier(0.3, 0.6, 0.4, 1) 2;
@@ -2325,8 +2331,12 @@
 }
 
 .invite__title {
+  /* A small heading: in the body face. Heavy display faces (Neobrutalist's Bowlby One) blur at this size. */
+  font-family: var(--dam-font-body);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
   line-height: 1.3;
 }
 

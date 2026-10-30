@@ -4,7 +4,7 @@ import type { SoundCue } from '../audio/types'
 import { canCall as engineCanCall, destinationsFor } from '../game/engine'
 import type { Destinations } from '../game/engine'
 import { toMoveRows } from '../game/notation'
-import type { Coord, EngineAction, PlayerId } from '../game/types'
+import type { Coord, EngineAction, EngineState, PlayerId } from '../game/types'
 import { flagTime } from '../match/clock'
 import type { MatchSession, SessionUpdate } from '../match/session'
 import type { OfferKind } from '../match/types'
@@ -14,6 +14,24 @@ import { useBoardAnimations } from './useBoardAnimations'
 import { useMatchSession } from './useMatchSession'
 
 const NO_DESTINATIONS: Destinations = { slides: [], captures: [] }
+
+/** A move queued during the opponent's turn, played the moment the turn comes back. */
+export interface Premove {
+  from: Coord
+  to: Coord
+}
+
+/**
+ * The position as if it were already `seat`'s turn, with no chain and nothing
+ * to call: what a premove is chosen against. The opponent's reply can change
+ * the board, so the premove is checked again before it is played.
+ */
+const asIfToMove = (position: EngineState, seat: PlayerId): EngineState => ({
+  ...position,
+  currentPlayer: seat,
+  chain: { ...position.chain, active: false, at: null },
+  offenders: [],
+})
 const sameSquare = (a: Coord | null, b: Coord | null) => !!a && !!b && a.row === b.row && a.col === b.col
 
 export interface MatchControllerOptions {
@@ -52,6 +70,34 @@ export function useMatchController({
   const [announcement, setAnnouncement] = useState('')
   /** Set while a drag-and-drop move is in flight, so its travel animation is skipped. */
   const dragOrigin = useRef(false)
+  // Premoves are for games against someone else (the computer, or online):
+  // with one local seat, its player may queue a move while the other side thinks.
+  const premoveSeat = localSeats.length === 1 ? localSeats[0] : null
+  const [premove, setPremove] = useState<Premove | null>(null)
+  // The session listener below needs the queued move as it is now, not as it
+  // was when the listener was created.
+  const premoveRef = useRef<Premove | null>(null)
+  const queuePremove = (next: Premove | null) => {
+    premoveRef.current = next
+    setPremove(next)
+  }
+
+  /** The turn came back: play the queued move if it is still legal, or drop it quietly. */
+  const playPremove = (queued: Premove, seat: PlayerId) => {
+    const now = session.getSnapshot()
+    const position = now.state.position
+    if (now.connection !== 'local' && now.connection !== 'connected') return
+    if (position.status.kind !== 'playing' || position.currentPlayer !== seat || position.chain.active) return
+    // A call available now is worth more than the queued move; leave the choice to the player.
+    if (engineCanCall(position)) {
+      notify('Premove cancelled: you can call a piece.')
+      return
+    }
+    const { slides, captures } = destinationsFor(position, queued.from)
+    if ([...slides, ...captures].some((d) => sameSquare(d, queued.to))) {
+      session.submit(seat, { type: 'engine', action: { type: 'move', from: queued.from, to: queued.to } })
+    }
+  }
 
   const snapshot = useMatchSession(session, (update: SessionUpdate) => {
     if (update.error) {
@@ -85,6 +131,12 @@ export function useMatchController({
     setSelected(position.chain.active && localSeats.includes(position.currentPlayer) ? position.chain.at : null)
     setCallPicking(false)
     if (action.intent.type === 'answer-offer') setReviewIndex(null)
+    const queued = premoveRef.current
+    if (queued && premoveSeat && position.currentPlayer === premoveSeat && !position.chain.active) {
+      queuePremove(null)
+      // After this update has reached every listener, not in the middle of it.
+      window.setTimeout(() => playPremove(queued, premoveSeat), 0)
+    }
   })
 
   const { state, record } = snapshot
@@ -102,6 +154,7 @@ export function useMatchController({
   // Online, nobody moves until both players are connected.
   const connected = snapshot.connection === 'local' || snapshot.connection === 'connected'
   const canAct = myTurn && !reviewing && connected
+  const canPremove = premoveSeat !== null && !over && !reviewing && connected && toMove !== premoveSeat
 
   // -- clock flags ----------------------------------------------------------
   const flagAt = state.clock && !over ? flagTime(state.clock) : null
@@ -123,10 +176,12 @@ export function useMatchController({
   }, [authoritative, flagAt, session, state.clock?.running])
 
   // -- board interaction ------------------------------------------------------
-  const destinations = useMemo(
-    () => (selected && canAct ? destinationsFor(position, selected) : NO_DESTINATIONS),
-    [selected, canAct, position],
-  )
+  const destinations = useMemo(() => {
+    if (!selected) return NO_DESTINATIONS
+    if (canAct) return destinationsFor(position, selected)
+    if (canPremove && premoveSeat) return destinationsFor(asIfToMove(position, premoveSeat), selected)
+    return NO_DESTINATIONS
+  }, [selected, canAct, canPremove, premoveSeat, position])
 
   const offenderIds = useMemo(
     () => new Set(engineCanCall(position) && !reviewing ? position.offenders.map((o) => o.pieceId) : []),
@@ -140,13 +195,14 @@ export function useMatchController({
 
   const canDragFrom = useCallback(
     (coord: Coord) => {
+      if (canPremove) return position.board[coord.row]?.[coord.col]?.player === premoveSeat
       if (!canAct) return false
       const piece = position.board[coord.row]?.[coord.col]
       if (!piece || piece.player !== toMove) return false
       if (position.chain.active) return sameSquare(position.chain.at, coord)
       return true
     },
-    [canAct, position, toMove],
+    [canAct, canPremove, premoveSeat, position, toMove],
   )
 
   const call = useCallback(
@@ -167,6 +223,22 @@ export function useMatchController({
     (coord: Coord) => {
       if (reviewing) {
         setReviewIndex(null)
+        return
+      }
+      if (canPremove) {
+        // Choosing a premove: a piece of ours, then one of its squares. Anything else clears it.
+        const own = position.board[coord.row]?.[coord.col]?.player === premoveSeat
+        const target = selected && [...destinations.slides, ...destinations.captures].some((d) => sameSquare(d, coord))
+        if (target && selected) {
+          queuePremove({ from: selected, to: coord })
+          setSelected(null)
+        } else if (own) {
+          queuePremove(null)
+          setSelected((prev) => (sameSquare(prev, coord) ? null : coord))
+        } else {
+          queuePremove(null)
+          setSelected(null)
+        }
         return
       }
       if (!canAct) return
@@ -191,20 +263,40 @@ export function useMatchController({
         else setSelected(position.chain.active ? selected : null)
       }
     },
-    [reviewing, canAct, position, offenderIds, toMove, call, notify, selected, destinations, submitEngine],
+    [
+      reviewing,
+      canPremove,
+      premoveSeat,
+      canAct,
+      position,
+      offenderIds,
+      toMove,
+      call,
+      notify,
+      selected,
+      destinations,
+      submitEngine,
+    ],
   )
 
   const onDrop = useCallback(
     (from: Coord, to: Coord) => {
+      if (canPremove && premoveSeat) {
+        const { slides, captures } = destinationsFor(asIfToMove(position, premoveSeat), from)
+        queuePremove([...slides, ...captures].some((d) => sameSquare(d, to)) ? { from, to } : null)
+        setSelected(null)
+        return
+      }
       if (!canAct) return
       dragOrigin.current = true
       if (submitEngine({ type: 'move', from, to })) dragOrigin.current = false
     },
-    [canAct, submitEngine],
+    [canAct, canPremove, premoveSeat, position, submitEngine],
   )
 
   const onEscape = useCallback(() => {
     if (!position.chain.active) setSelected(null)
+    queuePremove(null)
     setCallPicking(false)
   }, [position.chain.active])
 
@@ -258,6 +350,8 @@ export function useMatchController({
     toMove,
     myTurn,
     canAct,
+    canPremove,
+    premove: reviewing || over ? null : premove,
     // board
     selected: reviewing ? null : selected,
     destinations: reviewing ? NO_DESTINATIONS : destinations,
