@@ -157,7 +157,9 @@ commits, checks run, notes for the next shift.
   one run and 0.74 worse in the next: at 2.6 s the search is not fully stable.
 - **Checks:** `npm run verify` (239 tests). Atelier and Carnival checked in
   the browser.
-- **Next up:** deploy the fixes when the owner says so, then identity.
+- **Deployed** at the owner's word (version 1a2ad76f): `check:online` passed live, and
+  the background-tab move and all three theme rules were confirmed on the site.
+- **Next up:** identity (MULTIPLAYER.md step 7).
 
 ### 2026-10-29 (owner's request: online server on Cloudflare)
 
