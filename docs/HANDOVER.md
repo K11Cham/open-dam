@@ -11,10 +11,10 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   with one Durable Object per match (`worker/`), chosen with the owner because
   it is free and does not sleep. The Online page now uses it with invite
   links, from any device. **It is live at
-  https://open-dam.open-dam.workers.dev** (deployed 2026-10-29 from
+  https://play.open-dam.workers.dev** (deployed 2026-10-29 from
   `feat/overhaul` with the owner's yes, on the owner's Cloudflare account).
   Deploy again only when the owner says so: `npm run deploy`, then
-  `ONLINE_URL=https://open-dam.open-dam.workers.dev npm run check:online`.
+  `ONLINE_URL=https://play.open-dam.workers.dev npm run check:online`.
 - **Next up:** step 7 to 9 of "Server roadmap" in MULTIPLAYER.md (identity,
   then matchmaking and ratings: w26).
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
@@ -183,7 +183,7 @@ commits, checks run, notes for the next shift.
   In the in-app browser: a game between two tabs on the local server, a
   reload rejoining Blue's seat, a bad link, and the invite bar at desktop and
   375 px.
-- **Deployed** at the owner's word to https://open-dam.open-dam.workers.dev.
+- **Deployed** at the owner's word to https://play.open-dam.workers.dev.
   The new `workers.dev` subdomain refused TLS for about 90 seconds while its
   certificate was issued; after that `npm run check:online` passed against it
   (6 tests) and the site loaded in the browser.

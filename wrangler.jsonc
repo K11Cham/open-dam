@@ -3,7 +3,7 @@
 // See "Online server" in docs/MULTIPLAYER.md.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "open-dam",
+  "name": "play",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-20",
   "assets": {
