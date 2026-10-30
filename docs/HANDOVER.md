@@ -10,14 +10,13 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 - **Online play has a real server** (w25, 2026-10-29): a Cloudflare Worker
   with one Durable Object per match (`worker/`), chosen with the owner because
   it is free and does not sleep. The Online page now uses it with invite
-  links, from any device. It runs locally with `npm run server` and passes
-  `npm run check:online`; it is **not deployed yet**.
-- **Next up:** deploying needs the owner. They are making a Cloudflare
-  account; then `npx wrangler login` once (their browser, their approval) and
-  `npm run deploy`, which an agent may run only with the owner's yes in chat.
-  After that: `ONLINE_URL=<address> npm run check:online`, and step 7 to 9 of
-  "Server roadmap" in MULTIPLAYER.md (identity, then matchmaking and ratings:
-  w26).
+  links, from any device. **It is live at
+  https://open-dam.open-dam.workers.dev** (deployed 2026-10-29 from
+  `feat/overhaul` with the owner's yes, on the owner's Cloudflare account).
+  Deploy again only when the owner says so: `npm run deploy`, then
+  `ONLINE_URL=https://open-dam.open-dam.workers.dev npm run check:online`.
+- **Next up:** step 7 to 9 of "Server roadmap" in MULTIPLAYER.md (identity,
+  then matchmaking and ratings: w26).
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
   Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
@@ -160,9 +159,12 @@ commits, checks run, notes for the next shift.
   In the in-app browser: a game between two tabs on the local server, a
   reload rejoining Blue's seat, a bad link, and the invite bar at desktop and
   375 px.
-- **Not done:** deploying (needs the owner's account and login). No accounts
-  or identity: anyone with a link can take a free seat.
-- **Next up:** deploy with the owner, then identity (MULTIPLAYER.md step 7).
+- **Deployed** at the owner's word to https://open-dam.open-dam.workers.dev.
+  The new `workers.dev` subdomain refused TLS for about 90 seconds while its
+  certificate was issued; after that `npm run check:online` passed against it
+  (6 tests) and the site loaded in the browser.
+- **Not done:** accounts or identity: anyone with a link can take a free seat.
+- **Next up:** identity (MULTIPLAYER.md step 7).
 
 ### 2026-10-28 evening to 2026-10-29 (owner's live requests, release)
 
