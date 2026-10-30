@@ -124,48 +124,61 @@ describe('clock', () => {
   const timed = () =>
     newRecord({ settings: makeSettings({ boardSize: 5, timeControl: { label: '1+2', initialMs: 60_000, incrementMs: 2_000 } }) })
 
-  test('the first move is free and starts the opponent’s clock', () => {
+  // Both sides' first moves, so every test below starts with the clock running for Red.
+  const openBoth = (host: MatchHost, time: { now: number }) => {
+    host.submit('player1', move(3, 2, 2, 2))
+    time.now += 4_000
+    host.submit('player2', anyMove(host.getSnapshot().state.position))
+  }
+
+  test('each side’s first move is free; the clock starts once both have moved', () => {
     const { host, time } = hostAt(timed())
     time.now += 10_000
     host.submit('player1', move(3, 2, 2, 2))
-    const clock = host.getSnapshot().state.clock!
-    expect(clock.remaining.player1).toBe(62_000) // untouched + increment
-    expect(clock.running).toBe('player2')
+    let clock = host.getSnapshot().state.clock!
+    expect(clock.running).toBeNull() // Blue may not even be here yet
+    expect(clock.remaining).toEqual({ player1: 60_000, player2: 60_000 })
+
+    time.now += 30_000
+    expect(host.submit('player2', anyMove(host.getSnapshot().state.position))).toBeNull()
+    clock = host.getSnapshot().state.clock!
+    expect(clock.remaining.player2).toBe(62_000) // untouched + increment
+    expect(clock.running).toBe('player1')
   })
 
   test('a turn charges the mover and adds the increment', () => {
     const { host, time } = hostAt(timed())
-    host.submit('player1', move(3, 2, 2, 2))
+    openBoth(host, time)
     time.now += 5_000
-    expect(host.submit('player2', anyMove(host.getSnapshot().state.position))).toBeNull()
-    expect(host.getSnapshot().state.clock!.remaining.player2).toBe(60_000 - 5_000 + 2_000)
+    expect(host.submit('player1', anyMove(host.getSnapshot().state.position))).toBeNull()
+    expect(host.getSnapshot().state.clock!.remaining.player1).toBe(60_000 - 5_000 + 2_000)
   })
 
   test('time is read from the running side at any moment', () => {
     const { host, time } = hostAt(timed())
-    host.submit('player1', move(3, 2, 2, 2))
+    openBoth(host, time)
     const clock = host.getSnapshot().state.clock!
-    expect(remainingAt(clock, 'player2', time.now + 7_000)).toBe(53_000)
-    expect(remainingAt(clock, 'player1', time.now + 7_000)).toBe(62_000)
+    expect(remainingAt(clock, 'player1', time.now + 7_000)).toBe(53_000)
+    expect(remainingAt(clock, 'player2', time.now + 7_000)).toBe(62_000)
   })
 
   test('the clock can only flag a side that has actually run out', () => {
     const { host, time } = hostAt(timed())
-    host.submit('player1', move(3, 2, 2, 2))
+    openBoth(host, time)
     time.now += 30_000
-    expect(host.submit('system', { type: 'engine', action: { type: 'timeout', player: 'player2' } })).toBeTruthy()
+    expect(host.submit('system', { type: 'engine', action: { type: 'timeout', player: 'player1' } })).toBeTruthy()
     time.now += 30_000
-    expect(host.submit('system', { type: 'engine', action: { type: 'timeout', player: 'player2' } })).toBeNull()
-    expect(host.getSnapshot().state.position.status).toMatchObject({ kind: 'win', winner: 'player1', reason: 'timeout' })
+    expect(host.submit('system', { type: 'engine', action: { type: 'timeout', player: 'player1' } })).toBeNull()
+    expect(host.getSnapshot().state.position.status).toMatchObject({ kind: 'win', winner: 'player2', reason: 'timeout' })
   })
 
   test('closing a local game pauses the clock', () => {
     const { host, time } = hostAt(timed())
-    host.submit('player1', move(3, 2, 2, 2))
+    openBoth(host, time)
     const savedAt = time.now + 1_000
     const reopened = resumeAfterGap(host.getSnapshot().record, host.getSnapshot().state, savedAt, savedAt + 3_600_000)
     const state = replay(reopened)
-    expect(remainingAt(state.clock!, 'player2', savedAt + 3_600_000)).toBe(59_000)
+    expect(remainingAt(state.clock!, 'player1', savedAt + 3_600_000)).toBe(59_000)
   })
 })
 

@@ -1,6 +1,6 @@
 import { opponentOf } from '../game/board'
 import { applyAction, createInitialState } from '../game/engine'
-import type { EngineAction, PlayerId } from '../game/types'
+import type { EngineAction, EngineState, PlayerId } from '../game/types'
 import { createMatchClock, finishTurn, pauseClock, remainingAt, resumeClock, runFor, settle, stop } from './clock'
 import type { Actor, MatchAction, MatchConfig, MatchIntent, MatchNotice, MatchRecord, MatchState, MatchStepResult } from './types'
 
@@ -15,6 +15,9 @@ const NOBODY: Record<PlayerId, boolean> = { player1: false, player2: false }
 
 /** Clock tolerance for a timeout claim, so a claim stamped a hair early by a slow device is still honoured. */
 const FLAG_TOLERANCE_MS = 250
+
+/** Whether `player` has completed any move yet (a call or a chain leg counts). */
+const hasMoved = (position: EngineState, player: PlayerId): boolean => position.moves.some((m) => m.player === player)
 
 export function createMatchState(config: MatchConfig): MatchState {
   const position = createInitialState(config.settings)
@@ -60,7 +63,11 @@ function stepEngine(state: MatchState, action: EngineAction, at: number, notices
   let clock = state.clock
   if (clock) {
     if (after.status.kind !== 'playing') clock = stop(clock, at)
-    else if (after.currentPlayer !== before.currentPlayer) {
+    else if (after.currentPlayer !== before.currentPlayer && clock.running === null && !hasMoved(after, after.currentPlayer)) {
+      // Each side's first move is free: the clock starts only once both have
+      // moved, so nobody's time runs before they have even sat down.
+      clock = settle(clock, at)
+    } else if (after.currentPlayer !== before.currentPlayer) {
       clock = finishTurn(
         clock,
         before.currentPlayer,
