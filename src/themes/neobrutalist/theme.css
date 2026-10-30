@@ -45,9 +45,7 @@
   border-color: var(--dam-border);
 }
 
-/* Round, like the pill-shaped bar they sit in. */
 [data-theme='neobrutalist'] .btn--icon {
-  border-radius: 999px;
   box-shadow: none;
   border-color: transparent;
 }
