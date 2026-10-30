@@ -16,6 +16,7 @@
     "check:endgames": "vitest run --config vitest.ai.config.ts ai-endgames",
     "replay": "vitest run --config vitest.ai.config.ts ai-replay",
     "openings": "vitest run --config vitest.ai.config.ts ai-openings",
+    "review": "vitest run --config vitest.ai.config.ts ai-review",
     "sounds": "vitest run --config vitest.ai.config.ts render-sounds",
     "server": "vite build && wrangler dev --port 8787",
     "check:online": "vitest run --config vitest.ai.config.ts online-server",

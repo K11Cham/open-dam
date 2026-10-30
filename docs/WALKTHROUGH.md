@@ -656,6 +656,7 @@ blocking.
 | `npm run check:endgames` | Endgame conversion from random starts     |
 | `npm run replay`         | Print one computer game ply by ply        |
 | `npm run openings`       | Measure every first move (the book)       |
+| `npm run review`         | Grade a finished game move by move        |
 | `npm run server`         | The online server locally, on port 8787   |
 | `npm run check:online`   | Real games against a running server       |
 | `npm run deploy`         | `verify`, then publish to Cloudflare      |
@@ -704,6 +705,13 @@ every screen in it.
 punish them. Give the puzzle a new `id`: solved puzzles are remembered by it.
 The tutorial test replays it; if a square is wrong, it fails and says which
 step.
+
+**Grade a game against Seriñ.** `MATCH=<id> ONLINE_URL=<server> npm run review`
+(or `RECORD=<file>` for a saved record) replays a finished game and, at every
+turn, asks Seriñ for its move and how much the move played cost in pieces. A
+move that keeps a crushing lead while Seriñ saw a forced win is counted as a
+slower win, not a mistake. Use it on games where the computer lost to find
+where its search went wrong.
 
 **Re-measure the openings.** After a change to the rules or the evaluation,
 run `SIZE=5 GAMES=8 npm run openings` (and 7, 9; `SHARD`/`SHARDS` split the
