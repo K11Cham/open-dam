@@ -160,8 +160,29 @@
   border: 4px solid var(--dam-border);
   border-radius: var(--dam-radius);
   box-shadow: var(--dam-shadow-lg);
-  overflow: hidden;
   background: var(--dam-board-bg);
+}
+
+/*
+ * The frame used to clip its contents to its rounded corners, which also cut
+ * off the winner's pieces hopping off the top row at the end of a game. So
+ * the four corner squares are rounded to fit instead, and pieces may leave
+ * the frame.
+ */
+[data-theme='neobrutalist'] .nb-board-frame .board__row:first-child .cell:first-child {
+  border-top-left-radius: calc(var(--dam-radius) - 4px);
+}
+
+[data-theme='neobrutalist'] .nb-board-frame .board__row:first-child .cell:last-child {
+  border-top-right-radius: calc(var(--dam-radius) - 4px);
+}
+
+[data-theme='neobrutalist'] .nb-board-frame .board__row:last-child .cell:first-child {
+  border-bottom-left-radius: calc(var(--dam-radius) - 4px);
+}
+
+[data-theme='neobrutalist'] .nb-board-frame .board__row:last-child .cell:last-child {
+  border-bottom-right-radius: calc(var(--dam-radius) - 4px);
 }
 
 [data-theme='neobrutalist'] .cell {
