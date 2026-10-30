@@ -122,12 +122,7 @@ export function CellDecor({ isTarget, isCaptureTarget, isChainTarget, isSelected
 }
 
 export function BoardFrame({ children }: BoardFrameProps) {
-  return (
-    <div className="cv-board-frame">
-      <span className="cv-board-bunting" aria-hidden />
-      {children}
-    </div>
-  )
+  return <div className="cv-board-frame">{children}</div>
 }
 
 /** Deterministic pseudo-random so confetti does not re-roll on every render. */
