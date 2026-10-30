@@ -12,25 +12,25 @@ every visual decision. Lower layers never import higher ones.
 
 ## Root
 
-| File                                                       | Purpose                                                                                                                                                              |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `README.md`                                                | What the project is, how to run it, where to read next.                                                                                                              |
-| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                                                                         |
-| `codebase.md`                                              | This file.                                                                                                                                                           |
-| `LICENSE`                                                  | MIT licence.                                                                                                                                                         |
-| `index.html`                                               | Vite entry document (meta tags, root element).                                                                                                                       |
-| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `build:static`, `verify`, `server`, `check:online`, `deploy`. |
-| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, `/api` proxy to the local server, Vitest settings.                                                            |
-| `wrangler.jsonc`                                           | Cloudflare Workers config: the server's entry, the built app as assets, the Durable Object for matches.                                                              |
-| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                                                                          |
-| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references (plus `worker/tsconfig.json`); the app is `strict`.                                                                                    |
-| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                                                                                   |
-| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                                                                        |
-| `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                                                                |
-| `.gitattributes`                                           | Normalises line endings to LF.                                                                                                                                       |
-| `.gitignore`                                               | Ignore rules.                                                                                                                                                        |
-| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                                                         |
-| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                                                                  |
+| File                                                       | Purpose                                                                                                                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `README.md`                                                | What the project is, how to run it, where to read next.                                                                                                                        |
+| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                                                                                   |
+| `codebase.md`                                              | This file.                                                                                                                                                                     |
+| `LICENSE`                                                  | MIT licence.                                                                                                                                                                   |
+| `index.html`                                               | Vite entry document (meta tags, root element).                                                                                                                                 |
+| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `build:static`, `verify`, `server`, `check:online`, `deploy`, `review`. |
+| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, `/api` proxy to the local server, Vitest settings.                                                                      |
+| `wrangler.jsonc`                                           | Cloudflare Workers config: the server's entry, the built app as assets, the Durable Object for matches.                                                                        |
+| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                                                                                    |
+| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references (plus `worker/tsconfig.json`); the app is `strict`.                                                                                              |
+| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                                                                                             |
+| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                                                                                  |
+| `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                                                                          |
+| `.gitattributes`                                           | Normalises line endings to LF.                                                                                                                                                 |
+| `.gitignore`                                               | Ignore rules.                                                                                                                                                                  |
+| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                                                                   |
+| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                                                                            |
 
 ## `docs/`
 
@@ -51,6 +51,7 @@ every visual decision. Lower layers never import higher ones.
 | `scripts/ai-replay.test.ts`     | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.              |
 | `scripts/ai-openings.test.ts`   | Seriñ plays itself from every first move; the source of the opening book (`npm run openings`).          |
 | `scripts/render-sounds.test.ts` | Renders every theme's sounds to `sound-preview/` as WAV files with a listening page (`npm run sounds`). |
+| `scripts/ai-review.test.ts`     | Grades a finished game against Seriñ, move by move (`npm run review`).                                  |
 | `scripts/online-server.test.ts` | Real games against a running online server, local or deployed (`npm run check:online`).                 |
 
 ## `worker/` — the online server (Cloudflare Workers)
