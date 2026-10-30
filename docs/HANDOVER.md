@@ -4,7 +4,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 
 ## Current state (2026-10-29)
 
-- `feat/overhaul` builds and `npm run verify` passes (237 tests). Every work
+- `feat/overhaul` builds and `npm run verify` passes (239 tests). Every work
   row and every verification row is done except the server rows **w25** and
   **w26**, both `doing`.
 - **Online play has a real server** (w25, 2026-10-29): a Cloudflare Worker
@@ -25,7 +25,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   the book with `npm run openings` after any change to the rules or the
   evaluation (recipe in WALKTHROUGH.md Part 11).
 - With the board clear, shifts do the quality pass described in the scheduled
-  task: look for real problems, add rows (next ids **w36**, **v15**), fix them.
+  task: look for real problems, add rows (next ids **w40**, **v15**), fix them.
 - `feat/overhaul` is on GitHub: the owner asked for it to be pushed on
   2026-10-29. `main` is untouched; to release, open a pull request from
   `feat/overhaul` into `main`.
@@ -136,6 +136,28 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-29 evening (first live online game, fixes, review)
+
+- **Game:** the owner (Red) played Claude (Blue) on the live site, game
+  `d31d6db07896`; Blue won by calling Red's last king. Claude played through
+  a small Node bridge (MatchGuest over WebSocketTransport) so its seat stayed
+  connected; a background browser tab would have stalled.
+- **Bugs the owner found while playing, all fixed but NOT DEPLOYED:**
+  - w36 (6609f99): moved pieces disappeared. A slide that never ran (page in
+    the background) kept the piece hidden. Slides now end after 1.5 s, and a
+    square hides only the piece sliding onto it.
+  - w37 and the Atelier turn stripe (d2b4d5a): Neobrutalist's ring on Blue
+    moves half the shadow offset; Atelier's turn card loses its black stripe.
+  - w38 (d2b4d5a): Carnival's striped band above the board is gone.
+- **Review (w39, bf2fdc0):** `npm run review` graded the game against Seriñ.
+  Red matched Seriñ on 11 of 23 moves at 0.56 pieces a move; costliest were 25. b2-b3 (4.7), 3. a1xa3 (2.4), 13. c3-c4 (1.9). Blue matched 11 of 21 at
+  0.07 pieces a move, plus 4 slower wins in the lone-king hunt where Seriñ saw
+  a forced win. One position (24. e2-e1) scored better than Seriñ's choice in
+  one run and 0.74 worse in the next: at 2.6 s the search is not fully stable.
+- **Checks:** `npm run verify` (239 tests). Atelier and Carnival checked in
+  the browser.
+- **Next up:** deploy the fixes when the owner says so, then identity.
 
 ### 2026-10-29 (owner's request: online server on Cloudflare)
 
