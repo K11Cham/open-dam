@@ -190,12 +190,18 @@
   background: var(--dam-p2);
 }
 
-/* Blue's inner ring: a shape difference, so sides read without colour. */
+/*
+ * Blue's inner ring: a shape difference, so sides read without colour. The
+ * piece's hard shadow makes the disc read as sitting lower right than its
+ * face, so a ring centred on the face looked pushed up and left. Moving it
+ * half the shadow's offset centres it on the piece as the eye sees it.
+ */
 [data-theme='neobrutalist'] .nb-piece-ring {
   position: absolute;
   inset: 20%;
   border-radius: 999px;
   border: 3px solid rgb(255 255 255 / 0.85);
+  transform: translate(1.5px, 1.5px);
 }
 
 [data-theme='neobrutalist'] .nb-piece.is-selected {

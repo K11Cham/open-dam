@@ -132,9 +132,10 @@
   box-shadow: inset 0 0 0 1px var(--dam-ink);
 }
 
+/* The ink outline and the "To move" tag mark the turn; a stripe on top of them was one signal too many. */
 [data-theme='atelier'] .player-card.is-turn {
   border-color: var(--dam-ink);
-  box-shadow: inset 3px 0 0 var(--dam-ink);
+  box-shadow: none;
 }
 
 [data-theme='atelier'] .tag {
