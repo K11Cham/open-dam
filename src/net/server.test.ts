@@ -310,13 +310,18 @@ describe('match server', () => {
       boardSize: 5,
       timeControl: { initialMs: 10_000, incrementMs: 0, label: '0:10+0' },
     })
-    playOne(red, 'player1') // starts Blue's clock
+    playOne(red, 'player1') // first moves are free: nothing runs yet
+    await flush()
+    await vi.advanceTimersByTimeAsync(10_500)
+    await flush()
+    expect(server.hostOf(matchId)!.getSnapshot().state.position.status.kind).toBe('playing')
+    playOne(blue, 'player2') // both have moved: Red's clock starts
     await flush()
     await vi.advanceTimersByTimeAsync(10_500)
     await flush()
     const status = server.hostOf(matchId)!.getSnapshot().state.position.status
-    expect(status).toEqual({ kind: 'win', winner: 'player1', reason: 'timeout' })
-    expect(blue.getSnapshot().state.position.status).toEqual(status)
+    expect(status).toEqual({ kind: 'win', winner: 'player2', reason: 'timeout' })
+    expect(red.getSnapshot().state.position.status).toEqual(status)
     cleanup()
   })
 })

@@ -7,8 +7,9 @@ import type { MatchClock } from './types'
  * exactly. Nothing here reads the real time.
  *
  * Policy, in one place:
- *  - The clock starts when the first move is completed (Red's first move is
- *    free of charge, as on most online servers).
+ *  - Each side's first move is free: the clock starts when the second
+ *    side completes its first move, with the first side to move running.
+ *    Online, the opponent may not even have arrived when the game opens.
  *  - Finishing a turn charges the mover, adds the increment, and starts the
  *    opponent. Chain legs and calls do not finish a turn.
  *  - An accepted undo does not refund time; the side to move after the undo
