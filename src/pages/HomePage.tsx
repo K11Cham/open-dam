@@ -229,7 +229,7 @@ export default function HomePage() {
                     Online <span className="tag">Preview</span>
                   </>
                 }
-                text="Invite someone with a link. For now it works between tabs of one browser."
+                text="Invite someone with a link, to play from any device."
               />
               <Tile
                 to="/learn"

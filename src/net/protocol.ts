@@ -55,6 +55,22 @@ export const isNetMessage = (value: unknown): value is NetMessage =>
   typeof (value as { matchId?: unknown }).matchId === 'string' &&
   typeof (value as { type?: unknown }).type === 'string'
 
+/**
+ * A transport moves protocol messages between clients and nothing else: no
+ * game logic, no ordering guarantees beyond what the medium gives. It lives
+ * here rather than in transport.ts so the server can use it without pulling
+ * in the browser-only transports.
+ */
+export interface Transport {
+  send(message: NetMessage): void
+  /** Returns an unsubscribe function. */
+  onMessage(handler: (message: NetMessage) => void): () => void
+  close(): void
+}
+
+/** Match ids are short and URL safe; a server refuses anything else before it reaches storage. */
+export const MATCH_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
+
 /** How often clients announce themselves, and when silence means "gone". */
 export const HEARTBEAT_MS = 2000
 export const PRESENCE_TIMEOUT_MS = 6000

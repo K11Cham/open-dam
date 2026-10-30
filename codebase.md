@@ -12,24 +12,25 @@ every visual decision. Lower layers never import higher ones.
 
 ## Root
 
-| File                                                       | Purpose                                                                                                                          |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `README.md`                                                | What the project is, how to run it, where to read next.                                                                          |
-| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                                     |
-| `codebase.md`                                              | This file.                                                                                                                       |
-| `LICENSE`                                                  | MIT licence.                                                                                                                     |
-| `index.html`                                               | Vite entry document (meta tags, root element).                                                                                   |
-| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `build:static`, `verify`. |
-| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, Vitest settings.                                                          |
-| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                                      |
-| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references; the app is `strict`.                                                                              |
-| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                                               |
-| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                                    |
-| `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                            |
-| `.gitattributes`                                           | Normalises line endings to LF.                                                                                                   |
-| `.gitignore`                                               | Ignore rules.                                                                                                                    |
-| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                     |
-| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                              |
+| File                                                       | Purpose                                                                                                                                                              |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`                                                | What the project is, how to run it, where to read next.                                                                                                              |
+| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                                                                         |
+| `codebase.md`                                              | This file.                                                                                                                                                           |
+| `LICENSE`                                                  | MIT licence.                                                                                                                                                         |
+| `index.html`                                               | Vite entry document (meta tags, root element).                                                                                                                       |
+| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `build:static`, `verify`, `server`, `check:online`, `deploy`. |
+| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, `/api` proxy to the local server, Vitest settings.                                                            |
+| `wrangler.jsonc`                                           | Cloudflare Workers config: the server's entry, the built app as assets, the Durable Object for matches.                                                              |
+| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                                                                          |
+| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references (plus `worker/tsconfig.json`); the app is `strict`.                                                                                    |
+| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                                                                                   |
+| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                                                                        |
+| `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                                                                |
+| `.gitattributes`                                           | Normalises line endings to LF.                                                                                                                                       |
+| `.gitignore`                                               | Ignore rules.                                                                                                                                                        |
+| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                                                         |
+| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                                                                  |
 
 ## `docs/`
 
@@ -50,6 +51,15 @@ every visual decision. Lower layers never import higher ones.
 | `scripts/ai-replay.test.ts`     | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.              |
 | `scripts/ai-openings.test.ts`   | Seriñ plays itself from every first move; the source of the opening book (`npm run openings`).          |
 | `scripts/render-sounds.test.ts` | Renders every theme's sounds to `sound-preview/` as WAV files with a listening page (`npm run sounds`). |
+| `scripts/online-server.test.ts` | Real games against a running online server, local or deployed (`npm run check:online`).                 |
+
+## `worker/` — the online server (Cloudflare Workers)
+
+| File            | Purpose                                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------- |
+| `index.ts`      | The Worker: `POST /api/matches`, WebSocket upgrades to the match's Durable Object, the app for other paths. |
+| `room.ts`       | `MatchRoom`, one Durable Object per match: runs `MatchServer` with its own storage; clears idle games.      |
+| `tsconfig.json` | Type checking with the Workers runtime's types instead of the DOM's.                                        |
 
 ## `public/`
 
@@ -122,8 +132,9 @@ every visual decision. Lower layers never import higher ones.
 
 | File             | Purpose                                                                                                                             |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `protocol.ts`    | Wire messages between guests and the host; heartbeat timings.                                                                       |
-| `transport.ts`   | `Transport` interface; `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id.                        |
+| `protocol.ts`    | Wire messages between guests and the host; the `Transport` interface; match id format; heartbeat timings.                           |
+| `api.ts`         | Where the server is (`VITE_MATCH_SERVER` or the site itself), its socket URL, and creating a match.                                 |
+| `transport.ts`   | `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id.                                               |
 | `hostLink.ts`    | Connects a `MatchHost` to a transport: binds seats, forwards guest intents, broadcasts actions and presence.                        |
 | `guest.ts`       | `MatchGuest`: mirrors a remote host's log, sends intents, resynchronises on gaps.                                                   |
 | `websocket.ts`   | `WebSocketTransport`: a browser's link to a match server; queues while down, reconnects with backoff.                               |
@@ -175,25 +186,25 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/pages/`
 
-| File                        | Purpose                                                                        |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| `HomePage.tsx`              | Hero, continue card, quick play, recent games, about.                          |
-| `NewGamePage.tsx`           | Mode first, then opponent or side, then rules; starts a game.                  |
-| `MatchPage.tsx`             | `/match/:id` (a saved local game) and `/match/new` (start from a link).        |
-| `OnlinePage.tsx`            | `/online/:id`: host or join an online game; invite link and connection status. |
-| `ReviewPage.tsx`            | `/review/:id`: step through a finished game.                                   |
-| `AnalysisPage.tsx`          | Free board with set-up tools and position codes.                               |
-| `TutorialPage.tsx`          | `/learn` overview and `/learn/:chapterId`.                                     |
-| `LeaderboardsPage.tsx`      | Sample standings, labelled as such.                                            |
-| `NotFoundPage.tsx`          | Unknown addresses.                                                             |
-| `tutorial/chapters.ts`      | The eleven chapters as data: text, example boards and puzzles.                 |
-| `tutorial/script.ts`        | Example-board scripts and their step notation.                                 |
-| `tutorial/ExampleBoard.tsx` | Plays a script through the engine, step by step.                               |
-| `tutorial/puzzle.ts`        | Puzzle data types and `judge`, which decides if the reader's move is right.    |
-| `tutorial/PuzzleBoard.tsx`  | A board the reader plays: feedback, scripted replies, punished mistakes.       |
-| `tutorial/progress.ts`      | Which puzzles this browser has solved (local storage).                         |
-| `tutorial/openings.ts`      | The opening puzzle's answers, read from the AI's opening book.                 |
-| `tutorial/tutorial.test.ts` | Replays every example and every puzzle's answers, mistakes and punishments.    |
+| File                        | Purpose                                                                     |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `HomePage.tsx`              | Hero, continue card, quick play, recent games, about.                       |
+| `NewGamePage.tsx`           | Mode first, then opponent or side, then rules; starts a game.               |
+| `MatchPage.tsx`             | `/match/:id` (a saved local game) and `/match/new` (start from a link).     |
+| `OnlinePage.tsx`            | `/online/:id`: join a game on the server; invite bar and connection status. |
+| `ReviewPage.tsx`            | `/review/:id`: step through a finished game.                                |
+| `AnalysisPage.tsx`          | Free board with set-up tools and position codes.                            |
+| `TutorialPage.tsx`          | `/learn` overview and `/learn/:chapterId`.                                  |
+| `LeaderboardsPage.tsx`      | Sample standings, labelled as such.                                         |
+| `NotFoundPage.tsx`          | Unknown addresses.                                                          |
+| `tutorial/chapters.ts`      | The eleven chapters as data: text, example boards and puzzles.              |
+| `tutorial/script.ts`        | Example-board scripts and their step notation.                              |
+| `tutorial/ExampleBoard.tsx` | Plays a script through the engine, step by step.                            |
+| `tutorial/puzzle.ts`        | Puzzle data types and `judge`, which decides if the reader's move is right. |
+| `tutorial/PuzzleBoard.tsx`  | A board the reader plays: feedback, scripted replies, punished mistakes.    |
+| `tutorial/progress.ts`      | Which puzzles this browser has solved (local storage).                      |
+| `tutorial/openings.ts`      | The opening puzzle's answers, read from the AI's opening book.              |
+| `tutorial/tutorial.test.ts` | Replays every example and every puzzle's answers, mistakes and punishments. |
 
 ## `src/themes/`
 

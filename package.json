@@ -17,6 +17,9 @@
     "replay": "vitest run --config vitest.ai.config.ts ai-replay",
     "openings": "vitest run --config vitest.ai.config.ts ai-openings",
     "sounds": "vitest run --config vitest.ai.config.ts render-sounds",
+    "server": "vite build && wrangler dev --port 8787",
+    "check:online": "vitest run --config vitest.ai.config.ts online-server",
+    "deploy": "npm run verify && wrangler deploy",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -36,6 +39,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
+    "@cloudflare/workers-types": "^5.20261029.1",
     "@eslint/js": "^10.0.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@testing-library/jest-dom": "^7.0.1",
@@ -56,7 +60,8 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.10",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.0"
   },
   "engines": {
     "node": ">=20.19"

@@ -1,35 +1,43 @@
-import { Check, Copy, Wifi, WifiOff } from 'lucide-react'
+import { Check, Copy, Share2, Wifi, WifiOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import MatchScreen from '../components/game/MatchScreen'
 import AppShell from '../components/layout/AppShell'
-import { Button } from '../components/ui/Button'
+import { Button, ButtonLink } from '../components/ui/Button'
+import Panel from '../components/ui/Panel'
 import { useToast } from '../components/ui/Toasts'
 import { useSound } from '../context/useSound'
 import { useSideNames, useTheme } from '../context/useTheme'
 import { opponentOf } from '../game/board'
 import type { PlayerId } from '../game/types'
 import { useMatchController } from '../hooks/useMatchController'
-import { useMatchPersistence } from '../hooks/useMatchPersistence'
 import { useMatchSession } from '../hooks/useMatchSession'
 import { usePageTitle } from '../lib/usePageTitle'
-import { MatchHost } from '../match/session'
 import type { MatchSession } from '../match/session'
-import { loadActiveMatch } from '../match/storage'
-import type { MatchRecord } from '../match/types'
+import { matchSocketUrl, onlineAvailable } from '../net/api'
 import { MatchGuest } from '../net/guest'
-import { linkHost } from '../net/hostLink'
-import { BroadcastChannelTransport, getClientId } from '../net/transport'
+import { getClientId } from '../net/transport'
+import { WebSocketTransport } from '../net/websocket'
 
-/** Invite and connection status, shown beside the board. */
-function OnlinePanel({ session, seat, inviteUrl }: { session: MatchSession; seat: PlayerId; inviteUrl: string | null }) {
-  const snapshot = useMatchSession(session)
+/** The link that opens this game in the other seat. A hash-routed copy keeps the route after the #. */
+const inviteLinkFor = (matchId: string, seat: PlayerId) => {
+  const route = `/online/${matchId}?seat=${opponentOf(seat)}`
+  const { origin, pathname } = window.location
+  return import.meta.env.VITE_ROUTER === 'hash' ? `${origin}${pathname}#${route}` : `${origin}${route}`
+}
+
+/**
+ * The link to send, above the board while the opponent is not here. It sits
+ * on top rather than beside the board because on a phone "beside" is below
+ * the whole board, and sending the link is the first thing to do.
+ */
+function InviteBar({ seat, matchId }: { seat: PlayerId; matchId: string }) {
   const sideNames = useSideNames()
   const [copied, setCopied] = useState(false)
-  const opponentHere = snapshot.online[opponentOf(seat)]
+  const inviteUrl = inviteLinkFor(matchId, seat)
+  const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   const copy = async () => {
-    if (!inviteUrl) return
     try {
       await navigator.clipboard.writeText(inviteUrl)
       setCopied(true)
@@ -38,6 +46,49 @@ function OnlinePanel({ session, seat, inviteUrl }: { session: MatchSession; seat
       setCopied(false)
     }
   }
+
+  const share = async () => {
+    try {
+      await navigator.share({ title: 'Play Dam with me', url: inviteUrl })
+    } catch {
+      // Closing the share sheet is not an error worth showing.
+    }
+  }
+
+  return (
+    <section className="invite-bar" aria-labelledby="invite-h">
+      <div className="invite-bar__text">
+        <h2 id="invite-h" className="invite-bar__title">
+          Invite your opponent
+        </h2>
+        <p className="field__help">Whoever opens this link plays {sideNames[opponentOf(seat)]}, on any device.</p>
+      </div>
+      <div className="copy-field">
+        <input
+          className="input"
+          readOnly
+          aria-label="Invite link"
+          value={inviteUrl}
+          onFocus={(event) => event.currentTarget.select()}
+        />
+        <Button size="sm" variant="primary" icon={copied ? <Check size={15} /> : <Copy size={15} />} onClick={copy}>
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+        {canShare && (
+          <Button size="sm" icon={<Share2 size={15} />} onClick={share}>
+            Share
+          </Button>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/** Connection status, shown beside the board. */
+function OnlinePanel({ session, seat }: { session: MatchSession; seat: PlayerId }) {
+  const snapshot = useMatchSession(session)
+  const sideNames = useSideNames()
+  const opponentHere = snapshot.online[opponentOf(seat)]
 
   const status =
     snapshot.connection === 'connecting'
@@ -58,43 +109,11 @@ function OnlinePanel({ session, seat, inviteUrl }: { session: MatchSession; seat
         {status}
       </p>
       <p className="online-panel__text">You are playing {sideNames[seat]}.</p>
-      {inviteUrl && (
-        <>
-          <label className="field__label" htmlFor="invite-link">
-            Invite link
-          </label>
-          <div className="copy-field">
-            <input
-              id="invite-link"
-              className="input"
-              readOnly
-              value={inviteUrl}
-              onFocus={(event) => event.currentTarget.select()}
-            />
-            <Button size="sm" icon={copied ? <Check size={15} /> : <Copy size={15} />} onClick={copy}>
-              {copied ? 'Copied' : 'Copy'}
-            </Button>
-          </div>
-          <p className="field__help">
-            Open this link in another tab of this browser. Playing across devices needs the game server, which is planned next.
-          </p>
-        </>
-      )}
     </section>
   )
 }
 
-function OnlineMatch({
-  session,
-  seat,
-  inviteUrl,
-  authoritative,
-}: {
-  session: MatchSession
-  seat: PlayerId
-  inviteUrl: string | null
-  authoritative: boolean
-}) {
+function OnlineMatch({ session, seat, matchId }: { session: MatchSession; seat: PlayerId; matchId: string }) {
   const navigate = useNavigate()
   const toast = useToast()
   const { theme } = useTheme()
@@ -103,86 +122,96 @@ function OnlineMatch({
   const controller = useMatchController({
     session,
     localSeats: [seat],
-    authoritative,
+    authoritative: false,
     sideNames,
     captureDurationMs: theme.motion.captureDurationMs,
     notify: toast.show,
     onCue: sound.play,
   })
   usePageTitle(controller.over ? 'Game over' : controller.myTurn ? 'Your move' : 'Online game')
+  const { connection, online } = controller.snapshot
+  // The link comes back if the opponent leaves, so it can be sent again.
+  const inviting = !controller.over && connection !== 'connecting' && !online[opponentOf(seat)]
 
   return (
-    <MatchScreen
-      controller={controller}
-      localSeats={[seat]}
-      perspective={seat}
-      thinkingSeat={null}
-      onNewGame={() => navigate('/play')}
-      aside={<OnlinePanel session={session} seat={seat} inviteUrl={inviteUrl} />}
-    />
+    <>
+      {inviting && <InviteBar seat={seat} matchId={matchId} />}
+      <MatchScreen
+        controller={controller}
+        localSeats={[seat]}
+        perspective={seat}
+        thinkingSeat={null}
+        onNewGame={() => navigate('/play')}
+        aside={<OnlinePanel session={session} seat={seat} />}
+      />
+    </>
   )
 }
 
-/** This tab created the game: it hosts it and is the authority. */
-function HostedOnline({ record }: { record: MatchRecord }) {
-  const [host] = useState(() => new MatchHost(record, { connection: 'waiting-for-opponent' }))
-  useMatchPersistence(host)
-  const seats = record.config.seats
-  const seat: PlayerId = seats.player1.kind === 'remote' ? 'player2' : 'player1'
-  const remoteSeat = opponentOf(seat)
-
-  useEffect(() => {
-    const transport = new BroadcastChannelTransport()
-    const unlink = linkHost(host, transport, { hostSeat: seat, clientId: getClientId() })
-    return () => {
-      unlink()
-      transport.close()
-    }
-  }, [host, seat])
-
-  const inviteUrl = `${window.location.origin}/online/${record.config.id}?seat=${remoteSeat}`
-  return <OnlineMatch session={host} seat={seat} inviteUrl={inviteUrl} authoritative />
+/** Shown instead of a board when there is no game to join. */
+function NoGame({ title, text }: { title: string; text: string }) {
+  usePageTitle(title)
+  return (
+    <div className="page">
+      <Panel as="section" aria-labelledby="no-game-h">
+        <h1 id="no-game-h" className="panel__title">
+          {title}
+        </h1>
+        <p className="panel__text">{text}</p>
+        <div className="panel__actions">
+          <ButtonLink to="/match/new?vs=online" variant="primary">
+            Start an online game
+          </ButtonLink>
+          <ButtonLink to="/">Home</ButtonLink>
+        </div>
+      </Panel>
+    </div>
+  )
 }
 
-/** This tab joined someone else's game. */
+/**
+ * Both players are guests of the match server (worker/), which holds the game
+ * and judges every move. The seat comes from the link: the creator opens their
+ * own side, and the invite link names the other.
+ */
 function JoinedOnline({ matchId, seat }: { matchId: string; seat: PlayerId }) {
   const [guest] = useState(() => new MatchGuest({ matchId, seat, clientId: getClientId() }))
+  const snapshot = useMatchSession(guest)
   useEffect(() => {
-    const transport = new BroadcastChannelTransport()
+    const transport = new WebSocketTransport(matchSocketUrl(matchId))
     guest.connect(transport)
     return () => {
       guest.disconnect()
       transport.close()
     }
-  }, [guest])
-  return <OnlineMatch session={guest} seat={seat} inviteUrl={null} authoritative={false} />
+  }, [guest, matchId])
+
+  if (snapshot.connection === 'missing') {
+    return (
+      <NoGame title="Game not found" text="This game does not exist, or nobody has opened it for a month and it was cleared." />
+    )
+  }
+  return <OnlineMatch session={guest} seat={seat} matchId={matchId} />
 }
 
 /**
- * `/online/:id` — host the game if this browser created it, otherwise join it.
- * Keyed by the URL, because whether this tab hosts is decided once per mount
- * and the route stays mounted when only the id changes.
+ * `/online/:id?seat=player1|player2`. Keyed by the URL, so opening another
+ * game or the other seat starts a fresh connection.
  */
 export default function OnlinePage() {
   const { id = '' } = useParams()
   const [params] = useSearchParams()
-  return <OnlineRoute key={`${id}?${params.toString()}`} />
-}
-
-function OnlineRoute() {
-  const { id = '' } = useParams()
-  const [params] = useSearchParams()
-  const [hosted] = useState(() => {
-    const active = loadActiveMatch()
-    return active && active.record.config.id === id && active.record.config.mode === 'online' && !params.has('seat')
-      ? active.record
-      : null
-  })
   const seat: PlayerId = params.get('seat') === 'player1' ? 'player1' : 'player2'
-
   return (
     <AppShell wide>
-      {hosted ? <HostedOnline key={id} record={hosted} /> : <JoinedOnline key={`${id}-${seat}`} matchId={id} seat={seat} />}
+      {onlineAvailable() ? (
+        <JoinedOnline key={`${id}-${seat}`} matchId={id} seat={seat} />
+      ) : (
+        <NoGame
+          title="Online play is not available here"
+          text="This copy of Open Dam has no game server. Open the game from its website to play online."
+        />
+      )}
     </AppShell>
   )
 }

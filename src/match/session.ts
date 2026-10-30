@@ -14,7 +14,8 @@ import type { GameEvent } from '../game/types'
  *  - `MatchGuest` (src/net/guest.ts) mirrors a remote host's log.
  */
 
-export type ConnectionStatus = 'local' | 'connecting' | 'waiting-for-opponent' | 'connected' | 'disconnected'
+/** 'missing': the server has no such game (a mistyped or expired link). */
+export type ConnectionStatus = 'local' | 'connecting' | 'waiting-for-opponent' | 'connected' | 'disconnected' | 'missing'
 
 export interface SessionSnapshot {
   record: MatchRecord

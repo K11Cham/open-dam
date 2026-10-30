@@ -1,8 +1,7 @@
 import type { PlayerId } from '../game/types'
 import type { MatchHost } from '../match/session'
 import { HEARTBEAT_MS, PRESENCE_TIMEOUT_MS, PROTOCOL_VERSION } from './protocol'
-import type { GuestMessage, HostMessage } from './protocol'
-import type { Transport } from './transport'
+import type { GuestMessage, HostMessage, Transport } from './protocol'
 
 export interface HostLinkOptions {
   /** The seat the host's own player sits in, or null when the host is a server that plays neither side. */

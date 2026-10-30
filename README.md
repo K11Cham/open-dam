@@ -32,7 +32,7 @@ The full rules, with example boards, are on the **Learn** page.
 
 - Play the computer at five levels named in Wolof, from Döff (plays on impulse) to Seriñ (plays to win).
 - Play a friend on the same device.
-- Play online between two browser tabs (preview; a server comes next).
+- Play online with an invite link, from any device (the server in `worker/` runs free on Cloudflare).
 - Pick a board from 5×5 to 9×9, a clock, and house rules.
 - Learn the rules and some strategy, with puzzles to solve on small boards.
 - Review finished games move by move; study positions on the analysis board.
