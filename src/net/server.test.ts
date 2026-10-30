@@ -222,6 +222,40 @@ describe('match server', () => {
     server.close()
   })
 
+  test('a guest whose game the server does not have says so and stops asking', async () => {
+    const { net, cleanup } = await setup()
+    const transport = new WebSocketTransport('wss://example.test/matches', { createSocket: net.createSocket })
+    const lost = new MatchGuest({ matchId: 'expired', seat: 'player2', clientId: 'late-tab' })
+    const sent: string[] = []
+    const send = transport.send.bind(transport)
+    transport.send = (message) => {
+      sent.push(message.type)
+      send(message)
+    }
+    lost.connect(transport)
+    await flush()
+    expect(lost.getSnapshot().connection).toBe('missing')
+    const asked = sent.length
+    vi.advanceTimersByTime(10_000)
+    await flush()
+    expect(sent.length).toBe(asked)
+    lost.dispose()
+    transport.close()
+    cleanup()
+  })
+
+  test('a guest that played on and then hears "closed" is disconnected, not told the game is gone', async () => {
+    const { red, net, cleanup } = await setup()
+    net.server!.close()
+    // A restarted server that lost the room still answers; here it answers "closed" to everything.
+    for (const socket of net.sockets) socket.cut()
+    net.server = new MatchServer({ store: memoryStore().store })
+    vi.advanceTimersByTime(3000)
+    await flush()
+    expect(red.getSnapshot().connection).not.toBe('missing')
+    cleanup()
+  })
+
   test('a dropped link reconnects by itself and catches up on moves it missed', async () => {
     const { server, matchId, net, red, blue, cleanup } = await setup()
     const blueSocket = net.sockets[1]

@@ -1,12 +1,16 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { AppProviders, AppRoutes } from '../App'
 import BoardView from '../components/board/BoardView'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import { createInitialState, resign } from '../game/engine'
+import { makeSettings } from '../game/settings'
 import type { Coord } from '../game/types'
+import { createRecord } from '../match/session'
+import { PROTOCOL_VERSION } from '../net/protocol'
+import type { GuestMessage, NetMessage } from '../net/protocol'
 import { STORAGE_KEYS, storage } from '../services/storage'
 import { THEMES, THEME_KEYS } from '../themes/registry'
 
@@ -221,6 +225,92 @@ describe('new game', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Your side' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: /^Computer/ }))
     expect(screen.getByRole('radio', { name: /Màam/ })).toBeChecked()
+  })
+})
+
+/**
+ * Stands in for the match server: answers a join with the game, or with
+ * "closed" for the id 'gone'. Only the opponent's absence is reported, so the
+ * invite stays up.
+ */
+class FakeServerSocket {
+  readyState = 0
+  onopen: (() => void) | null = null
+  onmessage: ((event: { data: string }) => void) | null = null
+  onclose: (() => void) | null = null
+  constructor() {
+    queueMicrotask(() => {
+      this.readyState = 1
+      this.onopen?.()
+    })
+  }
+  send(text: string) {
+    const message = JSON.parse(text) as GuestMessage
+    if (message.type !== 'join') return
+    const reply = (body: object) =>
+      queueMicrotask(() =>
+        this.onmessage?.({ data: JSON.stringify({ v: PROTOCOL_VERSION, matchId: message.matchId, from: 'server', ...body }) }),
+      )
+    if (message.matchId === 'gone') {
+      reply({ type: 'closed' })
+      return
+    }
+    const record = createRecord({
+      id: message.matchId,
+      mode: 'online',
+      settings: makeSettings({ boardSize: 5 }),
+      seats: { player1: { kind: 'remote', name: '' }, player2: { kind: 'remote', name: '' } },
+    })
+    reply({ type: 'welcome', to: message.from, seat: message.seat, record } satisfies Partial<NetMessage>)
+    reply({ type: 'presence', online: { player1: true, player2: false } })
+  }
+  close() {
+    this.readyState = 3
+  }
+}
+
+describe('online', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  test('starting an online game asks the server for one and shows the link for the other side', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: 'abc123' }), { status: 201 }))
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('WebSocket', FakeServerSocket)
+    renderAt('/play')
+    await user.click(await screen.findByRole('radio', { name: /^Online/ }))
+    await user.click(screen.getByRole('button', { name: 'Start game' }))
+
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/matches$/), expect.objectContaining({ method: 'POST' }))
+    const link = await screen.findByRole('textbox', { name: 'Invite link' })
+    expect((link as HTMLInputElement).value).toMatch(/\/online\/abc123\?seat=player2$/)
+    expect(screen.getByText('Waiting for your opponent')).toBeInTheDocument()
+    expect(screen.getByText(/You are playing/)).toBeInTheDocument()
+  })
+
+  test('when the server cannot be reached, the page says so and stays put', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch')
+      }),
+    )
+    renderAt('/play')
+    await user.click(await screen.findByRole('radio', { name: /^Online/ }))
+    await user.click(screen.getByRole('button', { name: 'Start game' }))
+    expect(await screen.findByText(/Could not reach the game server/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'New game' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start game' })).toBeEnabled()
+  })
+
+  test('a link to a game the server does not have says so', async () => {
+    vi.stubGlobal('WebSocket', FakeServerSocket)
+    renderAt('/online/gone?seat=player2')
+    expect(await screen.findByRole('heading', { name: 'Game not found' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Start an online game' })).toBeInTheDocument()
   })
 })
 

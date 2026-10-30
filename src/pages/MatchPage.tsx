@@ -14,7 +14,7 @@ import { useMatchController } from '../hooks/useMatchController'
 import { useMatchPersistence } from '../hooks/useMatchPersistence'
 import { usePageTitle } from '../lib/usePageTitle'
 import { MatchHost, createRecord } from '../match/session'
-import { recordFromSetup, setupFromParams } from '../match/setup'
+import { recordFromSetup, saveLastSetup, setupFromParams } from '../match/setup'
 import { clearActiveMatch, findArchived, loadActiveMatch, resumeAfterGap, saveActiveMatch } from '../match/storage'
 import type { MatchRecord } from '../match/types'
 
@@ -121,13 +121,22 @@ function SavedMatch({ id }: { id: string }) {
 export function NewMatchFromLink() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  // An online game is made by the server once the player has picked a side,
+  // so its link opens the New game page set to Online instead.
+  const online = setupFromParams(params).opponent === 'online'
   const [pending] = useState(() => {
+    if (online) return null
     const active = loadActiveMatch()
     return active && active.state.position.status.kind === 'playing' && active.record.actions.length > 0 ? active : null
   })
 
   const start = () => {
     const setup = setupFromParams(params)
+    if (online) {
+      saveLastSetup(setup)
+      navigate('/play', { replace: true })
+      return
+    }
     const record = recordFromSetup(setup)
     clearActiveMatch()
     saveActiveMatch(record)

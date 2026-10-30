@@ -6,8 +6,7 @@ import { MatchHost, createRecord } from '../match/session'
 import type { MatchRecord, MatchState } from '../match/types'
 import { linkHost } from './hostLink'
 import { PROTOCOL_VERSION, isNetMessage } from './protocol'
-import type { GuestMessage, NetMessage } from './protocol'
-import type { Transport } from './transport'
+import type { GuestMessage, NetMessage, Transport } from './protocol'
 
 /**
  * The match server's logic, without the network. Whatever listens for
@@ -110,7 +109,7 @@ class Room implements Transport {
 
   /** Call time exactly when the running side's clock reaches zero. */
   private scheduleFlag() {
-    clearTimeout(this.flagTimer)
+    if (this.flagTimer !== undefined) clearTimeout(this.flagTimer)
     const { state } = this.host.getSnapshot()
     const at = state.clock && !isOver(state) ? flagTime(state.clock) : null
     const running = state.clock?.running
@@ -173,7 +172,7 @@ class Room implements Transport {
   }
 
   close() {
-    clearTimeout(this.flagTimer)
+    if (this.flagTimer !== undefined) clearTimeout(this.flagTimer)
     this.stopWatching()
     this.unlink()
     this.handlers.clear()

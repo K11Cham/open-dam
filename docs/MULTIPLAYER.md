@@ -101,26 +101,80 @@ interface Transport {
 }
 ```
 
-- `BroadcastChannelTransport` works between tabs of one browser. It powers the
-  "Online (preview)" mode today.
+- `WebSocketTransport` (`src/net/websocket.ts`) connects a browser to the
+  match server. This is what the Online page uses.
+- `BroadcastChannelTransport` works between tabs of one browser. The app used
+  it before the server existed; it is kept for experiments.
 - `MemoryHub` / `MemoryTransport` simulate a network in tests (asynchronous,
   JSON-copied messages).
-- `WebSocketTransport` (`src/net/websocket.ts`) connects a browser to a match
-  server. Nothing in the app uses it yet; see below.
+
+The `Transport` interface itself lives in `protocol.ts`, so the server can use
+it without pulling in the browser-only transports.
 
 ## What exists today
 
-- Create an online game on New game (opponent "Online") or from Home. The host
-  tab shows an invite link (`/online/<id>?seat=player2`).
-- Open the link in another tab of the same browser to join.
-- Moves, calls, chains, offers, resignations and clocks sync. The board stays
-  locked until both players are connected. The host saves the game, so
-  reloading the host tab resumes it; a reloaded guest tab rejoins.
+- New game → Online → Start asks the server for a game (`POST /api/matches`
+  with the rules) and opens `/online/<id>?seat=<your side>`.
+- While the opponent is away, a bar above the board shows the invite link
+  (`/online/<id>?seat=<their side>`), with Copy and, on phones, Share.
+- Both players are guests of the server, on any device. Moves, calls, chains,
+  offers, resignations and clocks sync. The board stays locked until both
+  players are connected.
+- The server saves the game after every move. Reloading either tab, or losing
+  the connection, rejoins the same seat; a game nobody has opened for 30 days
+  is deleted.
+- A link to a game the server does not have shows "Game not found".
+- Anyone holding a link can take its seat while it is free. There are no
+  accounts yet (step 7 below).
 
-## Adding a real server
+## The online server (`worker/`)
 
-The browser code does not need to change shape. Steps 1, 2 and 4 are written
-and tested, as are the pure halves of 8 and 9; the rest need a host to run on.
+The server runs on Cloudflare Workers, on the free plan:
+
+- `worker/index.ts` is the front door. It creates matches, sends each
+  WebSocket to its match's Durable Object, and serves the built app from
+  `dist/` for every other path, so the site and the server share one address
+  and need no CORS.
+- `worker/room.ts` is `MatchRoom`, a Durable Object: Cloudflare runs exactly
+  one per match id, and every player of that match reaches the same one. It
+  runs `MatchServer` unchanged, with a `MatchStore` backed by the object's
+  own storage.
+- `wrangler.jsonc` binds the two and declares the Durable Object as
+  SQLite-backed, the kind the free plan includes.
+
+Why this host: a Durable Object is "one small server per game", which is
+exactly the shape `MatchServer` already had. It does not sleep the way free
+Node hosts do, and the free plan's limits (requests, duration, storage) are far
+above what a board game uses. Check the current limits on Cloudflare's pricing
+page before relying on numbers.
+
+### Running it locally
+
+`npm run server` builds the app and runs the Worker under `wrangler dev` at
+http://127.0.0.1:8787, with a local Durable Object store in `.wrangler/`. No
+Cloudflare account is needed. To work on the app with hot reload instead, keep
+that running and use `npm run dev`: Vite forwards `/api` (WebSockets
+included) to port 8787.
+
+`npm run check:online` plays real games against it: creation, refusals,
+two players, a dropped link coming back, a third client turned away, a game
+reloaded from storage after everyone left, and unknown ids. Point it at a
+deployed server with `ONLINE_URL=https://… npm run check:online`.
+
+### Deploying
+
+1. A free Cloudflare account, and `npx wrangler login` once on this computer.
+2. `npm run deploy` runs `verify`, then `wrangler deploy`. The first deploy
+   prints the address, `https://open-dam.<your-subdomain>.workers.dev`.
+3. Run `ONLINE_URL=<that address> npm run check:online`.
+
+A copy of the app hosted elsewhere (the static build) can use the deployed
+server: build it with `VITE_MATCH_SERVER=<address>`. Without that, the static
+build's Online page says online play is not available there.
+
+## Server roadmap
+
+Steps 1 to 6 are done; 7 to 9 are the next work.
 
 1. **WebSocket transport — done.** `WebSocketTransport` in
    `src/net/websocket.ts` sends JSON, checks every frame with `isNetMessage`,
@@ -137,20 +191,19 @@ and tested, as are the pure halves of 8 and 9; the rest need a host to run on.
    client id it uses, so it cannot act for another client. A ping from a guest
    whose seat claim was lost (for example after a server restart) wins the
    seat back if nobody else holds it.
-3. **Listen on a port.** Still to do: a small Node entry point that runs a
-   WebSocket server (for example with the `ws` package) and hands connections
-   to `MatchServer`. `src/game`, `src/match` and `src/net` have no browser
-   dependencies and run unchanged in Node.
+3. **Listen for connections — done.** The Cloudflare Worker and Durable
+   Object above. `src/game`, `src/match` and `src/net/server.ts` have no
+   browser dependencies, so they run unchanged there (and would in Node).
 4. **Use the server's clock — done.** The room's host stamps `at` with server
    time, and the room submits `{ type: 'engine', action: { type: 'timeout',
 player } }` as `system` at `flagTime(state.clock)`, retrying shortly if a
    timer fires a hair early.
-5. **Persist records.** `MatchStore` is the seam: `save` is called after
-   every accepted action with the full record (a long game is a few hundred
-   actions). Back it with a database keyed by match id.
-6. **Make both browsers guests.** `OnlinePage` currently hosts in the creating
-   tab; with a server, every player uses `MatchGuest` with
-   `WebSocketTransport`.
+5. **Persist records — done.** `MatchStore` is the seam: `save` is called
+   after every accepted action with the full record. `MatchRoom` keeps it in
+   memory and writes it to Durable Object storage; Cloudflare holds back the
+   room's outgoing messages until the write is durable.
+6. **Make both browsers guests — done.** `OnlinePage` uses `MatchGuest` with
+   `WebSocketTransport` for both players.
 7. **Identity.** Replace the per-tab client id with an authenticated user id
    when binding seats in `linkHost`.
 8. **Matchmaking — queue done.** `SeekQueue` in `src/net/matchmaking.ts`

@@ -1,17 +1,7 @@
 import { isNetMessage } from './protocol'
-import type { NetMessage } from './protocol'
+import type { NetMessage, Transport } from './protocol'
 
-/**
- * A transport moves protocol messages between clients and nothing else: no
- * game logic, no ordering guarantees beyond what the medium gives. Swapping
- * BroadcastChannel for a WebSocket means writing one more class like these.
- */
-export interface Transport {
-  send(message: NetMessage): void
-  /** Returns an unsubscribe function. */
-  onMessage(handler: (message: NetMessage) => void): () => void
-  close(): void
-}
+export type { Transport }
 
 /** Same-browser transport: every tab on this origin that opens the channel. */
 export class BroadcastChannelTransport implements Transport {

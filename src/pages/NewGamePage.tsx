@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import ChoiceCards from '../components/ui/ChoiceCards'
 import type { Choice } from '../components/ui/ChoiceCards'
 import { ConfirmDialog } from '../components/ui/Dialog'
+import { useToast } from '../components/ui/Toasts'
 import Panel from '../components/ui/Panel'
 import Segmented from '../components/ui/Segmented'
 import { useSideNames } from '../context/useTheme'
@@ -18,6 +19,7 @@ import { timeControlLabel } from '../lib/describe'
 import { loadLastSetup, opponentLabel, recordFromSetup, saveLastSetup } from '../match/setup'
 import type { GameSetup, OpponentChoice } from '../match/setup'
 import { clearActiveMatch, loadActiveMatch, saveActiveMatch } from '../match/storage'
+import { createOnlineMatch } from '../net/api'
 
 type Mode = 'computer' | 'hotseat' | 'online'
 
@@ -51,9 +53,11 @@ function Strength({ level, elo }: { level: number; elo: number }) {
 export default function NewGamePage() {
   usePageTitle('New game')
   const navigate = useNavigate()
+  const toast = useToast()
   const sideNames = useSideNames()
   const [setup, setSetup] = useState<GameSetup>(loadLastSetup)
   const [confirmReplace, setConfirmReplace] = useState(false)
+  const [creating, setCreating] = useState(false)
   const mode: Mode = setup.opponent === 'hotseat' || setup.opponent === 'online' ? setup.opponent : 'computer'
   // The computer opponent last picked, so switching to another mode and back keeps it.
   const [bot, setBot] = useState<DifficultyId>(isDifficulty(setup.opponent) ? setup.opponent : DEFAULT_SETUP_BOT)
@@ -76,7 +80,7 @@ export default function NewGamePage() {
       title: 'Online',
       badge: 'Preview',
       icon: <Globe size={18} aria-hidden />,
-      description: 'Invite someone with a link. For now this works between two tabs of one browser.',
+      description: 'Invite someone with a link. They can play from any device.',
     },
   ]
 
@@ -102,7 +106,24 @@ export default function NewGamePage() {
     navigate(record.config.mode === 'online' ? `/online/${record.config.id}` : `/match/${record.config.id}`)
   }
 
+  // The server holds an online game, so starting one leaves any saved game on this device alone.
+  const startOnline = async () => {
+    saveLastSetup(setup)
+    setCreating(true)
+    try {
+      const id = await createOnlineMatch(setup.settings)
+      navigate(`/online/${id}?seat=${setup.side}`)
+    } catch (error) {
+      toast.show(error instanceof Error ? error.message : 'Could not start the game.', 'error')
+      setCreating(false)
+    }
+  }
+
   const start = () => {
+    if (setup.opponent === 'online') {
+      void startOnline()
+      return
+    }
     const active = loadActiveMatch()
     if (active && active.state.position.status.kind === 'playing' && active.record.actions.length > 0) setConfirmReplace(true)
     else begin()
@@ -182,8 +203,8 @@ export default function NewGamePage() {
 
         <div className="start-bar">
           <p className="start-bar__summary">{summary}</p>
-          <Button variant="primary" size="lg" icon={<Play size={18} />} onClick={start}>
-            Start game
+          <Button variant="primary" size="lg" icon={<Play size={18} />} onClick={start} disabled={creating}>
+            {creating ? 'Starting…' : 'Start game'}
           </Button>
         </div>
       </div>

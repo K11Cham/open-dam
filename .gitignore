@@ -25,6 +25,9 @@ dist-ssr
 *.sw?
 .enginecheck/
 
+# Wrangler's local Durable Object storage and build output (`npm run server`)
+.wrangler/
+
 # WAV previews from `npm run sounds`
 sound-preview/
 

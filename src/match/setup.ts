@@ -117,6 +117,6 @@ export function setupFromParams(params: URLSearchParams): GameSetup {
 /** Describe the opponent in a few words, for cards and summaries. */
 export function opponentLabel(opponent: OpponentChoice): string {
   if (opponent === 'hotseat') return 'Two players, one device'
-  if (opponent === 'online') return 'Online (two browser tabs)'
+  if (opponent === 'online') return 'Online, by invite link'
   return `Computer · ${DIFFICULTIES[opponent].name}`
 }

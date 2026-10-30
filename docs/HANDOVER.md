@@ -4,16 +4,20 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 
 ## Current state (2026-10-29)
 
-- `feat/overhaul` builds and `npm run verify` passes (232 tests). Every work
+- `feat/overhaul` builds and `npm run verify` passes (237 tests). Every work
   row and every verification row is done except the server rows **w25** and
-  **w26**. Both are `doing`: their pure, tested parts exist (`src/net/server.ts`,
-  `websocket.ts`, `matchmaking.ts`, `src/match/rating.ts`); what is left needs
-  a hosted server, a database or accounts (see each row's note and
-  "Adding a real server" in MULTIPLAYER.md).
-- **Next up (owner approved, 2026-10-28):** w25's next step. Add the `ws`
-  dependency and a small Node entry point that hands connections to
-  `MatchServer.accept`, with an in-memory store, runnable locally through an
-  npm script.
+  **w26**, both `doing`.
+- **Online play has a real server** (w25, 2026-10-29): a Cloudflare Worker
+  with one Durable Object per match (`worker/`), chosen with the owner because
+  it is free and does not sleep. The Online page now uses it with invite
+  links, from any device. It runs locally with `npm run server` and passes
+  `npm run check:online`; it is **not deployed yet**.
+- **Next up:** deploying needs the owner. They are making a Cloudflare
+  account; then `npx wrangler login` once (their browser, their approval) and
+  `npm run deploy`, which an agent may run only with the owner's yes in chat.
+  After that: `ONLINE_URL=<address> npm run check:online`, and step 7 to 9 of
+  "Server roadmap" in MULTIPLAYER.md (identity, then matchmaking and ratings:
+  w26).
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
   Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
@@ -30,7 +34,8 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   https://claude.ai/artifact/MxbYGWhJ7w14nSmmoj3e33 (only the owner can open
   it). To bring it up to date, run `npm run build:static` and republish
   `dist-static` to that link (recipe in WALKTHROUGH.md Part 11). Online play
-  does not work there.
+  works there only if it was built with `VITE_MATCH_SERVER` set to the
+  deployed server's address.
 
 ## Starting a new session
 
@@ -38,7 +43,8 @@ Open a new Claude Code session in this folder and paste this:
 
 ```text
 Continue the Open Dam overhaul. Work only on branch feat/overhaul; never push,
-never touch main, never force anything, never delete branches or tags.
+never touch main, never force anything, never delete branches or tags,
+never deploy (npm run deploy, wrangler deploy) unless the owner says so in chat.
 Read docs/HANDOVER.md first and follow it, then codebase.md and
 docs/WALKTHROUGH.md. The live work list is the handover board
 (https://claude.ai/artifact/8EzQNkWbb4L61sxHUrT9LA, collection "items"; load
@@ -110,11 +116,14 @@ change a row's status and notes directly on the page.
 | ---------------------- | ----------------------------------------------- |
 | `npm run dev`          | Dev server at http://localhost:5173             |
 | `npm run verify`       | Typecheck, lint, format check, tests, build     |
-| `npm test`             | Unit and UI tests (about 230, a few seconds)    |
+| `npm test`             | Unit and UI tests (about 240, a few seconds)    |
 | `npm run check:ai`     | AI strength match between tiers (slow)          |
 | `npm run format`       | Apply Prettier formatting                       |
 | `npm run build`        | Production build into `dist/`                   |
 | `npm run build:static` | A copy for any static host, into `dist-static/` |
+| `npm run server`       | The online server locally (port 8787)           |
+| `npm run check:online` | Real games against a running server             |
+| `npm run deploy`       | `verify`, then publish to Cloudflare            |
 
 ## Scheduled shifts
 
@@ -128,6 +137,32 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-29 (owner's request: online server on Cloudflare)
+
+- **Decision:** the owner asked for free, practical online play and chose
+  Cloudflare (Workers and a SQLite-backed Durable Object per match) over a
+  Node server on a free host that sleeps. This replaces the approved "local
+  `ws` server" step; `MatchServer` needed no changes beyond typing.
+- **Server:** `worker/index.ts` (create a match, WebSocket upgrade, serve the
+  app from `dist/`), `worker/room.ts` (`MatchRoom` runs `MatchServer` with
+  Durable Object storage; idle games are deleted after 30 days),
+  `wrangler.jsonc`. Wrangler and the Workers types are dev dependencies.
+- **App:** New game → Online asks the server for a game (`src/net/api.ts`);
+  both players are `MatchGuest`s over `WebSocketTransport`. The invite link
+  sits in a bar above the board while the opponent is away (on a phone the
+  side panel is below the board), with Copy and Share. Unknown links show
+  "Game not found" (new `missing` connection state). Home's Online link opens
+  New game set to Online. The same-browser host mode is gone.
+- **Checks:** `npm run verify` (237 tests, including three new UI tests and
+  two guest tests). `npm run check:online` against `wrangler dev`, directly
+  and through Vite's proxy (6 tests). `wrangler deploy --dry-run` bundles.
+  In the in-app browser: a game between two tabs on the local server, a
+  reload rejoining Blue's seat, a bad link, and the invite bar at desktop and
+  375 px.
+- **Not done:** deploying (needs the owner's account and login). No accounts
+  or identity: anyone with a link can take a free seat.
+- **Next up:** deploy with the owner, then identity (MULTIPLAYER.md step 7).
 
 ### 2026-10-28 evening to 2026-10-29 (owner's live requests, release)
 

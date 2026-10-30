@@ -1,6 +1,5 @@
 import { isNetMessage } from './protocol'
-import type { NetMessage } from './protocol'
-import type { Transport } from './transport'
+import type { NetMessage, Transport } from './protocol'
 
 /** The part of the browser's WebSocket this transport uses, so tests can pass a fake. */
 export type SocketLike = Pick<WebSocket, 'send' | 'close' | 'onopen' | 'onmessage' | 'onclose'> & { readonly readyState: number }

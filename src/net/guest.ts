@@ -4,8 +4,7 @@ import { applyMatchAction, replay } from '../match/reducer'
 import { SessionBase } from '../match/session'
 import type { Actor, MatchIntent, MatchRecord } from '../match/types'
 import { HEARTBEAT_MS, PRESENCE_TIMEOUT_MS, PROTOCOL_VERSION } from './protocol'
-import type { GuestMessage, HostMessage } from './protocol'
-import type { Transport } from './transport'
+import type { GuestMessage, HostMessage, Transport } from './protocol'
 
 type GuestBody = GuestMessage extends infer M ? (M extends GuestMessage ? Omit<M, 'v' | 'matchId' | 'from'> : never) : never
 
@@ -34,6 +33,8 @@ export class MatchGuest extends SessionBase {
   private readonly now: () => number
   private transport: Transport | null = null
   private welcomed = false
+  /** Welcomed at least once: a later 'closed' means the host left, not that the game never existed. */
+  private everWelcomed = false
   private lastHeardFromHost = 0
   private nonce = 0
   private timer: ReturnType<typeof setInterval> | undefined
@@ -105,6 +106,7 @@ export class MatchGuest extends SessionBase {
     switch (message.type) {
       case 'welcome':
         this.welcomed = true
+        this.everWelcomed = true
         this.adopt(message.record)
         return
       case 'snapshot':
@@ -130,6 +132,12 @@ export class MatchGuest extends SessionBase {
         })
         return
       case 'closed':
+        if (!this.everWelcomed) {
+          // The server does not know this game. Asking again will not change that.
+          this.disconnect()
+          this.publish({ snapshot: { ...this.snapshot, connection: 'missing' } })
+          return
+        }
         this.welcomed = false
         this.publish({ snapshot: { ...this.snapshot, connection: 'disconnected' } })
         return

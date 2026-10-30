@@ -1,0 +1,22 @@
+// Cloudflare Workers config for the online server and the site.
+// `npm run server` runs it locally; `npm run deploy` publishes it.
+// See "Online server" in docs/MULTIPLAYER.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "open-dam",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-20",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // React Router owns every other path, so unknown paths get index.html.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "MATCHES", "class_name": "MatchRoom" }],
+  },
+  // SQLite-backed Durable Objects are the kind the free plan includes.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchRoom"] }],
+  "observability": { "enabled": true },
+}

@@ -437,22 +437,27 @@ and publishes. Every local game is a `MatchHost`.
 
 Read `docs/MULTIPLAYER.md` for the full design. In short:
 
-- One device is the **host** (today, the tab that created the game; later, a
-  server). It owns the log and runs the reducer.
+- The **host** owns the log and runs the reducer. Online, the host is the
+  match server; in a local game it is the page itself.
 - Other devices are **guests** (`MatchGuest`). They send intents and apply the
   actions the host broadcasts. They never decide anything themselves, so two
   devices can never disagree about the game.
-- `protocol.ts` lists the messages; `transport.ts` moves them. Today the app
-  uses a `BroadcastChannel`, which only reaches tabs in the same browser.
+- `protocol.ts` lists the messages; a transport moves them. The app uses
+  `WebSocketTransport` (`websocket.ts`), which reconnects by itself;
+  `transport.ts` has a same-browser `BroadcastChannel` one and an in-memory
+  one for tests. `api.ts` is how the browser finds the server and asks it for
+  a new game.
 - `hostLink.ts` is the host-side "server logic": binding a browser tab to a
   seat, forwarding its intents to the reducer, broadcasting accepted actions,
   and tracking who is online through heartbeats.
-- The server side is written but not yet hosted. `websocket.ts` is the
-  browser's end of a link to a server (it reconnects by itself), and
-  `server.ts` is everything a server does apart from listening on a port: one
+- `server.ts` is everything the server does apart from the network: one
   room per match, both seats remote, the record saved after every action, and
   the server's own clock calling flags. `server.test.ts` plays games through
   it end to end, including a server crash and restart.
+- `worker/` puts it on the internet: a Cloudflare Worker that creates matches
+  and serves the app, and one Durable Object per match (`room.ts`) that runs
+  `MatchServer` with its own storage. `npm run server` runs it locally;
+  MULTIPLAYER.md has the deploy steps.
 - `matchmaking.ts` is the queue a server would pair players from, and
   `src/match/rating.ts` the Elo arithmetic it would rate finished games with
   (through `MatchServer`'s `onFinished`). The leaderboard page still shows
@@ -579,7 +584,7 @@ replace them.
 | `/play`                | `NewGamePage`      | Mode (computer, pass and play, online), then the opponent ladder or side, then rules. Asks before discarding. |
 | `/match/new?…`         | `NewMatchFromLink` | Builds a game from a link, then redirects to `/match/:id`.                                                    |
 | `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.              |
-| `/online/:id`          | `OnlinePage`       | Hosts (creator tab) or joins (`?seat=`).                                                                      |
+| `/online/:id`          | `OnlinePage`       | Joins the game on the server in the seat from `?seat=`; invite bar while the opponent is away.                |
 | `/review/:id`          | `ReviewPage`       | A finished game, read-only, steppable.                                                                        |
 | `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eleven chapters with example boards and puzzles; solved puzzles are counted per chapter.   |
 | `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                         |
@@ -640,7 +645,7 @@ blocking.
 | Command                  | What it runs                              |
 | ------------------------ | ----------------------------------------- |
 | `npm run dev`            | Vite dev server with hot reload           |
-| `npm test`               | Vitest: ~230 tests in a few seconds       |
+| `npm test`               | Vitest: ~240 tests in a few seconds       |
 | `npm run typecheck`      | TypeScript in strict mode                 |
 | `npm run lint`           | ESLint                                    |
 | `npm run format`         | Prettier                                  |
@@ -651,6 +656,9 @@ blocking.
 | `npm run check:endgames` | Endgame conversion from random starts     |
 | `npm run replay`         | Print one computer game ply by ply        |
 | `npm run openings`       | Measure every first move (the book)       |
+| `npm run server`         | The online server locally, on port 8787   |
+| `npm run check:online`   | Real games against a running server       |
+| `npm run deploy`         | `verify`, then publish to Cloudflare      |
 
 Where the tests are and what they protect:
 
@@ -666,6 +674,7 @@ Where the tests are and what they protect:
 | `src/audio/audio.test.ts`             | Synth output, which sound a step makes, every theme has every sound                                                 |
 | `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs    |
 | `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                    |
+| `scripts/online-server.test.ts`       | A local or deployed server over real sockets (needs `npm run server`)                                               |
 
 CI (`.github/workflows/ci.yml`) runs `verify` on every push and pull request.
 
@@ -718,10 +727,15 @@ screens and announcements stay consistent.
 relative paths, and routes after a `#` (`VITE_ROUTER=hash` from `.env.static`),
 so it runs on any static host, including a private Claude artifact (publish
 `index.html` as the page and everything else beside it). Normal builds keep
-clean URLs. Online play needs a server, so it does not work there.
+clean URLs. Online play needs a server: build with
+`VITE_MATCH_SERVER=<deployed address>` to use one, or the Online page says it
+is not available.
 
-**Add an online server.** Follow "Adding a real server" in
-`docs/MULTIPLAYER.md`.
+**Change the online server.** The match logic is `src/net/server.ts`; test it
+in `server.test.ts`. `worker/` only adapts it to Cloudflare. Run
+`npm run server` and `npm run check:online` before deploying with
+`npm run deploy`. A change to the messages needs the server and the app
+deployed together, so bump `PROTOCOL_VERSION` if old tabs could still be open.
 
 ---
 
