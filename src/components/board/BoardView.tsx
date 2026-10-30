@@ -118,7 +118,9 @@ export default function BoardView({
 
   const slideSet = new Set(destinations.slides.map(key))
   const captureSet = new Set(destinations.captures.map(key))
-  const travelling = new Set(animations.filter((a) => a.kind === 'travel').map((a) => key((a as { to: Coord }).to)))
+  // A square's piece is hidden only while that same piece is sliding onto it, so a slide that
+  // never finished cannot hide whatever stands on its square later.
+  const travelling = new Set(animations.flatMap((a) => (a.kind === 'travel' ? [`${key(a.to)}:${a.piece.id}`] : [])))
   const draggedKey = drag ? key(drag.from) : null
   const inChain = position.chain.active
 
@@ -242,7 +244,7 @@ export default function BoardView({
                       isLastMove={isLastMove}
                     />
 
-                    {piece && !travelling.has(k) && draggedKey !== k && (
+                    {piece && !travelling.has(`${k}:${piece.id}`) && draggedKey !== k && (
                       <motion.div
                         // The press effect is CSS (:active), not framer-motion's whileTap: whileTap makes
                         // the element focusable, which turned every movable piece into its own Tab stop.

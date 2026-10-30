@@ -24,6 +24,16 @@ export interface BoardAnimationState {
 
 const PROMOTION_MS = 900
 
+/**
+ * A travelling piece normally removes itself when its slide lands. A browser
+ * runs no animation frames while the page is hidden (another app or tab in
+ * front, a locked phone), so that can come late or, in practice, never; and
+ * the board hides the real piece until it does. This is the latest a slide may
+ * last before the piece is shown in place anyway. Every theme's slide settles
+ * well inside it.
+ */
+export const TRAVEL_FALLBACK_MS = 1500
+
 export function useBoardAnimations(captureDurationMs: number) {
   const [animations, setAnimations] = useState<BoardAnimation[]>([])
   const [promotedIds, setPromotedIds] = useState<string[]>([])
@@ -80,9 +90,13 @@ export function useBoardAnimations(captureDurationMs: number) {
       }
       if (added.length === 0) return
       setAnimations((prev) => [...prev, ...added])
-      // Exits are timed; travel animations remove themselves when they land.
+      // Exits are timed; travel animations remove themselves when they land, or at the fallback.
       const exits = added.filter((a) => a.kind !== 'travel').map((a) => a.id)
       if (exits.length > 0) schedule(() => setAnimations((prev) => prev.filter((a) => !exits.includes(a.id))), captureDurationMs)
+      const travels = added.filter((a) => a.kind === 'travel').map((a) => a.id)
+      if (travels.length > 0) {
+        schedule(() => setAnimations((prev) => prev.filter((a) => !travels.includes(a.id))), TRAVEL_FALLBACK_MS)
+      }
     },
     [captureDurationMs, schedule],
   )
