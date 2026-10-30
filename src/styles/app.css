@@ -256,6 +256,15 @@
   padding: 0;
 }
 
+/*
+ * Icon-only buttons are circles, except in Atelier, whose square, hairline
+ * buttons are part of its look. The extra selectors outrank each theme's
+ * [data-theme] .btn radius.
+ */
+:root:not([data-theme='atelier']) .btn.btn--icon {
+  border-radius: 999px;
+}
+
 .btn__label {
   overflow: hidden;
   text-overflow: ellipsis;
