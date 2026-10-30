@@ -4,7 +4,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 
 ## Current state (2026-10-29)
 
-- `feat/overhaul` builds and `npm run verify` passes (239 tests). Every work
+- `feat/overhaul` builds and `npm run verify` passes (241 tests). Every work
   row and every verification row is done except the server rows **w25** and
   **w26**, both `doing`.
 - **Online play has a real server** (w25, 2026-10-29): a Cloudflare Worker
@@ -136,6 +136,23 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-29 late evening (owner's requests: address, clock, premoves)
+
+- **Address:** the worker is renamed `play`; the site is
+  https://play.open-dam.workers.dev (w44). The old worker `open-dam` still
+  serves an older build at the old address; delete it only if the owner asks.
+- **Clock (w42, 17fbf0b):** each side's first move is free; the clock starts
+  once both have moved.
+- **Board and invite (w40, w41):** Neobrutalist pieces hop past the frame;
+  the invite sits in the side panel on wide screens, above the board below
+  1000px.
+- **Premoves (w43, fecd529)** against the computer and online, and two
+  Neobrutalist details (w45): round icon buttons, a readable invite heading.
+- **Checks:** `npm run verify` (241 tests); `check:online` against the live
+  site after each deploy (latest version 7d3d9080); premoves played against
+  Seriñ in the browser.
+- **Next up:** w26 (ratings and matchmaking), then identity.
 
 ### 2026-10-29 evening (first live online game, fixes, review)
 
