@@ -26,7 +26,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   the book with `npm run openings` after any change to the rules or the
   evaluation (recipe in WALKTHROUGH.md Part 11).
 - With the board clear, shifts do the quality pass described in the scheduled
-  task: look for real problems, add rows (next ids **w36**, **v14**), fix them.
+  task: look for real problems, add rows (next ids **w36**, **v15**), fix them.
 - `feat/overhaul` is on GitHub: the owner asked for it to be pushed on
   2026-10-29. `main` is untouched; to release, open a pull request from
   `feat/overhaul` into `main`.
