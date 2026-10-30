@@ -284,8 +284,11 @@ describe('online', () => {
     await user.click(screen.getByRole('button', { name: 'Start game' }))
 
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/matches$/), expect.objectContaining({ method: 'POST' }))
-    const link = await screen.findByRole('textbox', { name: 'Invite link' })
-    expect((link as HTMLInputElement).value).toMatch(/\/online\/abc123\?seat=player2$/)
+    // Two copies of the invite: above the board and beside it. The stylesheet shows one per screen
+    // width; tests run without it, so both are here and both must carry the same link.
+    const links = await screen.findAllByRole('textbox', { name: 'Invite link' })
+    expect(links).toHaveLength(2)
+    for (const link of links) expect((link as HTMLInputElement).value).toMatch(/\/online\/abc123\?seat=player2$/)
     expect(screen.getByText('Waiting for your opponent')).toBeInTheDocument()
     expect(screen.getByText(/You are playing/)).toBeInTheDocument()
   })
