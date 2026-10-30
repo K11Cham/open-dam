@@ -106,6 +106,37 @@ describe('playing against the computer', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Your move' })).toBeInTheDocument(), { timeout: 4000 })
   })
 
+  test('a premove can be queued while the computer thinks, and Escape cancels it', async () => {
+    renderAt('/match/new?vs=doff&side=player1&size=5')
+    await screen.findByRole('grid')
+    tap(square('c2'))
+    fireEvent.click(square('c3'))
+    expect(screen.getByRole('heading', { name: /thinking/i })).toBeInTheDocument()
+    // c2 is empty now; b2 may be queued to step into it.
+    tap(square('b2'))
+    expect(square('c2')).toHaveAccessibleName(/you can move here/)
+    fireEvent.click(square('c2'))
+    expect(square('b2')).toHaveAccessibleName(/premove from here/)
+    expect(square('c2')).toHaveAccessibleName(/premove to here/)
+    fireEvent.keyDown(screen.getByRole('grid'), { key: 'Escape' })
+    expect(square('c2')).not.toHaveAccessibleName(/premove/)
+  })
+
+  test('a premove the reply makes illegal is dropped quietly', async () => {
+    renderAt('/match/new?vs=doff&side=player1&size=5')
+    await screen.findByRole('grid')
+    tap(square('c2'))
+    fireEvent.click(square('c3'))
+    tap(square('b2'))
+    fireEvent.click(square('c2'))
+    // Blue's only reply jumps c3 and lands on c2, so b2-c2 is no longer possible.
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Your move' })).toBeInTheDocument(), { timeout: 4000 })
+    expect(square('c2')).toHaveAccessibleName(/Döff piece/)
+    expect(square('b2')).not.toHaveAccessibleName(/empty/)
+    expect(square('c2')).not.toHaveAccessibleName(/premove/)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   test('resigning asks first', async () => {
     const user = userEvent.setup()
     renderAt('/match/new?vs=ndo&side=player1&size=5')

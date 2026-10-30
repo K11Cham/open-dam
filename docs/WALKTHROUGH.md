@@ -481,11 +481,19 @@ Hooks are where pure logic meets React's rendering.
   `answerOffer`, `goTo` for review). It also turns notices into toasts and
   announcements, and, on the authoritative device, submits a timeout exactly
   when a clock runs out.
+  With one local seat (against the computer, or online) it also handles
+  **premoves**: during the other side's turn you may pick a piece and a
+  square, chosen against the board as if it were your turn. The queued move
+  is marked on both squares (`is-premove`), and the session listener plays it
+  as soon as the turn comes back, if it is still legal. A call available at
+  that moment cancels it, since calling is usually worth more.
 - **`useAIPlayer`** plays a seat for the computer (Part 2, step 7).
 - **`useMatchPersistence`** saves after every action, archives finished
   games, and pauses or resumes the clock when you leave or return.
 - **`useBoardAnimations`** turns engine events into short-lived animation
-  entries (a piece travelling, a captured piece shrinking away, a crowning).
+  entries (a piece travelling, a captured piece shrinking away, a crowning). A travelling piece hides the real one only
+  until it lands, or after 1.5 s at the latest: a page in the background runs
+  no animations, and a slide that never finished once left pieces invisible.
 - **`usePointerDrag`** handles tap-or-drag for mouse, touch and pen.
 - **`useNow`** provides a ticking "now" only while a clock is running.
 - **`useAnalysisBoard`** is the analysis page's own small state machine: edit
