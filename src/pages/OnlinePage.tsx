@@ -1,4 +1,4 @@
-import { Check, Copy, Share2, Wifi, WifiOff } from 'lucide-react'
+import { Check, Copy, Share2, WifiOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import MatchScreen from '../components/game/MatchScreen'
@@ -27,15 +27,18 @@ const inviteLinkFor = (matchId: string, seat: PlayerId) => {
 }
 
 /**
- * The link to send, above the board while the opponent is not here. It sits
- * on top rather than beside the board because on a phone "beside" is below
- * the whole board, and sending the link is the first thing to do.
+ * The link to send while the opponent is away. On a wide screen it sits in the
+ * panel beside the board, with the connection status. On a narrower one that
+ * panel falls below the whole board, so the same card shows above the board
+ * instead; CSS shows exactly one of the two (at 1000px, where the match layout
+ * switches), so a screen reader meets it once.
  */
-function InviteBar({ seat, matchId }: { seat: PlayerId; matchId: string }) {
+function InviteCard({ seat, matchId, placement }: { seat: PlayerId; matchId: string; placement: 'top' | 'side' }) {
   const sideNames = useSideNames()
   const [copied, setCopied] = useState(false)
   const inviteUrl = inviteLinkFor(matchId, seat)
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  const titleId = `invite-h-${placement}`
 
   const copy = async () => {
     try {
@@ -56,23 +59,23 @@ function InviteBar({ seat, matchId }: { seat: PlayerId; matchId: string }) {
   }
 
   return (
-    <section className="invite-bar" aria-labelledby="invite-h">
-      <div className="invite-bar__text">
-        <h2 id="invite-h" className="invite-bar__title">
+    <section className={`invite invite--${placement}`} aria-labelledby={titleId}>
+      <div className="invite__text">
+        <h2 id={titleId} className="invite__title">
           Invite your opponent
         </h2>
-        <p className="field__help">Whoever opens this link plays {sideNames[opponentOf(seat)]}, on any device.</p>
+        <p className="invite__help">Whoever opens this link plays {sideNames[opponentOf(seat)]}, on any device.</p>
       </div>
-      <div className="copy-field">
-        <input
-          className="input"
-          readOnly
-          aria-label="Invite link"
-          value={inviteUrl}
-          onFocus={(event) => event.currentTarget.select()}
-        />
+      <input
+        className="input invite__link"
+        readOnly
+        aria-label="Invite link"
+        value={inviteUrl}
+        onFocus={(event) => event.currentTarget.select()}
+      />
+      <div className="invite__actions">
         <Button size="sm" variant="primary" icon={copied ? <Check size={15} /> : <Copy size={15} />} onClick={copy}>
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? 'Copied' : 'Copy link'}
         </Button>
         {canShare && (
           <Button size="sm" icon={<Share2 size={15} />} onClick={share}>
@@ -84,11 +87,23 @@ function InviteBar({ seat, matchId }: { seat: PlayerId; matchId: string }) {
   )
 }
 
-/** Connection status, shown beside the board. */
-function OnlinePanel({ session, seat }: { session: MatchSession; seat: PlayerId }) {
+/** Connection status beside the board, and the invite while the opponent is away. */
+function OnlinePanel({
+  session,
+  seat,
+  matchId,
+  inviting,
+}: {
+  session: MatchSession
+  seat: PlayerId
+  matchId: string
+  inviting: boolean
+}) {
   const snapshot = useMatchSession(session)
   const sideNames = useSideNames()
   const opponentHere = snapshot.online[opponentOf(seat)]
+  const ok = opponentHere && snapshot.connection !== 'disconnected'
+  const waiting = !ok && snapshot.connection !== 'disconnected'
 
   const status =
     snapshot.connection === 'connecting'
@@ -101,14 +116,16 @@ function OnlinePanel({ session, seat }: { session: MatchSession; seat: PlayerId 
 
   return (
     <section className="online-panel" aria-label="Online game">
-      <p
-        className={`online-panel__status ${opponentHere && snapshot.connection !== 'disconnected' ? 'is-ok' : ''}`}
-        role="status"
-      >
-        {snapshot.connection === 'disconnected' ? <WifiOff size={16} aria-hidden /> : <Wifi size={16} aria-hidden />}
+      <p className={`online-panel__status${ok ? ' is-ok' : ''}${waiting ? ' is-waiting' : ''}`} role="status">
+        {snapshot.connection === 'disconnected' ? (
+          <WifiOff size={16} aria-hidden />
+        ) : (
+          <span className="online-panel__dot" aria-hidden />
+        )}
         {status}
       </p>
       <p className="online-panel__text">You are playing {sideNames[seat]}.</p>
+      {inviting && <InviteCard seat={seat} matchId={matchId} placement="side" />}
     </section>
   )
 }
@@ -135,14 +152,18 @@ function OnlineMatch({ session, seat, matchId }: { session: MatchSession; seat: 
 
   return (
     <>
-      {inviting && <InviteBar seat={seat} matchId={matchId} />}
+      {inviting && (
+        <div className="invite-top">
+          <InviteCard seat={seat} matchId={matchId} placement="top" />
+        </div>
+      )}
       <MatchScreen
         controller={controller}
         localSeats={[seat]}
         perspective={seat}
         thinkingSeat={null}
         onNewGame={() => navigate('/play')}
-        aside={<OnlinePanel session={session} seat={seat} />}
+        aside={<OnlinePanel session={session} seat={seat} matchId={matchId} inviting={inviting} />}
       />
     </>
   )

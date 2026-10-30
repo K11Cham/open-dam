@@ -2281,51 +2281,119 @@
   color: var(--dam-success);
 }
 
+/* A live dot: steady green once both players are here, pulsing while waiting. */
+.online-panel__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--dam-ink-muted);
+}
+
+.online-panel__status.is-ok .online-panel__dot {
+  background: var(--dam-success);
+}
+
+.online-panel__status.is-waiting .online-panel__dot {
+  background: var(--dam-accent);
+  animation: online-wait 1.6s ease-in-out infinite;
+}
+
+@keyframes online-wait {
+  50% {
+    opacity: 0.35;
+    scale: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .online-panel__status.is-waiting .online-panel__dot {
+    animation: none;
+  }
+}
+
 .online-panel__text {
   font-size: 14px;
   color: var(--dam-ink-muted);
 }
 
-.copy-field {
+/* ── Invite: beside the board when wide, above it when the side panel would fall below ── */
+
+.invite {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.invite__title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.invite__help {
+  margin-top: var(--space-1);
+  font-size: 14px;
+  color: var(--dam-ink-muted);
+}
+
+.invite__link {
+  width: 100%;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.invite__actions {
   display: flex;
   gap: var(--space-2);
 }
 
-/* The link gives way, never the buttons: a clipped "Copy" is no use. */
-.copy-field .input {
+/* Equal halves; the label never gets squeezed into "C…". */
+.invite__actions .btn {
   flex: 1;
-  min-width: 0;
+  white-space: nowrap;
 }
 
-.copy-field .btn {
-  flex: none;
+.invite--side {
+  margin-top: var(--space-1);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--dam-border-soft);
 }
 
-.invite-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3) var(--space-5);
-  margin-bottom: var(--space-4);
+/* Same width and gutters as the match below it, so it lines up with the board. */
+.invite-top {
+  max-width: var(--page-wide);
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter-right) 0 var(--gutter);
+}
+
+.invite--top {
+  /* The board column's width (.match__board-col), so the card lines up with the board. */
+  max-width: 640px;
+  margin: 0 auto;
   padding: var(--space-4);
   border-radius: var(--dam-radius);
   border: var(--dam-border-width) solid var(--dam-border);
   background: var(--dam-surface);
 }
 
-.invite-bar__text {
-  flex: 1 1 16rem;
+@media (min-width: 640px) {
+  .invite--top {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
+    align-items: center;
+    gap: var(--space-4);
+  }
 }
 
-.invite-bar__title {
-  margin-bottom: var(--space-2);
-  font-size: 1.05rem;
-  font-weight: 700;
-  line-height: 1.3;
+@media (min-width: 1000px) {
+  .invite-top {
+    display: none;
+  }
 }
 
-.invite-bar .copy-field {
-  flex: 1 1 22rem;
+@media (max-width: 999.98px) {
+  .invite--side {
+    display: none;
+  }
 }
 
 /* ── Analysis ───────────────────────────────────────────────────────────── */
