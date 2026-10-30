@@ -165,12 +165,12 @@ deployed server with `ONLINE_URL=https://… npm run check:online`.
 
 1. A free Cloudflare account, and `npx wrangler login` once on this computer.
 2. `npm run deploy` runs `verify`, then `wrangler deploy`. The first deploy
-   prints the address, `https://open-dam.<your-subdomain>.workers.dev`. A new
+   prints the address, `https://play.<your-subdomain>.workers.dev`. A new
    subdomain can refuse connections for a minute or two while Cloudflare
    issues its certificate.
 3. Run `ONLINE_URL=<that address> npm run check:online`.
 
-The live copy is https://open-dam.open-dam.workers.dev.
+The live copy is https://play.open-dam.workers.dev.
 
 A copy of the app hosted elsewhere (the static build) can use the deployed
 server: build it with `VITE_MATCH_SERVER=<address>`. Without that, the static

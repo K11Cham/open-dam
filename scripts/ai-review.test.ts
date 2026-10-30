@@ -4,7 +4,7 @@
  * search. It is how to tell whether a player went wrong or the engine
  * misjudges a position.
  *
- *   MATCH=d31d6db07896 ONLINE_URL=https://open-dam.open-dam.workers.dev npm run review
+ *   MATCH=d31d6db07896 ONLINE_URL=https://play.open-dam.workers.dev npm run review
  *   RECORD=path/to/record.json npm run review
  *
  * BUDGET is the search time per position in ms (default Seriñ's 2600).
