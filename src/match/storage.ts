@@ -1,5 +1,5 @@
 import { DIFFICULTIES, legacyTierName, normalizeDifficultyId } from '../ai/difficulty'
-import { makeSettings } from '../game/settings'
+import { sanitizeSettings } from '../game/settings'
 import type { GameStatus, PlayerId } from '../game/types'
 import { storage } from '../services/storage'
 import { replay } from './reducer'
@@ -72,7 +72,7 @@ export function parseRecord(value: unknown): { record: MatchRecord; state: Match
       mode: config.mode,
       createdAt: typeof config.createdAt === 'number' ? config.createdAt : Date.now(),
       seats: { player1: migrateSeat(seats.player1), player2: migrateSeat(seats.player2) },
-      settings: makeSettings(isObject(config.settings) ? (config.settings as object) : {}),
+      settings: sanitizeSettings(config.settings),
     },
     actions: value.actions as MatchAction[],
   }

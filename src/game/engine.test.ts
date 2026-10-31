@@ -20,7 +20,7 @@ import { countPieces } from './board'
 import { positionFromAscii, positionToAscii } from './position'
 import { getCaptures } from './moves'
 import { toMoveRows } from './notation'
-import { settingsAreCompatible, makeSettings } from './settings'
+import { DEFAULT_SETTINGS, TIME_CONTROLS, makeSettings, sanitizeSettings, settingsAreCompatible } from './settings'
 
 let currentSection = ''
 
@@ -369,6 +369,40 @@ currentSection = 'Matchmaking compatibility'
   check('different promotion policies do not pair', !settingsAreCompatible(a, b))
   check('match-opponent pairs with anything on the same board', settingsAreCompatible(wild, b))
   check('different board sizes never pair', !settingsAreCompatible(a, makeSettings({ boardSize: 7 })))
+}
+
+// ---------------------------------------------------------------------------
+currentSection = 'Untrusted settings'
+// ---------------------------------------------------------------------------
+{
+  check('junk becomes the defaults', JSON.stringify(sanitizeSettings('junk')) === JSON.stringify(DEFAULT_SETTINGS))
+  const odd = sanitizeSettings({
+    boardSize: 1000,
+    boardType: 'even',
+    promotionPolicy: 'teleport',
+    call: { scope: 'everything', abandonedChainCallable: 'yes' },
+    draw: { threefoldRepetition: 1, pliesWithoutCapture: -5 },
+    timeControl: { label: '1+0', initialMs: -1, incrementMs: 0 },
+    extra: 'x'.repeat(100),
+  })
+  check('an unknown board size takes the default, with its board type', odd.boardSize === 5 && odd.boardType === 'yinyang')
+  check('unknown words and non-booleans take the defaults', JSON.stringify(odd.call) === JSON.stringify(DEFAULT_SETTINGS.call))
+  check('a negative no-capture count takes the default', odd.draw.pliesWithoutCapture === 50 && odd.draw.threefoldRepetition)
+  check('a listed clock is used as listed, whatever numbers came with it', odd.timeControl === TIME_CONTROLS[0])
+  check('unknown fields are dropped', !('extra' in odd))
+  check('a made-up clock is no clock', sanitizeSettings({ timeControl: { label: '0+0', initialMs: 1 } }).timeControl === null)
+  check(
+    'the no-capture rule may be off',
+    sanitizeSettings({ draw: { pliesWithoutCapture: null } }).draw.pliesWithoutCapture === null,
+  )
+  const chosen = makeSettings({
+    boardSize: 8,
+    promotionPolicy: 'match-opponent',
+    call: { scope: 'all', abandonedChainCallable: false },
+    draw: { threefoldRepetition: false, pliesWithoutCapture: 100 },
+    timeControl: TIME_CONTROLS[3],
+  })
+  check('real choices pass through unchanged', JSON.stringify(sanitizeSettings(chosen)) === JSON.stringify(chosen))
 }
 
 // ---------------------------------------------------------------------------

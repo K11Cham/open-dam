@@ -85,7 +85,7 @@ every visual decision. Lower layers never import higher ones.
 | `moves.ts`       | Move and capture generation; `classifyMove` turns a from/to pair into a slide, a capture or a reason it is illegal.                                                                          |
 | `engine.ts`      | The state machine: `applyMove`, `applyCall`, `declineChain`, `resign`, `agreeDraw`, `flagTimeout`, the `applyAction` dispatcher, `legalActions`, `destinationsFor`, and every end condition. |
 | `notation.ts`    | Square names (`c3`), move notation (`c2xc4xe4=K ?!`), and grouping plies into numbered rows.                                                                                                 |
-| `settings.ts`    | Default rules (with reasons), time controls, labels, rules summary, matchmaking compatibility.                                                                                               |
+| `settings.ts`    | Default rules (with reasons), time controls, labels, rules summary, matchmaking compatibility, `sanitizeSettings` for untrusted input.                                                       |
 | `position.ts`    | Build a position from text rows (`'..a..'`) and back; used by tests, the tutorial and the analysis board.                                                                                    |
 | `clock.ts`       | `formatClock` only; clock arithmetic lives in `src/match/clock.ts`.                                                                                                                          |
 | `index.ts`       | Barrel re-export.                                                                                                                                                                            |
