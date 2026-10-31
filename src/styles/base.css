@@ -159,8 +159,9 @@ code {
   }
 }
 
-/* CSS animations and transitions honour reduced motion here; framer-motion
-   animations honour it through <MotionConfig reducedMotion="user">. */
+/* CSS animations and transitions honour reduced motion here, whether the
+   device asks for it or the player chose it in Settings (data-motion, set in
+   App.tsx); framer-motion animations honour both through <MotionConfig>. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -170,4 +171,13 @@ code {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+[data-motion='reduce'] *,
+[data-motion='reduce'] *::before,
+[data-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

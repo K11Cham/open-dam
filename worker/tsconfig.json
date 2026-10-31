@@ -21,5 +21,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["."]
+  "include": ["."],
+  // Tests run on Node (its SQLite stands in for a Durable Object's), so tsconfig.node.json checks them.
+  "exclude": ["**/*.test.ts"]
 }

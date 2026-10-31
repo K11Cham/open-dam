@@ -28,6 +28,12 @@ const readSettings = (): SoundSettings => {
 export const soundSettings = (() => {
   let current = readSettings()
   const listeners = new Set<() => void>()
+  // The account's copy, arriving from another device, replaces this one.
+  storage.subscribe((key, origin) => {
+    if (key !== STORAGE_KEYS.sound || origin !== 'remote') return
+    current = readSettings()
+    for (const listener of [...listeners]) listener()
+  })
   return {
     get: (): SoundSettings => current,
     subscribe: (listener: () => void) => {

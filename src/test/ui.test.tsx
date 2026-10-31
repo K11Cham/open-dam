@@ -312,6 +312,7 @@ describe('online', () => {
     vi.stubGlobal('WebSocket', FakeServerSocket)
     renderAt('/play')
     await user.click(await screen.findByRole('radio', { name: /^Online/ }))
+    await user.click(screen.getByRole('radio', { name: /^Invite a friend/ }))
     await user.click(screen.getByRole('button', { name: 'Start game' }))
 
     expect(fetchMock).toHaveBeenCalledWith(expect.stringMatching(/\/api\/matches$/), expect.objectContaining({ method: 'POST' }))
@@ -334,6 +335,7 @@ describe('online', () => {
     )
     renderAt('/play')
     await user.click(await screen.findByRole('radio', { name: /^Online/ }))
+    await user.click(screen.getByRole('radio', { name: /^Invite a friend/ }))
     await user.click(screen.getByRole('button', { name: 'Start game' }))
     expect(await screen.findByText(/Could not reach the game server/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'New game' })).toBeInTheDocument()

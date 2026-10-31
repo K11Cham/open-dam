@@ -1,5 +1,5 @@
 import type { PlayerId, RuleSettings } from '../game/types'
-import type { MatchAction, MatchIntent, MatchRecord } from '../match/types'
+import type { MatchAction, MatchIntent, MatchRecord, SeatAccounts } from '../match/types'
 
 /**
  * The wire protocol for online play. It is deliberately small and
@@ -43,6 +43,8 @@ export type HostMessage = Envelope &
     | { type: 'action'; action: MatchAction }
     | { type: 'rejected'; to: string; nonce: string; reason: string }
     | { type: 'presence'; online: Record<PlayerId, boolean> }
+    /** Who is signed in at each seat, and whether the game is rated; sent on joining and whenever it changes. */
+    | { type: 'accounts'; accounts: SeatAccounts; rated: boolean }
     | { type: 'closed' }
   )
 

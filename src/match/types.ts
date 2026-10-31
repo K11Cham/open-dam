@@ -24,6 +24,25 @@ export interface Seat {
 
 export type MatchMode = 'local' | 'online'
 
+/**
+ * The account playing a seat of an online game, as the server reports it.
+ * It is not part of the record: the server attaches it, and a game played
+ * without accounts has none.
+ */
+export interface SeatAccount {
+  id: string
+  username: string
+  displayName: string
+  /** A colour role (`AVATAR_COLOURS` in src/net/account.ts). */
+  avatar: string
+  /** The rating in this game's pool, in rated games. */
+  rating?: number
+  /** How far the rating moved when the game ended. */
+  change?: number
+}
+
+export type SeatAccounts = Record<PlayerId, SeatAccount | null>
+
 export interface MatchConfig {
   id: string
   mode: MatchMode

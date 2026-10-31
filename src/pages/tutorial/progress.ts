@@ -7,7 +7,17 @@ import { STORAGE_KEYS, storage } from '../../services/storage'
  * losing it costs nothing but a few ticks.
  */
 const listeners = new Set<() => void>()
-let solved: readonly string[] = storage.get<string[]>(STORAGE_KEYS.puzzles) ?? []
+const read = (): readonly string[] => {
+  const saved = storage.get<unknown>(STORAGE_KEYS.puzzles)
+  return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string') : []
+}
+let solved = read()
+// Signing in brings the account's solved puzzles; signing out takes them away.
+storage.subscribe((key, origin) => {
+  if (key !== STORAGE_KEYS.puzzles || origin !== 'remote') return
+  solved = read()
+  for (const listener of listeners) listener()
+})
 
 export const puzzleProgress = {
   get: (): readonly string[] => solved,

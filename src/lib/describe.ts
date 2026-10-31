@@ -123,3 +123,46 @@ export const timeControlLabel = (settings: RuleSettings) => settings.timeControl
 
 /** "1 move", "3 moves": a count with its noun in the right number. */
 export const countOf = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+
+/** "3 minutes ago", "yesterday", "on 4 March", for lists of games and devices. */
+export function relativeTime(at: number, now = Date.now()): string {
+  const seconds = Math.round((now - at) / 1000)
+  if (seconds < 45) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${countOf(minutes, 'minute')} ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${countOf(hours, 'hour')} ago`
+  const days = Math.round(hours / 24)
+  if (days === 1) return 'yesterday'
+  if (days < 7) return `${days} days ago`
+  const date = new Date(at)
+  const sameYear = date.getFullYear() === new Date(now).getFullYear()
+  return `on ${date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) })}`
+}
+
+/** How a finished online game ended, in a few words: "by resignation", "on time", "by agreement". */
+export function resultHow(reason: string): string {
+  switch (reason) {
+    case 'no-pieces':
+      return 'by taking every piece'
+    case 'no-moves':
+      return 'by blocking every move'
+    case 'resignation':
+      return 'by resignation'
+    case 'timeout':
+      return 'on time'
+    case 'agreement':
+      return 'by agreement'
+    case 'threefold':
+      return 'by repetition'
+    case 'no-captures':
+      return 'with no captures'
+    case 'one-each-stalemate':
+      return 'one piece each'
+    default:
+      return ''
+  }
+}
+
+/** A rating change with its sign: "+12", "−8", "±0". */
+export const signedChange = (change: number): string => (change > 0 ? `+${change}` : change < 0 ? `−${Math.abs(change)}` : '±0')

@@ -16,8 +16,8 @@ export interface Rating {
 
 export const INITIAL_RATING = 1500
 
-/** A new player's rating moves fast until it has settled. */
-const PROVISIONAL_GAMES = 20
+/** A new player's rating moves fast until it has settled; until then it is shown as provisional. */
+export const PROVISIONAL_GAMES = 20
 const K_PROVISIONAL = 40
 const K_SETTLED = 20
 

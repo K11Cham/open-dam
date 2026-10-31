@@ -6,6 +6,7 @@ import { opponentOf } from '../../game/board'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
 import { useNow } from '../../hooks/useNow'
+import { usePreferences } from '../../services/preferences'
 import { outcomeReason, outcomeTitle, outcomeTone, timeControlLabel } from '../../lib/describe'
 import BoardView from '../board/BoardView'
 import { Button } from '../ui/Button'
@@ -33,6 +34,7 @@ interface MatchScreenProps {
 const SPLASH_DELAY_MS = 1000
 // A game that was already over when the screen opened goes straight to the summary.
 const RESULT_DELAY_MS = 600
+const NO_DESTINATIONS = { slides: [], captures: [] }
 
 /**
  * The match layout. Desktop: board column with a player card above and below,
@@ -52,6 +54,7 @@ export default function MatchScreen({
   const [resignFor, setResignFor] = useState<PlayerId | null>(null)
   const [ending, setEnding] = useState<'splash' | 'summary' | null>(null)
   const { position, state, viewPosition, over, names, toMove } = controller
+  const { resultSplash, moveHints } = usePreferences()
   // Only a game that ends while someone is watching gets the full moment.
   const [endsHere] = useState(!over)
   const finishSplash = useCallback(() => setEnding('summary'), [])
@@ -64,15 +67,13 @@ export default function MatchScreen({
 
   useEffect(() => {
     if (!over) return
-    const handle = window.setTimeout(
-      () => setEnding(endsHere ? 'splash' : 'summary'),
-      endsHere ? SPLASH_DELAY_MS : RESULT_DELAY_MS,
-    )
+    const splash = endsHere && resultSplash
+    const handle = window.setTimeout(() => setEnding(splash ? 'splash' : 'summary'), splash ? SPLASH_DELAY_MS : RESULT_DELAY_MS)
     return () => {
       window.clearTimeout(handle)
       setEnding(null)
     }
-  }, [over, endsHere])
+  }, [over, endsHere, resultSplash])
 
   const card = (player: PlayerId, place: 'top' | 'bottom') => (
     <PlayerCard
@@ -113,7 +114,7 @@ export default function MatchScreen({
             position={viewPosition}
             orientation={bottom}
             selected={controller.selected}
-            destinations={controller.destinations}
+            destinations={moveHints ? controller.destinations : NO_DESTINATIONS}
             offenderIds={controller.offenderIds}
             animations={controller.reviewing ? [] : controller.animations}
             promotedIds={controller.promotedIds}

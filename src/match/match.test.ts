@@ -6,7 +6,7 @@ import { remainingAt } from './clock'
 import { createMatchState, replay, stepMatch, undoTargetIndex } from './reducer'
 import { expectedScore, newRating, rateGame, ratedScore, ratingPool } from './rating'
 import { MatchHost, createRecord } from './session'
-import { loadActiveMatch, parseRecord, resumeAfterGap, saveActiveMatch } from './storage'
+import { archiveMatch, loadActiveMatch, loadArchive, mergeArchive, parseRecord, resumeAfterGap, saveActiveMatch } from './storage'
 import type { MatchConfig, MatchRecord } from './types'
 
 const seats: MatchConfig['seats'] = {
@@ -263,5 +263,40 @@ describe('ratings', () => {
     host.submit('player2', anyMove(host.getSnapshot().state.position))
     host.submit('player1', { type: 'engine', action: { type: 'resign', player: 'player1' } })
     expect(ratedScore(host.getSnapshot().state)).toBe(0)
+  })
+})
+
+describe('finished games from another device', () => {
+  const finishedGame = (id: string) => {
+    const host = new MatchHost(
+      createRecord({
+        id,
+        mode: 'local',
+        settings: makeSettings({ boardSize: 5 }),
+        seats: { player1: { kind: 'human', name: '' }, player2: { kind: 'human', name: '' } },
+      }),
+    )
+    host.submit('player1', { type: 'engine', action: { type: 'resign', player: 'player1' } })
+    return host.getSnapshot().record
+  }
+
+  test('are added once each, newest first, and anything unreadable or unfinished is skipped', () => {
+    archiveMatch(finishedGame('here'), 2000)
+    const unfinished = createRecord({
+      id: 'open',
+      mode: 'local',
+      settings: makeSettings({ boardSize: 5 }),
+      seats: { player1: { kind: 'human', name: '' }, player2: { kind: 'human', name: '' } },
+    })
+    const changed = mergeArchive([
+      { record: finishedGame('older'), finishedAt: 1000 },
+      { record: finishedGame('newer'), finishedAt: 3000 },
+      { record: finishedGame('here'), finishedAt: 2000 },
+      { record: unfinished, finishedAt: 4000 },
+      { record: { nonsense: true }, finishedAt: 5000 },
+    ])
+    expect(changed).toBe(true)
+    expect(loadArchive().map((entry) => entry.record.config.id)).toEqual(['newer', 'here', 'older'])
+    expect(mergeArchive([{ record: finishedGame('newer'), finishedAt: 3000 }])).toBe(false)
   })
 })

@@ -14,9 +14,19 @@
     "run_worker_first": ["/api/*"],
   },
   "durable_objects": {
-    "bindings": [{ "name": "MATCHES", "class_name": "MatchRoom" }],
+    "bindings": [
+      { "name": "MATCHES", "class_name": "MatchRoom" },
+      // One object holds every account, rating and finished online game (worker/accounts.ts).
+      { "name": "ACCOUNTS", "class_name": "Accounts" },
+      // One object runs matchmaking (worker/lobbyRoom.ts).
+      { "name": "LOBBY", "class_name": "LobbyRoom" },
+    ],
   },
-  // SQLite-backed Durable Objects are the kind the free plan includes.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MatchRoom"] }],
+  // SQLite-backed Durable Objects are the kind the free plan includes. Each
+  // new class needs a new migration tag; a deployed tag is never edited.
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MatchRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["Accounts", "LobbyRoom"] },
+  ],
   "observability": { "enabled": true },
 }

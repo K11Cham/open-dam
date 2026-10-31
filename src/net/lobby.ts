@@ -27,6 +27,8 @@ export interface LobbyOptions {
   /** Picks who moves first; injectable for tests. */
   random?: () => number
   serverId?: string
+  /** Only signed-in players may seek (rated games need accounts); `accept` is then given each connection's account id. */
+  requireAccount?: boolean
 }
 
 /** How often waiting seeks are tried again, so their rating windows can widen. */
@@ -49,6 +51,7 @@ export class Lobby {
   private readonly ratingOf: NonNullable<LobbyOptions['ratingOf']>
   private readonly now: () => number
   private readonly serverId: string
+  private readonly requireAccount: boolean
   /** Each seeking player's newest connection, which is where their answer goes. */
   private sockets = new Map<string, ServerSocket>()
   private sweepTimer: ReturnType<typeof setTimeout> | undefined
@@ -60,6 +63,7 @@ export class Lobby {
     this.ratingOf = options.ratingOf ?? (() => undefined)
     this.now = options.now ?? Date.now
     this.serverId = options.serverId ?? 'lobby'
+    this.requireAccount = options.requireAccount ?? false
   }
 
   /** Players waiting for a game right now. */
@@ -67,8 +71,13 @@ export class Lobby {
     return this.queue.waiting.length
   }
 
-  accept(socket: ServerSocket): ServerConnection {
-    let clientId: string | null = null
+  /**
+   * A new connection. `accountId` is the account it is signed in to, as the
+   * caller checked; when given, it is the player's identity in place of the
+   * client id the browser sends, so one person in two tabs is one seeker.
+   */
+  accept(socket: ServerSocket, accountId: string | null = null): ServerConnection {
+    let clientId: string | null = accountId
 
     const receive = (text: string) => {
       let message: unknown
@@ -78,9 +87,17 @@ export class Lobby {
         return
       }
       if (!isSeekerMessage(message)) return
-      // As on the match server, the first id a connection uses is its identity from then on.
-      clientId ??= message.from
-      if (message.from !== clientId) return
+      if (accountId === null) {
+        if (this.requireAccount) {
+          if (message.type === 'seek')
+            this.reply(socket, message.from, { type: 'seek-ended', reason: 'Sign in to find a rated game.' })
+          return
+        }
+        // As on the match server, the first id a connection uses is its identity from then on.
+        clientId ??= message.from
+        if (message.from !== clientId) return
+      }
+      if (clientId === null) return
       if (message.type === 'cancel') {
         if (this.sockets.get(clientId) === socket) this.cancel(clientId, 'Search cancelled.')
         return

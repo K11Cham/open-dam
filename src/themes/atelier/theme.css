@@ -354,3 +354,9 @@
 [data-theme='atelier'] .at-end-rule.is-bad {
   background: var(--dam-danger);
 }
+
+/* Avatars are square plates with a hairline, like every other Atelier control. */
+[data-theme='atelier'] .avatar {
+  border-width: 1px;
+  border-radius: var(--dam-radius-sm);
+}

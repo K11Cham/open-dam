@@ -11,6 +11,7 @@ export default function SoundToggle() {
   const { enabled, setEnabled } = useSound()
   return (
     <IconButton
+      className="sound-toggle"
       label="Sound effects"
       aria-pressed={enabled}
       icon={enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
