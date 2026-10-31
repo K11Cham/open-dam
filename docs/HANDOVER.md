@@ -4,9 +4,19 @@ How to pick up work on Open Dam, whether you are a person or an agent.
 
 ## Current state (2026-10-31)
 
-- `feat/overhaul` builds and `npm run verify` passes (259 tests). Every work
-  row and every verification row is done except **w26** (ratings and
-  matchmaking), `doing`.
+- `feat/overhaul` builds and `npm run verify` passes (299 tests). Every work
+  row and every verification row is done.
+- **Accounts, ratings and leaderboards exist** (w47, 2026-10-31, the owner's
+  request): username and password accounts with recovery codes, public
+  profiles at `/u/<name>`, a Settings page (preferences, profile, password,
+  devices, data export, deleting the account), settings and history kept the
+  same on every device, rated matchmaking ("Find a rated game" on the Play
+  page), and real leaderboards per board size and clock. The sample
+  leaderboard data is gone. How it works: "Accounts and ratings" in
+  MULTIPLAYER.md. **Not deployed yet:** it adds two Durable Objects (migration
+  `v2`), so deploy only when the owner says so, then run `check:online`
+  against the live site; that check signs up two throwaway accounts and
+  deletes them again.
 - **Online play has a real server** (w25, 2026-10-29): a Cloudflare Worker
   with one Durable Object per match (`worker/`), chosen with the owner because
   it is free and does not sleep. The Online page now uses it with invite
@@ -15,8 +25,8 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   `feat/overhaul` with the owner's yes, on the owner's Cloudflare account).
   Deploy again only when the owner says so: `npm run deploy`, then
   `ONLINE_URL=https://play.open-dam.workers.dev npm run check:online`.
-- **Next up:** step 7 to 9 of "Server roadmap" in MULTIPLAYER.md (identity,
-  then matchmaking and ratings: w26).
+- **Next up:** deploying the accounts work (with the owner's yes), then the
+  quality pass.
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
   Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
@@ -25,7 +35,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   the book with `npm run openings` after any change to the rules or the
   evaluation (recipe in WALKTHROUGH.md Part 11).
 - With the board clear, shifts do the quality pass described in the scheduled
-  task: look for real problems, add rows (next ids **w47**, **v15**), fix them.
+  task: look for real problems, add rows (next ids **w48**, **v15**), fix them.
 - `feat/overhaul` is on GitHub: the owner asked for it to be pushed on
   2026-10-29. `main` is untouched; to release, open a pull request from
   `feat/overhaul` into `main`.
@@ -136,6 +146,30 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-31 evening (owner's request: accounts, users, leaderboards)
+
+- **Rows:** w47 (new: accounts) → done; w26 (ratings and matchmaking) → done,
+  finished by the same work.
+- **Server:** `Accounts` and `LobbyRoom` Durable Objects (migration `v2`),
+  `AccountStore` over SQLite with its own tests on Node's SQLite, every
+  account route in `worker/index.ts`. The match room now knows who is signed
+  in at each seat, keeps a claimed seat for its account, and reports finished
+  games, which `Accounts` stores and rates.
+- **App:** sign in, sign up and reset pages; the account menu; Settings
+  (preferences for everyone, profile, sign-in, devices, data); profiles;
+  real leaderboards; review of online games at `/game/<id>`; "Find a rated
+  game"; names and ratings beside the board and in the result. New
+  preferences: reduce motion, move hints, premoves, the result banner.
+- **Placeholders removed:** `src/data/leaderboards.ts` (sample players), the
+  "Preview" tags on Online, `public/board.png` (unused).
+- **Checks:** `npm run verify` (299 tests); `check:online` against
+  `wrangler dev` (9 tests, including two accounts paired in the lobby playing
+  a rated game); by hand in the browser: sign-up, settings, a rated game
+  against a scripted second account, profile, leaderboard, review, at desktop
+  and 375px, in all four themes.
+- **Not done:** the deploy (needs the owner's yes). Abandoned untimed rated
+  games never finish, so they are never rated; a later row could end them.
 
 ### 2026-10-31 15:00 (scheduled shift)
 

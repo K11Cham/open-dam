@@ -1,11 +1,13 @@
-import { Menu } from 'lucide-react'
+import { LogIn, Menu, Settings, User } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import { useAccount } from '../../context/useAccount'
 import { Dialog } from '../ui/Dialog'
 import { IconButton } from '../ui/Button'
+import AccountMenu from './AccountMenu'
 import SoundToggle from './SoundToggle'
 import ThemeMenu from './ThemeMenu'
-import { NAV_ITEMS } from './navItems'
+import { NAV_ITEMS, nextAfterSignIn } from './navItems'
 
 /** The board-mark used as the logo: a 3x3 grid with the centre left open, as at the start of a game. */
 export function BrandMark() {
@@ -30,6 +32,9 @@ export function BrandMark() {
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const account = useAccount()
+  const location = useLocation()
+  const drawerLink = ({ isActive }: { isActive: boolean }) => `drawer-nav__link ${isActive ? 'is-active' : ''}`
 
   return (
     <header className="topbar">
@@ -58,6 +63,7 @@ export default function Navbar() {
         <div className="topbar__end">
           <SoundToggle />
           <ThemeMenu />
+          <AccountMenu />
         </div>
       </div>
 
@@ -82,6 +88,26 @@ export default function Navbar() {
               <span>{label}</span>
             </NavLink>
           ))}
+          {account.user && (
+            <NavLink to={`/u/${account.user.username}`} className={drawerLink} onClick={() => setMenuOpen(false)}>
+              <User size={18} aria-hidden />
+              <span>Profile</span>
+            </NavLink>
+          )}
+          <NavLink to="/settings" className={drawerLink} onClick={() => setMenuOpen(false)}>
+            <Settings size={18} aria-hidden />
+            <span>Settings</span>
+          </NavLink>
+          {account.status === 'signed-out' && (
+            <NavLink
+              to={`/signin?next=${encodeURIComponent(nextAfterSignIn(location.pathname, location.search))}`}
+              className={drawerLink}
+              onClick={() => setMenuOpen(false)}
+            >
+              <LogIn size={18} aria-hidden />
+              <span>Sign in</span>
+            </NavLink>
+          )}
         </nav>
       </Dialog>
     </header>

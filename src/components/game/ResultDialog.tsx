@@ -3,7 +3,7 @@ import { countPieces } from '../../game/board'
 import { formatClock } from '../../game/clock'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
-import { countOf, outcomeReason, outcomeTitle, outcomeTone, timeControlLabel } from '../../lib/describe'
+import { countOf, outcomeReason, outcomeTitle, outcomeTone, signedChange, timeControlLabel } from '../../lib/describe'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 
@@ -27,6 +27,7 @@ export default function ResultDialog({ open, onClose, controller, perspective, o
   const winner = status.kind === 'win' ? status.winner : null
   const turns = position.moves.filter((m) => m.kind === 'move' || m.kind === 'capture').length
   const tone = outcomeTone(status, perspective)
+  const accounts = controller.snapshot.accounts
 
   return (
     <Dialog
@@ -61,11 +62,17 @@ export default function ResultDialog({ open, onClose, controller, perspective, o
               {countOf(countPieces(position.board, player), 'piece')} left
               {state.clock ? ` · ${formatClock(state.clock.remaining[player])} on the clock` : ''}
             </span>
+            {accounts?.[player]?.change !== undefined && (
+              <span className="result__rating">
+                Rating {accounts[player]!.rating} ({signedChange(accounts[player]!.change!)})
+              </span>
+            )}
           </div>
         ))}
         <p className="result__meta">
           {countOf(turns, 'move')} · {position.settings.boardSize}×{position.settings.boardSize} ·{' '}
           {timeControlLabel(position.settings)}
+          {controller.snapshot.rated ? ' · Rated' : ''}
         </p>
       </div>
     </Dialog>

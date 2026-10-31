@@ -1,7 +1,8 @@
 import { DIFFICULTIES, legacyTierName, normalizeDifficultyId } from '../ai/difficulty'
 import { sanitizeSettings } from '../game/settings'
 import type { GameStatus, PlayerId } from '../game/types'
-import { storage } from '../services/storage'
+import { STORAGE_KEYS, storage } from '../services/storage'
+import type { ChangeOrigin } from '../services/storage'
 import { replay } from './reducer'
 import type { MatchAction, MatchRecord, MatchState, Seat } from './types'
 
@@ -12,10 +13,11 @@ import type { MatchAction, MatchRecord, MatchState, Seat } from './types'
  * rather than crashing the app.
  */
 
-const ACTIVE_KEY = 'openDam.activeMatch'
-const ARCHIVE_KEY = 'openDam.archive'
+const ACTIVE_KEY = STORAGE_KEYS.activeMatch
+const ARCHIVE_KEY = STORAGE_KEYS.archive
 const LEGACY_KEYS = ['openDam.resumeMatch']
-const ARCHIVE_LIMIT = 20
+/** Finished games kept on this device. An account keeps more (worker/accountStore.ts). */
+export const ARCHIVE_LIMIT = 50
 
 interface SavedActive {
   record: MatchRecord
@@ -142,6 +144,34 @@ export function archiveMatch(record: MatchRecord, finishedAt = Date.now()) {
   const existing = loadArchive().filter((entry) => entry.record.config.id !== record.config.id)
   const entries = [{ record, finishedAt }, ...existing.map(({ record: r, finishedAt: f }) => ({ record: r, finishedAt: f }))]
   storage.set(ARCHIVE_KEY, entries.slice(0, ARCHIVE_LIMIT))
+}
+
+/**
+ * Add games from elsewhere (the account's copy) to this device's list: each
+ * is checked like a saved game, a game already here is kept once, and the
+ * newest `ARCHIVE_LIMIT` stay. Returns whether the list changed.
+ */
+export function mergeArchive(incoming: Array<{ record: unknown; finishedAt: number }>, origin: ChangeOrigin = 'remote'): boolean {
+  const here = loadArchive()
+  const ids = new Set(here.map((entry) => entry.record.config.id))
+  const added: Array<{ record: MatchRecord; finishedAt: number }> = []
+  for (const entry of incoming) {
+    const parsed = parseRecord(entry.record)
+    if (!parsed || parsed.state.position.status.kind === 'playing' || ids.has(parsed.record.config.id)) continue
+    ids.add(parsed.record.config.id)
+    added.push({ record: parsed.record, finishedAt: entry.finishedAt })
+  }
+  if (added.length === 0) return false
+  const entries = [...here.map(({ record, finishedAt }) => ({ record, finishedAt })), ...added]
+    .sort((a, b) => b.finishedAt - a.finishedAt)
+    .slice(0, ARCHIVE_LIMIT)
+  storage.set(ARCHIVE_KEY, entries, origin)
+  return true
+}
+
+/** Forget every finished game kept on this device. */
+export function clearArchiveHere(origin: ChangeOrigin = 'local') {
+  storage.remove(ARCHIVE_KEY, origin)
 }
 
 export function findArchived(id: string): ArchivedMatch | null {

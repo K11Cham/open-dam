@@ -122,6 +122,9 @@ export class MatchGuest extends SessionBase {
       case 'rejected':
         this.publish({ error: message.reason })
         return
+      case 'accounts':
+        this.publish({ snapshot: { ...this.snapshot, accounts: message.accounts, rated: message.rated } })
+        return
       case 'presence':
         this.publish({
           snapshot: {

@@ -2785,3 +2785,532 @@
     padding: var(--space-2) 6px;
   }
 }
+
+/* ── Accounts ───────────────────────────────────────────────────────────── */
+
+/*
+ * An avatar is the player's initial on a tint of their colour, ringed in the
+ * colour itself. The colour is a role, so each theme draws it in its own
+ * palette, and the initial stays in the ink colour so it reads in all four.
+ */
+.avatar {
+  --avatar-colour: var(--dam-accent);
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 2px solid var(--avatar-colour);
+  background: color-mix(in srgb, var(--avatar-colour) 24%, var(--dam-surface));
+  color: var(--dam-ink);
+  font-family: var(--dam-font-body);
+  font-weight: 750;
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+}
+
+.avatar--p1 {
+  --avatar-colour: var(--dam-p1);
+}
+.avatar--p2 {
+  --avatar-colour: var(--dam-p2);
+}
+.avatar--accent {
+  --avatar-colour: var(--dam-accent);
+}
+.avatar--highlight {
+  --avatar-colour: var(--dam-highlight);
+}
+.avatar--ink {
+  --avatar-colour: var(--dam-ink);
+}
+
+.avatar--sm {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
+.avatar--lg {
+  width: 64px;
+  height: 64px;
+  border-width: 3px;
+  font-size: 28px;
+}
+
+/* A colour sample only, in the profile colour picker. */
+.avatar--dot {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}
+
+.account-menu__button {
+  padding: 0;
+}
+
+.account-menu__who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--dam-border-soft);
+  margin-bottom: var(--space-1);
+}
+
+.account-menu__menu {
+  width: min(240px, calc(100vw - 32px));
+}
+
+.account-menu__menu .menu__item {
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+/*
+ * A phone's top bar has little room. The sound button gives way to the
+ * account (sound is also in Settings), and the sign-in link keeps its icon,
+ * and its name for screen readers.
+ */
+@media (max-width: 420px) {
+  .topbar__end:has(.account-menu, .account-signin) .sound-toggle {
+    display: none;
+  }
+
+  .account-signin .btn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+.field__error {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--dam-danger);
+}
+
+.auth {
+  gap: var(--space-5);
+}
+
+.auth__head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.auth__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.auth__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: 14px;
+}
+
+.recovery {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.recovery__code {
+  display: block;
+  padding: var(--space-4);
+  border: var(--dam-border-width) dashed var(--dam-border);
+  border-radius: var(--dam-radius-sm);
+  background: var(--dam-surface-2);
+  font-family: var(--dam-font-mono);
+  font-size: clamp(16px, 4.6vw, 22px);
+  letter-spacing: 0.08em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* Settings */
+
+.settings {
+  max-width: 760px;
+}
+
+.settings__sync {
+  justify-self: start;
+  align-self: flex-start;
+}
+
+.settings__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings__navlink {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--dam-surface-2);
+  color: var(--dam-ink);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.settings__navlink:hover {
+  background: var(--dam-surface-hover);
+}
+
+.settings__section {
+  scroll-margin-top: 88px;
+}
+
+.settings__head {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.settings__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.settings__name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.settings__handle {
+  margin-top: 0;
+}
+
+.settings__bio {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.settings__swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+}
+
+.settings__facts dt {
+  font-size: 12px;
+  color: var(--dam-ink-muted);
+}
+
+.settings__facts dd {
+  font-weight: 650;
+}
+
+.settings__danger {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--dam-border-soft);
+}
+
+.range {
+  width: 100%;
+  max-width: 360px;
+  accent-color: var(--dam-accent);
+}
+
+.devices {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.devices__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--dam-radius-sm);
+  background: var(--dam-surface-2);
+}
+
+.devices__text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.devices__text .field__help {
+  margin-top: 0;
+}
+
+.devices__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 650;
+}
+
+/* Lists of online games */
+
+.games {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.games__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas:
+    'result who delta open'
+    'result meta meta meta';
+  align-items: center;
+  gap: 2px var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--dam-border-soft);
+}
+
+.games__row:last-child {
+  border-bottom: none;
+}
+
+.games__result {
+  grid-area: result;
+  align-self: start;
+  min-width: 48px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
+  text-align: center;
+  background: var(--dam-surface-2);
+  color: var(--dam-ink-muted);
+}
+
+.games__result.is-win {
+  background: var(--dam-accent);
+  color: var(--dam-accent-ink);
+}
+
+.games__result.is-loss {
+  background: color-mix(in srgb, var(--dam-danger) 16%, var(--dam-surface));
+  color: var(--dam-ink);
+}
+
+.games__who {
+  grid-area: who;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-weight: 650;
+}
+
+.games__guest {
+  color: var(--dam-ink-muted);
+  font-weight: 500;
+}
+
+.games__meta {
+  grid-area: meta;
+  font-size: 12px;
+  color: var(--dam-ink-muted);
+}
+
+.games__delta {
+  grid-area: delta;
+  font-family: var(--dam-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.games__open {
+  grid-area: open;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.is-up {
+  color: var(--dam-success);
+}
+
+.is-down {
+  color: var(--dam-danger);
+}
+
+/* Profiles */
+
+.profile__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'avatar id edit'
+    'stats stats stats';
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.profile__head > .avatar {
+  grid-area: avatar;
+}
+
+.profile__id {
+  grid-area: id;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.profile__name {
+  overflow-wrap: anywhere;
+}
+
+.profile__handle {
+  font-size: 14px;
+  color: var(--dam-ink-muted);
+}
+
+.profile__bio {
+  margin-top: var(--space-2);
+  max-width: 60ch;
+  white-space: pre-line;
+}
+
+.profile__edit {
+  grid-area: edit;
+  align-self: start;
+}
+
+.profile__stats {
+  grid-area: stats;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.profile__stat {
+  padding: var(--space-3);
+  border-radius: var(--dam-radius-sm);
+  background: var(--dam-surface-2);
+}
+
+.profile__stat dt {
+  font-size: 12px;
+  color: var(--dam-ink-muted);
+}
+
+.profile__stat dd {
+  font-family: var(--dam-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.profile__private,
+.profile__note {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  max-width: none;
+}
+
+@media (max-width: 640px) {
+  .profile__head {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'avatar id'
+      'edit edit'
+      'stats stats';
+  }
+
+  .profile__edit {
+    justify-self: start;
+  }
+
+  .profile__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Leaderboards */
+
+.leaderboard__pickers {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.leaderboard__player {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.leaderboard__player:hover span:not(.tag) {
+  text-decoration: underline;
+}
+
+.leaderboard tr.is-me {
+  background: var(--dam-accent-soft);
+}
+
+.table abbr {
+  margin-left: 2px;
+  color: var(--dam-ink-muted);
+  text-decoration: none;
+  cursor: help;
+}
+
+/* On a phone the W / D / L and peak columns give way; the score and rating say much the same. */
+@media (max-width: 480px) {
+  .table .is-optional {
+    display: none;
+  }
+}
+
+/* Matchmaking, and ratings in a game */
+
+.seek {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  color: var(--dam-ink-muted);
+}
+
+.seek svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.player-card__rating {
+  font-family: var(--dam-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.result__rating {
+  font-size: 13px;
+  font-weight: 650;
+}

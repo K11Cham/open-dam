@@ -3,7 +3,7 @@ import { useThemeParts } from '../../context/useTheme'
 import { countPieces } from '../../game/board'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
-import { countOf } from '../../lib/describe'
+import { countOf, signedChange } from '../../lib/describe'
 import { undoTargetIndex } from '../../match/reducer'
 import { Button } from '../ui/Button'
 import ClockDisplay from './ClockDisplay'
@@ -37,6 +37,8 @@ export default function PlayerCard({ controller, player, local, isYou, thinking,
   const undoReady =
     canOffer && !state.undoAskedThisTurn[player] && !state.position.chain.active && undoTargetIndex(state, player) !== null
   const drawReady = canOffer && !state.drawOfferedThisTurn[player]
+  // Online, the server says who is signed in at this seat, and their rating in rated games.
+  const account = controller.snapshot.accounts?.[player] ?? null
 
   return (
     <section
@@ -50,6 +52,16 @@ export default function PlayerCard({ controller, player, local, isYou, thinking,
         <span className="player-card__who">
           <span className="player-card__name">{isYou ? 'You' : names[player]}</span>
           <span className="player-card__meta">
+            {account?.rating !== undefined && (
+              <span className="player-card__rating">
+                {account.rating}
+                {account.change !== undefined && (
+                  <span className={account.change >= 0 ? 'is-up' : 'is-down'}> {signedChange(account.change)}</span>
+                )}
+                <span className="visually-hidden"> rating</span>
+                {' · '}
+              </span>
+            )}
             {isYou ? `${names[player]} · ` : ''}
             {countOf(pieces, 'piece')}
             {kings > 0 ? `, ${kings} ${kings === 1 ? 'king' : 'kings'}` : ''}

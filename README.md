@@ -32,8 +32,10 @@ The full rules, with example boards, are on the **Learn** page.
 
 - Play the computer at five levels named in Wolof, from Döff (plays on impulse) to Seriñ (plays to win).
 - Play a friend on the same device.
-- Play online with an invite link, from any device (the server in `worker/` runs free on Cloudflare). Live at
-  https://play.open-dam.workers.dev.
+- Play online, from any device: a rated game against someone near your strength, or a friend you send a link to (the
+  server in `worker/` runs free on Cloudflare). Live at https://play.open-dam.workers.dev.
+- Make an account (a username and a password, nothing else) to keep a rating for each board and clock, climb the
+  leaderboards, have a public profile with your games, and keep your settings, puzzles and history on every device.
 - Pick a board from 5×5 to 9×9, a clock, and house rules.
 - Learn the rules and some strategy, with puzzles to solve on small boards.
 - Review finished games move by move; study positions on the analysis board.

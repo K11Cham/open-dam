@@ -3,7 +3,7 @@ import type { PlayerId, RuleSettings } from '../game/types'
 import { flagTime } from '../match/clock'
 import { isOver } from '../match/reducer'
 import { MatchHost, createRecord } from '../match/session'
-import type { MatchRecord, MatchState } from '../match/types'
+import type { MatchRecord, MatchState, SeatAccount, SeatAccounts } from '../match/types'
 import { linkHost } from './hostLink'
 import { PROTOCOL_VERSION, isNetMessage } from './protocol'
 import type { GuestMessage, NetMessage, Transport } from './protocol'
@@ -29,11 +29,29 @@ export interface ServerSocket {
   close(): void
 }
 
+/**
+ * What a server keeps beside a match's record: who is signed in at each seat
+ * and whether the game is rated. It stays out of the record, which is the
+ * game itself and travels to every device.
+ */
+export interface RoomMeta {
+  rated: boolean
+  accounts: SeatAccounts
+}
+
+export const emptyMeta = (): RoomMeta => ({ rated: false, accounts: { player1: null, player2: null } })
+
 /** Where matches live between connections. A database in production; a Map in tests. */
 export interface MatchStore {
   load(matchId: string): MatchRecord | null
   save(record: MatchRecord): void
+  /** The match's seat accounts; a store without them serves games without accounts. */
+  loadMeta?(matchId: string): RoomMeta | null
+  saveMeta?(matchId: string, meta: RoomMeta): void
 }
+
+/** The signed-in person behind a connection, as whatever accepted it vouches. */
+export type Identity = Omit<SeatAccount, 'rating' | 'change'>
 
 export interface MatchServerOptions {
   store: MatchStore
@@ -43,9 +61,11 @@ export interface MatchServerOptions {
   /**
    * Called once when a game ends, after its final record is saved. This is
    * where a server rates the game (`ratedScore` and `rateGame` in
-   * src/match/rating.ts), so results never come from a browser.
+   * src/match/rating.ts), so results never come from a browser. It may
+   * return the seats' accounts with their new ratings, which the players are
+   * then shown.
    */
-  onFinished?: (record: MatchRecord, state: MatchState) => void
+  onFinished?: (record: MatchRecord, state: MatchState, meta: RoomMeta) => void | SeatAccounts | Promise<void | SeatAccounts>
 }
 
 type RoomOptions = Required<Omit<MatchServerOptions, 'onFinished'>> & Pick<MatchServerOptions, 'onFinished'>
@@ -76,6 +96,10 @@ const FLAG_RETRY_MS = 200
 class Room implements Transport {
   readonly host: MatchHost
   private members = new Map<ServerSocket, string>()
+  /** Who each client id is signed in as, for the clients that are. */
+  private identities = new Map<string, Identity>()
+  private meta: RoomMeta
+  private readonly saveMeta: (meta: RoomMeta) => void
   private handlers = new Set<(message: NetMessage) => void>()
   private readonly unlink: () => void
   private readonly stopWatching: () => void
@@ -87,6 +111,9 @@ class Room implements Transport {
     const { store, serverId, now, onFinished } = options
     this.now = now
     this.serverId = serverId
+    const matchId = record.config.id
+    this.meta = store.loadMeta?.(matchId) ?? emptyMeta()
+    this.saveMeta = (meta) => store.saveMeta?.(matchId, meta)
     this.host = new MatchHost(record, { now, connection: 'waiting-for-opponent' })
     // A room reopened on a finished game must not report it again.
     let finished = isOver(this.host.getSnapshot().state)
@@ -96,7 +123,7 @@ class Room implements Transport {
       this.scheduleFlag()
       if (!finished && isOver(update.snapshot.state)) {
         finished = true
-        onFinished?.(update.snapshot.record, update.snapshot.state)
+        void this.finish(onFinished, update.snapshot.record, update.snapshot.state)
       }
     })
     this.unlink = linkHost(this.host, this, { hostSeat: null, clientId: serverId, now })
@@ -105,6 +132,59 @@ class Room implements Transport {
 
   get size() {
     return this.members.size
+  }
+
+  private async finish(onFinished: MatchServerOptions['onFinished'], record: MatchRecord, state: MatchState) {
+    let accounts: SeatAccounts | void
+    try {
+      accounts = await onFinished?.(record, state, this.meta)
+    } catch {
+      // Rating failed (the accounts store was unreachable). The game itself is saved; it just goes unrated.
+      return
+    }
+    if (!accounts) return
+    this.meta = { ...this.meta, accounts }
+    this.saveMeta(this.meta)
+    this.announceAccounts()
+  }
+
+  private accountsMessage(): NetMessage {
+    const matchId = this.host.getSnapshot().record.config.id
+    return {
+      v: PROTOCOL_VERSION,
+      matchId,
+      from: this.serverId,
+      type: 'accounts',
+      accounts: this.meta.accounts,
+      rated: this.meta.rated,
+    }
+  }
+
+  private announceAccounts() {
+    const text = JSON.stringify(this.accountsMessage())
+    for (const socket of this.members.keys()) socket.send(text)
+  }
+
+  /**
+   * A seat that belongs to an account is only for that account. A rated game
+   * starts with both seats taken this way; in a casual game the first
+   * signed-in person welcomed into a seat claims it.
+   */
+  private mayUse(seat: PlayerId, clientId: string): boolean {
+    const owner = this.meta.accounts[seat]
+    return !owner || this.identities.get(clientId)?.id === owner.id
+  }
+
+  /** The link welcomed a client into a seat: if it is signed in and the seat is free, the seat becomes theirs. */
+  private claim(seat: PlayerId, clientId: string) {
+    const identity = this.identities.get(clientId)
+    if (!identity || this.meta.accounts[seat]) return
+    // One account at both seats is someone playing themselves: the second seat stays anonymous.
+    const other = this.meta.accounts[seat === 'player1' ? 'player2' : 'player1']
+    if (other?.id === identity.id) return
+    this.meta = { ...this.meta, accounts: { ...this.meta.accounts, [seat]: { ...identity } } }
+    this.saveMeta(this.meta)
+    this.announceAccounts()
   }
 
   /** Call time exactly when the running side's clock reaches zero. */
@@ -123,7 +203,23 @@ class Room implements Transport {
   }
 
   /** A guest message from one of the room's connections (or one about to join). */
-  deliver(socket: ServerSocket, clientId: string, message: GuestMessage) {
+  deliver(socket: ServerSocket, clientId: string, message: GuestMessage, identity: Identity | null = null) {
+    if (identity) this.identities.set(clientId, identity)
+    if (!this.mayUse(message.seat, clientId)) {
+      if (message.type === 'join') {
+        const matchId = this.host.getSnapshot().record.config.id
+        const taken: NetMessage = {
+          v: PROTOCOL_VERSION,
+          matchId,
+          from: this.serverId,
+          type: 'seat-taken',
+          to: clientId,
+          seat: message.seat,
+        }
+        socket.send(JSON.stringify(taken))
+      }
+      return
+    }
     if (!this.members.has(socket)) {
       this.members.set(socket, clientId)
       // A connection that just arrived may have missed actions while it was
@@ -138,6 +234,7 @@ class Room implements Transport {
         record,
       }
       socket.send(JSON.stringify(snapshot))
+      socket.send(JSON.stringify(this.accountsMessage()))
     }
     for (const handler of [...this.handlers]) handler(message)
   }
@@ -159,6 +256,7 @@ class Room implements Transport {
   // -- Transport, for the host link ------------------------------------------
 
   send(message: NetMessage) {
+    if (message.type === 'welcome') this.claim(message.seat, message.to)
     const text = JSON.stringify(message)
     const to = 'to' in message ? message.to : null
     for (const [socket, clientId] of this.members) {
@@ -217,7 +315,11 @@ export class MatchServer {
     return this.rooms.get(matchId)?.host ?? null
   }
 
-  accept(socket: ServerSocket): ServerConnection {
+  /**
+   * A new connection. `identity` is the account it is signed in to, which the
+   * caller checked (a session cookie, in the Worker); null for a guest.
+   */
+  accept(socket: ServerSocket, identity: Identity | null = null): ServerConnection {
     let clientId: string | null = null
     const joined = new Set<string>()
 
@@ -241,7 +343,7 @@ export class MatchServer {
       }
       joined.add(message.matchId)
       try {
-        room.deliver(socket, clientId, message)
+        room.deliver(socket, clientId, message, identity)
       } catch {
         // A malformed intent must not take the server down; the sender just gets no answer.
       }

@@ -1,11 +1,12 @@
 import { Check, Copy, Share2, WifiOff } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import MatchScreen from '../components/game/MatchScreen'
 import AppShell from '../components/layout/AppShell'
 import { Button, ButtonLink } from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
 import { useToast } from '../components/ui/Toasts'
+import { useAccount } from '../context/useAccount'
 import { useSound } from '../context/useSound'
 import { useSideNames, useTheme } from '../context/useTheme'
 import { opponentOf } from '../game/board'
@@ -101,12 +102,15 @@ function OnlinePanel({
 }) {
   const snapshot = useMatchSession(session)
   const sideNames = useSideNames()
+  const account = useAccount()
   const opponentHere = snapshot.online[opponentOf(seat)]
+  const over = snapshot.state.position.status.kind !== 'playing'
   const ok = opponentHere && snapshot.connection !== 'disconnected'
-  const waiting = !ok && snapshot.connection !== 'disconnected'
+  const waiting = !over && !ok && snapshot.connection !== 'disconnected'
 
-  const status =
-    snapshot.connection === 'connecting'
+  const status = over
+    ? 'Game over'
+    : snapshot.connection === 'connecting'
       ? 'Connecting to the game…'
       : snapshot.connection === 'disconnected'
         ? 'Connection lost. Trying to reconnect…'
@@ -124,7 +128,23 @@ function OnlinePanel({
         )}
         {status}
       </p>
-      <p className="online-panel__text">You are playing {sideNames[seat]}.</p>
+      <p className="online-panel__text">
+        You are playing {sideNames[seat]}
+        {snapshot.rated ? ' in a rated game' : ''}
+        {snapshot.accounts?.[opponentOf(seat)] ? (
+          <>
+            {' '}
+            against <strong>{snapshot.accounts[opponentOf(seat)]!.displayName}</strong>
+          </>
+        ) : null}
+        .
+      </p>
+      {!snapshot.rated && !snapshot.accounts?.[seat] && account.status === 'signed-out' && (
+        <p className="field__help">
+          <Link to={`/signin?next=${encodeURIComponent(`/online/${matchId}?seat=${seat}`)}`}>Sign in</Link> to have this game kept
+          in your history.
+        </p>
+      )}
       {inviting && <InviteCard seat={seat} matchId={matchId} placement="side" />}
     </section>
   )

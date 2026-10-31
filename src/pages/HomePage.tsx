@@ -1,5 +1,5 @@
 import { ArrowRight, BookOpen, Bot, Globe, Microscope, Play, Trash2, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { DIFFICULTIES, DIFFICULTY_IDS } from '../ai/difficulty'
@@ -20,6 +20,7 @@ import { DEFAULT_SETUP, setupToParams } from '../match/setup'
 import type { OpponentChoice } from '../match/setup'
 import { clearActiveMatch, loadActiveMatch, loadArchive } from '../match/storage'
 import type { MatchRecord } from '../match/types'
+import { STORAGE_KEYS, storage } from '../services/storage'
 
 // Positions for the preview boards on the cards, built once at load.
 const PREVIEWS = {
@@ -82,7 +83,15 @@ export default function HomePage() {
   usePageTitle(null)
   const sideNames = useSideNames()
   const [active, setActive] = useState(loadActiveMatch)
-  const [archive] = useState(loadArchive)
+  const [archive, setArchive] = useState(loadArchive)
+  // Signing in brings the account's finished games here, and signing out takes them away.
+  useEffect(
+    () =>
+      storage.subscribe((key) => {
+        if (key === STORAGE_KEYS.archive) setArchive(loadArchive())
+      }),
+    [],
+  )
   const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   // Final positions for the recent-games list, replayed from each saved log.
@@ -224,12 +233,8 @@ export default function HomePage() {
                 to={quickLink('online')}
                 board={PREVIEWS.online}
                 icon={<Globe size={18} aria-hidden />}
-                title={
-                  <>
-                    Online <span className="tag">Preview</span>
-                  </>
-                }
-                text="Invite someone with a link, to play from any device."
+                title="Online"
+                text="A rated game against someone near your strength, or a friend you send a link to."
               />
               <Tile
                 to="/learn"

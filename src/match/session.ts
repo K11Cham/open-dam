@@ -1,6 +1,6 @@
 import type { PlayerId } from '../game/types'
 import { applyMatchAction, createMatchState, replay, stepMatch } from './reducer'
-import type { Actor, MatchAction, MatchConfig, MatchIntent, MatchNotice, MatchRecord, MatchState } from './types'
+import type { Actor, MatchAction, MatchConfig, MatchIntent, MatchNotice, MatchRecord, MatchState, SeatAccounts } from './types'
 import type { GameEvent } from '../game/types'
 
 /**
@@ -23,6 +23,10 @@ export interface SessionSnapshot {
   connection: ConnectionStatus
   /** Which seats currently have someone attached (online only). */
   online: Record<PlayerId, boolean>
+  /** Who is signed in at each seat, when the server says (online only). */
+  accounts?: SeatAccounts
+  /** Whether the server will rate this game (online only). */
+  rated?: boolean
 }
 
 export interface SessionStep {

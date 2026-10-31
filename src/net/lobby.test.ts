@@ -10,9 +10,9 @@ import { MatchServer } from './server'
 import type { ServerConnection } from './server'
 
 /** A connection that keeps what the lobby sends it. */
-const connect = (lobby: Lobby) => {
+const connect = (lobby: Lobby, accountId: string | null = null) => {
   const inbox: LobbyReply[] = []
-  const connection = lobby.accept({ send: (text) => inbox.push(JSON.parse(text) as LobbyReply), close: () => {} })
+  const connection = lobby.accept({ send: (text) => inbox.push(JSON.parse(text) as LobbyReply), close: () => {} }, accountId)
   const seek = (from: string, settings: Partial<RuleSettings> | unknown = {}) =>
     connection.receive(JSON.stringify({ v: PROTOCOL_VERSION, channel: 'lobby', from, type: 'seek', settings }))
   const cancel = (from: string) =>
@@ -178,6 +178,32 @@ describe('lobby', () => {
     join('bob', forBob.seat)
     expect(seen.filter((m) => m.type === 'welcome').map((m) => (m as { to: string }).to)).toEqual(['alice', 'bob'])
     server.close()
+    lobby.close()
+  })
+
+  test('with accounts required, guests are told to sign in and an account is one seeker whatever its tabs claim', async () => {
+    const lobby = lobbyWith({ requireAccount: true, ratingOf: (id) => (id === 'acct-a' ? 1550 : undefined) })
+    const guest = connect(lobby)
+    guest.seek('tab-x')
+    expect(guest.last()).toMatchObject({ type: 'seek-ended', reason: 'Sign in to find a rated game.' })
+    expect(lobby.waiting).toBe(0)
+
+    const first = connect(lobby, 'acct-a')
+    const second = connect(lobby, 'acct-a')
+    first.seek('tab-1')
+    expect(first.last()).toMatchObject({ type: 'seeking', to: 'acct-a', rating: 1550 })
+    // The same account seeking again, even claiming another client id, replaces its seek rather than pairing with it.
+    second.seek('tab-2')
+    await flush()
+    expect(made).toEqual([])
+    expect(lobby.waiting).toBe(1)
+    expect(first.last()).toMatchObject({ type: 'seek-ended', reason: 'Searching in another tab.' })
+
+    const other = connect(lobby, 'acct-b')
+    other.seek('anything', { boardSize: 5 })
+    second.seek('tab-2', { boardSize: 5 })
+    await flush()
+    expect(made).toEqual(['m1'])
     lobby.close()
   })
 })

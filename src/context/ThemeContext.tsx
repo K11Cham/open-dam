@@ -40,6 +40,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.tokens['--dam-bg'])
   }, [theme])
 
+  // The account's theme, arriving from another device, replaces this one.
+  useEffect(
+    () =>
+      storage.subscribe((key, origin) => {
+        if (key === STORAGE_KEYS.theme && origin === 'remote') setThemeKey(readStored())
+      }),
+    [],
+  )
+
   useEffect(() => {
     const query = window.matchMedia?.(touchQuery)
     if (!query) return

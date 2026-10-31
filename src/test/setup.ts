@@ -2,7 +2,11 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
+// Server tests (worker/) run on plain Node, without a document or storage.
+const browserLike = typeof window !== 'undefined'
+
 afterEach(() => {
+  if (!browserLike) return
   cleanup()
   localStorage.clear()
 })
@@ -15,7 +19,7 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver
 
-if (!window.matchMedia) {
+if (browserLike && !window.matchMedia) {
   window.matchMedia = (query: string) =>
     ({
       matches: false,

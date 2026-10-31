@@ -11,8 +11,8 @@ import { SeekQueue, agreedSettings, ratingWindow } from './matchmaking'
 import type { Seek } from './matchmaking'
 import { PROTOCOL_VERSION } from './protocol'
 import type { NetMessage } from './protocol'
-import { MatchServer } from './server'
-import type { MatchStore, ServerConnection } from './server'
+import { MatchServer, emptyMeta } from './server'
+import type { Identity, MatchStore, RoomMeta, ServerConnection } from './server'
 import { WebSocketTransport } from './websocket'
 import type { SocketLike } from './websocket'
 
@@ -33,6 +33,7 @@ class FakeSocket {
   private connection: ServerConnection | null = null
 
   constructor(net: FakeNet) {
+    const identity = net.identity
     queueMicrotask(() => {
       if (this.readyState !== 0) return
       const server = net.server
@@ -41,10 +42,13 @@ class FakeSocket {
         this.onclose?.({} as CloseEvent)
         return
       }
-      this.connection = server.accept({
-        send: (text) => queueMicrotask(() => this.readyState === 1 && this.onmessage?.({ data: text } as MessageEvent)),
-        close: () => this.cut(),
-      })
+      this.connection = server.accept(
+        {
+          send: (text) => queueMicrotask(() => this.readyState === 1 && this.onmessage?.({ data: text } as MessageEvent)),
+          close: () => this.cut(),
+        },
+        identity,
+      )
       this.readyState = 1
       this.onopen?.({} as Event)
     })
@@ -71,6 +75,8 @@ class FakeSocket {
 class FakeNet {
   server: MatchServer | null
   sockets: FakeSocket[] = []
+  /** Who the next sockets are signed in as, as the Worker would vouch from a session cookie. */
+  identity: Identity | null = null
   constructor(server: MatchServer) {
     this.server = server
   }
@@ -83,12 +89,18 @@ class FakeNet {
 
 const memoryStore = () => {
   const records = new Map<string, MatchRecord>()
+  const metas = new Map<string, RoomMeta>()
   const store: MatchStore = {
     load: (id) => records.get(id) ?? null,
     save: (record) => void records.set(record.config.id, record),
+    loadMeta: (id) => metas.get(id) ?? null,
+    saveMeta: (id, meta) => void metas.set(id, meta),
   }
-  return { records, store }
+  return { records, metas, store }
 }
+
+const alice: Identity = { id: 'u-alice', username: 'alice', displayName: 'Alice', avatar: 'p1' }
+const bob: Identity = { id: 'u-bob', username: 'bob', displayName: 'Bob', avatar: 'p2' }
 
 const setup = async (settings: Partial<RuleSettings> = { boardSize: 5 }) => {
   const { records, store } = memoryStore()
@@ -511,6 +523,102 @@ describe('matchmaking', () => {
     expect(server.hostOf(matchId)).not.toBeNull()
     expect(finished).toEqual([3])
     again.dispose()
+    server.close()
+  })
+})
+
+describe('seats and accounts', () => {
+  const joinAs = (net: FakeNet, matchId: string, seat: PlayerId, clientId: string, identity: Identity | null) => {
+    net.identity = identity
+    const guest = new MatchGuest({ matchId, seat, clientId })
+    guest.connect(new WebSocketTransport('wss://example.test', { createSocket: net.createSocket }))
+    return guest
+  }
+
+  test('a signed-in player claims their seat in a casual game, and both sides are told', async () => {
+    const { store, metas } = memoryStore()
+    const server = new MatchServer({ store })
+    const matchId = server.createMatch({ boardSize: 5 })
+    const net = new FakeNet(server)
+    const red = joinAs(net, matchId, 'player1', 'red-tab', alice)
+    await flush()
+    const blue = joinAs(net, matchId, 'player2', 'blue-tab', null)
+    await flush()
+    expect(blue.getSnapshot().accounts).toEqual({ player1: alice, player2: null })
+    expect(red.getSnapshot().rated).toBe(false)
+    expect(metas.get(matchId)?.accounts.player1?.id).toBe('u-alice')
+
+    // Alice's seat is hers: a guest who opens her link after she leaves cannot take it.
+    red.dispose()
+    for (const socket of net.sockets.slice(0, 1)) socket.cut()
+    await vi.advanceTimersByTimeAsync(7000)
+    const intruder = joinAs(net, matchId, 'player1', 'other-tab', null)
+    await flush()
+    expect(intruder.getSnapshot().connection).toBe('disconnected')
+    const bobTries = joinAs(net, matchId, 'player1', 'bob-tab', bob)
+    await flush()
+    expect(bobTries.getSnapshot().connection).toBe('disconnected')
+    const back = joinAs(net, matchId, 'player1', 'alice-new-tab', alice)
+    await flush()
+    expect(back.getSnapshot().connection).toBe('connected')
+    for (const guest of [blue, intruder, bobTries, back]) guest.dispose()
+    server.close()
+  })
+
+  test('one account at both seats claims only the first', async () => {
+    const { store } = memoryStore()
+    const server = new MatchServer({ store })
+    const matchId = server.createMatch({ boardSize: 5 })
+    const net = new FakeNet(server)
+    const red = joinAs(net, matchId, 'player1', 'tab-1', alice)
+    await flush()
+    const blue = joinAs(net, matchId, 'player2', 'tab-2', alice)
+    await flush()
+    expect(blue.getSnapshot().connection).toBe('connected')
+    expect(blue.getSnapshot().accounts).toEqual({ player1: alice, player2: null })
+    red.dispose()
+    blue.dispose()
+    server.close()
+  })
+
+  test('a rated game is only for its two accounts, and shows their new ratings at the end', async () => {
+    const { store, metas } = memoryStore()
+    const reported: RoomMeta[] = []
+    const server = new MatchServer({
+      store,
+      onFinished: async (_record, _state, meta) => {
+        reported.push(meta)
+        return {
+          player1: { ...meta.accounts.player1!, rating: 1480, change: -20 },
+          player2: { ...meta.accounts.player2!, rating: 1520, change: 20 },
+        }
+      },
+    })
+    const matchId = server.createMatch({ boardSize: 5 })
+    metas.set(matchId, {
+      ...emptyMeta(),
+      rated: true,
+      accounts: { player1: { ...alice, rating: 1500 }, player2: { ...bob, rating: 1500 } },
+    })
+    const net = new FakeNet(server)
+    const stranger = joinAs(net, matchId, 'player2', 'stranger', null)
+    await flush()
+    expect(stranger.getSnapshot().connection).toBe('disconnected')
+    const red = joinAs(net, matchId, 'player1', 'red-tab', alice)
+    const blue = joinAs(net, matchId, 'player2', 'blue-tab', bob)
+    await flush()
+    expect(red.getSnapshot()).toMatchObject({ connection: 'connected', rated: true })
+    playOne(red, 'player1')
+    await flush()
+    playOne(blue, 'player2')
+    await flush()
+    red.submit('player1', { type: 'engine', action: { type: 'resign', player: 'player1' } })
+    await flush()
+    expect(reported).toHaveLength(1)
+    expect(red.getSnapshot().accounts?.player1).toMatchObject({ rating: 1480, change: -20 })
+    expect(blue.getSnapshot().accounts?.player2).toMatchObject({ rating: 1520, change: 20 })
+    expect(metas.get(matchId)?.accounts.player2?.rating).toBe(1520)
+    for (const guest of [stranger, red, blue]) guest.dispose()
     server.close()
   })
 })

@@ -6,9 +6,10 @@ import type { Destinations } from '../game/engine'
 import { toMoveRows } from '../game/notation'
 import type { Coord, EngineAction, EngineState, PlayerId } from '../game/types'
 import { flagTime } from '../match/clock'
-import type { MatchSession, SessionUpdate } from '../match/session'
+import type { MatchSession, SessionSnapshot, SessionUpdate } from '../match/session'
 import type { OfferKind } from '../match/types'
 import { noticeText, seatLabel, spokenMove } from '../lib/describe'
+import { usePreferences } from '../services/preferences'
 import type { Names } from '../lib/describe'
 import { useBoardAnimations } from './useBoardAnimations'
 import { useMatchSession } from './useMatchSession'
@@ -54,6 +55,15 @@ export interface MatchControllerOptions {
  * state of its own (selection, review position, the call picker); the game
  * itself lives in the session.
  */
+/** Each side's name: the signed-in player's display name online, else the seat's own name, else the theme's side name. */
+const namesFor = (snapshot: SessionSnapshot, sideNames: Names): Names => {
+  const { seats } = snapshot.record.config
+  return {
+    player1: snapshot.accounts?.player1?.displayName || seatLabel(seats.player1, 'player1', sideNames),
+    player2: snapshot.accounts?.player2?.displayName || seatLabel(seats.player2, 'player2', sideNames),
+  }
+}
+
 export function useMatchController({
   session,
   localSeats,
@@ -71,8 +81,10 @@ export function useMatchController({
   /** Set while a drag-and-drop move is in flight, so its travel animation is skipped. */
   const dragOrigin = useRef(false)
   // Premoves are for games against someone else (the computer, or online):
-  // with one local seat, its player may queue a move while the other side thinks.
-  const premoveSeat = localSeats.length === 1 ? localSeats[0] : null
+  // with one local seat, its player may queue a move while the other side
+  // thinks, unless they turned premoves off in Settings.
+  const { premoves } = usePreferences()
+  const premoveSeat = premoves && localSeats.length === 1 ? localSeats[0] : null
   const [premove, setPremove] = useState<Premove | null>(null)
   // The session listener below needs the queued move as it is now, not as it
   // was when the listener was created.
@@ -112,11 +124,7 @@ export function useMatchController({
     // A dragged piece is already where it is going; replaying its travel would look like a glitch.
     animations.ingest(events, { skipTravel: fromThisDevice && dragOrigin.current })
     dragOrigin.current = false
-    const seatsNow = update.snapshot.record.config.seats
-    const namesNow: Names = {
-      player1: seatLabel(seatsNow.player1, 'player1', sideNames),
-      player2: seatLabel(seatsNow.player2, 'player2', sideNames),
-    }
+    const namesNow = namesFor(update.snapshot, sideNames)
     for (const notice of notices) {
       const text = noticeText(notice, namesNow, localSeats)
       if (text) notify(text, notice.type === 'offer-declined' ? 'info' : 'success')
@@ -142,10 +150,7 @@ export function useMatchController({
   const { state, record } = snapshot
   const position = state.position
   const seats = record.config.seats
-  const names: Names = {
-    player1: seatLabel(seats.player1, 'player1', sideNames),
-    player2: seatLabel(seats.player2, 'player2', sideNames),
-  }
+  const names = namesFor(snapshot, sideNames)
   const over = position.status.kind !== 'playing'
   const reviewing = reviewIndex !== null && reviewIndex < state.timeline.length - 1
   const viewPosition = reviewing ? state.timeline[reviewIndex] : position

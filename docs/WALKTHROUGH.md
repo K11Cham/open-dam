@@ -18,9 +18,11 @@ Part 12 has exercises to check your understanding. File references look like
 ### What the program is
 
 A website where you can play Dam, the Gambian board game: against the
-computer, against someone on the same device, or (in preview) against someone
-in another browser tab. It also teaches the rules and has a free "analysis"
-board.
+computer, against someone on the same device, or online, either a rated game
+against a stranger near your strength or a friend you send a link to. Players
+can make an account, which keeps their rating, history and settings on every
+device, and puts them on the leaderboards. It also teaches the rules and has a
+free "analysis" board.
 
 ### The layers
 
@@ -464,9 +466,31 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
   counterpart of `server.ts`: players send a `seek` with the rules they want,
   the lobby looks up their rating itself, runs the queue, makes a game for
   each pairing and answers both with `paired` (match id and seat), after
-  which they join that match like invited players. Nothing listens for the
-  lobby yet (no Durable Object, no button in the app), and the leaderboard
-  page still shows sample data.
+  which they join that match like invited players.
+
+### Accounts
+
+- `account.ts` is what the browser and the server agree on: the shapes of a
+  user, a rating, a game summary and a leaderboard row, the checks for
+  usernames and passwords (both sides run them), rating pools, and
+  `stretchPassword`, which turns a password into the key the server sees.
+- `accountApi.ts` calls the account routes; every call sends the session
+  cookie, which only the server can read.
+- `accountSync.ts` keeps settings and finished games the same on every device.
+  Local storage stays the working copy; `storage` (src/services/storage.ts)
+  announces each change with where it came from, `local` or `remote`, so the
+  sync sends local changes up and the stores that keep a value in memory
+  (theme, sound, preferences, puzzles, Home's recent games) re-read remote
+  ones.
+- On the server, `worker/accountStore.ts` does the work over SQLite, inside
+  the `Accounts` Durable Object (`worker/accounts.ts`). The Worker turns the
+  session cookie into an `Identity` and hands it to the match room and the
+  lobby with each socket; a seat claimed by an account is that account's
+  alone, and a finished game with accounts is reported back to `Accounts`,
+  which stores and rates it.
+- In React, `AccountProvider` (src/context/AccountContext.tsx) asks who is
+  signed in when the app opens and starts or stops the sync; `useAccount`
+  reads it anywhere.
 
 ---
 
@@ -598,10 +622,14 @@ replace them.
 | `/match/new?…`         | `NewMatchFromLink` | Builds a game from a link, then redirects to `/match/:id`.                                                    |
 | `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.              |
 | `/online/:id`          | `OnlinePage`       | Joins the game on the server in the seat from `?seat=`; invite bar while the opponent is away.                |
-| `/review/:id`          | `ReviewPage`       | A finished game, read-only, steppable.                                                                        |
+| `/review/:id`          | `ReviewPage`       | A finished game saved on this device, read-only, steppable.                                                   |
+| `/game/:id`            | `OnlineGamePage`   | A finished online game from the server (in `ReviewPage.tsx`), named after its players' accounts.              |
 | `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eleven chapters with example boards and puzzles; solved puzzles are counted per chapter.   |
 | `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                         |
-| `/leaderboards`        | `LeaderboardsPage` | Sample data until there is a server.                                                                          |
+| `/leaderboards`        | `LeaderboardsPage` | Rated players of one pool (board size and clock, from `?pool=`), best first, from the server.                 |
+| `/u/:username`         | `ProfilePage`      | A player's profile: totals, a rating per pool, online games (unless they keep them private).                  |
+| `/settings`            | `SettingsPage`     | Preferences for everyone; profile, sign-in details, devices and data for a signed-in player.                  |
+| `/signin` and others   | `AuthPage`         | Sign in, create an account (shows the recovery code once), or reset a password with the recovery code.        |
 
 The match screen (`components/game/MatchScreen.tsx`) is composed of:
 `PlayerCard` ×2 (name, pieces, turn, clock, Undo/Draw/Resign), `BoardView`,
@@ -644,7 +672,8 @@ move gets praise and the opponent's scripted reply. A tempting wrong move that
 the puzzle lists gets an explanation, and then the board plays the move that
 punishes it, because seeing the capture land teaches more than a sentence.
 Hint, Try again and Show me are always at hand. Solved puzzles are remembered
-in local storage (`progress.ts`) and counted beside each chapter. The last three
+in local storage (`progress.ts`), and on the account when signed in, and
+counted beside each chapter. The last three
 chapters teach strategy (Traps and breakthroughs, Trapping a lone king,
 Winning plans): the
 two-square trap, breaking it with a supported column, defending it by filling
@@ -658,7 +687,7 @@ blocking.
 | Command                  | What it runs                              |
 | ------------------------ | ----------------------------------------- |
 | `npm run dev`            | Vite dev server with hot reload           |
-| `npm test`               | Vitest: ~240 tests in a few seconds       |
+| `npm test`               | Vitest: ~300 tests in a few seconds       |
 | `npm run typecheck`      | TypeScript in strict mode                 |
 | `npm run lint`           | ESLint                                    |
 | `npm run format`         | Prettier                                  |
@@ -671,7 +700,7 @@ blocking.
 | `npm run openings`       | Measure every first move (the book)       |
 | `npm run review`         | Grade a finished game move by move        |
 | `npm run server`         | The online server locally, on port 8787   |
-| `npm run check:online`   | Real games against a running server       |
+| `npm run check:online`   | Real games and accounts against a server  |
 | `npm run deploy`         | `verify`, then publish to Cloudflare      |
 
 Where the tests are and what they protect:
@@ -680,16 +709,18 @@ Where the tests are and what they protect:
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `src/game/engine.test.ts`             | Every rule branch                                                                                                   |
 | `src/ai/ai.test.ts`                   | Legal play for every tier, the opening book, sacrifices, lone-king finishes, missed calls, time budget, offers      |
-| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                                |
+| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving, finished games arriving from another device                   |
 | `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                                  |
-| `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), matchmaking, rating hook |
-| `src/net/lobby.test.ts`               | The matchmaking lobby: pairing, server-side ratings, checked settings, cancelling, spoofing, a game both can join   |
+| `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), seats owned by accounts  |
+| `src/net/lobby.test.ts`               | The matchmaking lobby: pairing, server-side ratings, checked settings, cancelling, spoofing, accounts only          |
+| `worker/accountStore.test.ts`         | Accounts on Node's SQLite: sign-up, sign-in, lockout, sessions, recovery, profiles, sync, ratings, leaderboards     |
 | `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal; every puzzle's answers, mistakes and punishments replay and are judged correctly   |
 | `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                   |
 | `src/audio/audio.test.ts`             | Synth output, which sound a step makes, every theme has every sound                                                 |
 | `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs    |
+| `src/test/accounts.test.tsx`          | The account pages against a pretend server: sign-up, sign-in, sync, settings, leaderboards, profiles, finding games |
 | `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                    |
-| `scripts/online-server.test.ts`       | A local or deployed server over real sockets (needs `npm run server`)                                               |
+| `scripts/online-server*.test.ts`      | A local or deployed server over real sockets, accounts and a rated game included (needs `npm run server`)           |
 
 CI (`.github/workflows/ci.yml`) runs `verify` on every push and pull request.
 
