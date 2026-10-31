@@ -13,10 +13,9 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   same on every device, rated matchmaking ("Find a rated game" on the Play
   page), and real leaderboards per board size and clock. The sample
   leaderboard data is gone. How it works: "Accounts and ratings" in
-  MULTIPLAYER.md. **Not deployed yet:** it adds two Durable Objects (migration
-  `v2`), so deploy only when the owner says so, then run `check:online`
-  against the live site; that check signs up two throwaway accounts and
-  deletes them again.
+  MULTIPLAYER.md. **Live** since 2026-10-31 (version ece2c32e, with the
+  owner's yes; migration `v2` applied). `check:online` against the live site
+  signs up two throwaway accounts and deletes them again.
 - **Online play has a real server** (w25, 2026-10-29): a Cloudflare Worker
   with one Durable Object per match (`worker/`), chosen with the owner because
   it is free and does not sleep. The Online page now uses it with invite
@@ -25,8 +24,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   `feat/overhaul` with the owner's yes, on the owner's Cloudflare account).
   Deploy again only when the owner says so: `npm run deploy`, then
   `ONLINE_URL=https://play.open-dam.workers.dev npm run check:online`.
-- **Next up:** deploying the accounts work (with the owner's yes), then the
-  quality pass.
+- **Next up:** the quality pass.
 - The AI was rebuilt with five Wolof-named tiers (row w27): Döff (the fool),
   Khàlé (the child), Ndö (the youngster), Màam (the elder), Seriñ (the master). To judge its play,
   use `npm run check:endgames` and `npm run replay`.
@@ -168,8 +166,11 @@ commits, checks run, notes for the next shift.
   a rated game); by hand in the browser: sign-up, settings, a rated game
   against a scripted second account, profile, leaderboard, review, at desktop
   and 375px, in all four themes.
-- **Not done:** the deploy (needs the owner's yes). Abandoned untimed rated
-  games never finish, so they are never rated; a later row could end them.
+- **Deployed** with the owner's yes: version ece2c32e at
+  https://play.open-dam.workers.dev; `check:online` against it passed (9),
+  and its throwaway accounts were deleted (the 8×8 leaderboard is empty).
+- **Not done:** abandoned untimed rated games never finish, so they are never
+  rated; a later row could end them.
 
 ### 2026-10-31 15:00 (scheduled shift)
 
