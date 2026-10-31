@@ -54,6 +54,57 @@ export const makeSettings = (partial: Partial<RuleSettings> = {}): RuleSettings 
   }
 }
 
+const BOARD_SIZES: BoardSize[] = [5, 6, 7, 8, 9]
+const POLICIES: PromotionPolicy[] = ['promote-and-continue', 'promote-after-chain', 'end-turn-on-promotion', 'match-opponent']
+/** The longest no-capture rule a link or a saved game may ask for (200 moves each). */
+const MAX_PLIES_WITHOUT_CAPTURE = 400
+
+const field = (value: unknown, key: string): unknown =>
+  typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[key] : undefined
+
+const pick = <T>(value: unknown, allowed: readonly T[], fallback: T): T =>
+  allowed.includes(value as T) ? (value as T) : fallback
+
+/**
+ * Settings from somewhere that cannot be trusted (a request to the server, a
+ * saved game, a seek), reduced to known fields with allowed values. Anything
+ * missing or wrong takes the default, the board type always follows the
+ * size, and a clock must be one of TIME_CONTROLS, so a request cannot ask for
+ * a 1000-square board, a negative clock, or a made-up time control that would
+ * become a rating pool of its own.
+ */
+export const sanitizeSettings = (value: unknown): RuleSettings => {
+  const boardSize = pick(field(value, 'boardSize'), BOARD_SIZES, DEFAULT_SETTINGS.boardSize)
+  const call = field(value, 'call')
+  const draw = field(value, 'draw')
+  const plies = field(draw, 'pliesWithoutCapture')
+  const timeControl = field(value, 'timeControl')
+  return {
+    boardSize,
+    boardType: boardTypeForSize(boardSize),
+    promotionPolicy: pick(field(value, 'promotionPolicy'), POLICIES, DEFAULT_SETTINGS.promotionPolicy),
+    call: {
+      scope: pick(field(call, 'scope'), ['all', 'choose-one'] as const, DEFAULT_SETTINGS.call.scope),
+      abandonedChainCallable: pick(
+        field(call, 'abandonedChainCallable'),
+        [true, false],
+        DEFAULT_SETTINGS.call.abandonedChainCallable,
+      ),
+    },
+    draw: {
+      threefoldRepetition: pick(field(draw, 'threefoldRepetition'), [true, false], DEFAULT_SETTINGS.draw.threefoldRepetition),
+      pliesWithoutCapture:
+        plies === null
+          ? null
+          : Number.isInteger(plies) && (plies as number) > 0 && (plies as number) <= MAX_PLIES_WITHOUT_CAPTURE
+            ? (plies as number)
+            : DEFAULT_SETTINGS.draw.pliesWithoutCapture,
+    },
+    // The listed control itself, not the caller's copy, so its numbers cannot disagree with its label.
+    timeControl: TIME_CONTROLS.find((tc) => tc.label === field(timeControl, 'label')) ?? null,
+  }
+}
+
 /**
  * `match-opponent` only means something once there is an opponent to ask.
  *

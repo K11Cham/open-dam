@@ -134,7 +134,10 @@ The server runs on Cloudflare Workers, on the free plan:
 - `worker/index.ts` is the front door. It creates matches, sends each
   WebSocket to its match's Durable Object, and serves the built app from
   `dist/` for every other path, so the site and the server share one address
-  and need no CORS.
+  and need no CORS. The rules a browser asks for pass through
+  `sanitizeSettings` (`src/game/settings.ts`): unknown fields are dropped,
+  wrong values take the default, and a clock must be one of `TIME_CONTROLS`.
+  Saved games loaded by `parseRecord` go through it too.
 - `worker/room.ts` is `MatchRoom`, a Durable Object: Cloudflare runs exactly
   one per match id, and every player of that match reaches the same one. It
   runs `MatchServer` unchanged, with a `MatchStore` backed by the object's

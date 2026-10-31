@@ -208,6 +208,14 @@ describe('records', () => {
     expect(parseRecord(JSON.parse(JSON.stringify(good)))).not.toBeNull()
   })
 
+  test('a saved game with impossible rules loads with allowed ones', () => {
+    const good = newRecord()
+    const odd = { ...good, config: { ...good.config, settings: { ...good.config.settings, boardSize: 1000, junk: true } } }
+    const parsed = parseRecord(odd)
+    expect(parsed?.record.config.settings.boardSize).toBe(5)
+    expect(parsed?.record.config.settings).not.toHaveProperty('junk')
+  })
+
   test('review timeline covers every ply from the start, even after a reload', () => {
     const { host } = hostAt(newRecord())
     host.submit('player1', move(3, 2, 2, 2))

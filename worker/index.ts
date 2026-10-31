@@ -1,4 +1,4 @@
-import { makeSettings } from '../src/game/settings'
+import { sanitizeSettings } from '../src/game/settings'
 import { createRecord } from '../src/match/session'
 import { MATCH_ID_PATTERN } from '../src/net/protocol'
 import { MatchRoom } from './room'
@@ -48,11 +48,11 @@ async function createMatch(request: Request, env: Env): Promise<Response> {
     return json({ error: 'Request is not JSON.' }, 400)
   }
   const settings = (body as { settings?: unknown })?.settings
-  // makeSettings keeps only known fields with valid values, so a browser cannot
+  // sanitizeSettings keeps only known fields with allowed values, so a browser cannot
   // smuggle odd rules into a game.
   const record = createRecord({
     mode: 'online',
-    settings: makeSettings(settings && typeof settings === 'object' ? settings : {}),
+    settings: sanitizeSettings(settings),
     seats: { player1: { kind: 'remote', name: '' }, player2: { kind: 'remote', name: '' } },
   })
   const created = await roomFor(env, record.config.id).create(record)
