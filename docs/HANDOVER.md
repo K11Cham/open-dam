@@ -2,11 +2,11 @@
 
 How to pick up work on Open Dam, whether you are a person or an agent.
 
-## Current state (2026-10-29)
+## Current state (2026-10-31)
 
-- `feat/overhaul` builds and `npm run verify` passes (241 tests). Every work
-  row and every verification row is done except the server rows **w25** and
-  **w26**, both `doing`.
+- `feat/overhaul` builds and `npm run verify` passes (259 tests). Every work
+  row and every verification row is done except **w26** (ratings and
+  matchmaking), `doing`.
 - **Online play has a real server** (w25, 2026-10-29): a Cloudflare Worker
   with one Durable Object per match (`worker/`), chosen with the owner because
   it is free and does not sleep. The Online page now uses it with invite
@@ -25,7 +25,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   the book with `npm run openings` after any change to the rules or the
   evaluation (recipe in WALKTHROUGH.md Part 11).
 - With the board clear, shifts do the quality pass described in the scheduled
-  task: look for real problems, add rows (next ids **w40**, **v15**), fix them.
+  task: look for real problems, add rows (next ids **w47**, **v15**), fix them.
 - `feat/overhaul` is on GitHub: the owner asked for it to be pushed on
   2026-10-29. `main` is untouched; to release, open a pull request from
   `feat/overhaul` into `main`.
@@ -136,6 +136,26 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-10-31 15:00 (scheduled shift)
+
+- **Rows:** w46 (new) → done; w26 → still doing (second slice). Nothing else
+  was open.
+- **w46 (be9166d):** the server trusted a browser's rules. `makeSettings` only
+  merges objects, so `POST /api/matches` could store a 1000-square board or a
+  made-up clock. `sanitizeSettings` in `src/game/settings.ts` now checks every
+  field; the worker and `parseRecord` use it. **Not deployed:** the live site
+  still accepts any settings until the next deploy.
+- **w26 (6a80138):** `Lobby` in `src/net/lobby.ts` with seek, cancel,
+  seeking, paired and seek-ended messages. Ratings are looked up on the
+  server, not sent by the browser. The 2026-10-29 shift's note on w26 named
+  this slice, but it had never been committed.
+- **Checks:** `npm run verify` before each commit (259 tests at the end). No
+  browser check: nothing the app shows changed. `check:ai` not run (no AI
+  changes).
+- **Next up (w26):** a lobby Durable Object and route. It needs a `v2`
+  migration in `wrangler.jsonc`, so show the owner before deploying. Then the
+  app's "Find a game" button, stored ratings, and real leaderboards.
 
 ### 2026-10-29 late evening (owner's requests: address, clock, premoves)
 
