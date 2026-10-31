@@ -1,4 +1,4 @@
-import type { PlayerId } from '../game/types'
+import type { PlayerId, RuleSettings } from '../game/types'
 import type { MatchAction, MatchIntent, MatchRecord } from '../match/types'
 
 /**
@@ -67,6 +67,39 @@ export interface Transport {
   onMessage(handler: (message: NetMessage) => void): () => void
   close(): void
 }
+
+/**
+ * Matchmaking messages, between a player and the lobby (src/net/lobby.ts).
+ * They name no match, since finding one is the point, so they carry
+ * `channel: 'lobby'` instead and never pass `isNetMessage`.
+ */
+interface LobbyEnvelope {
+  v: typeof PROTOCOL_VERSION
+  channel: 'lobby'
+  /** Sender's client id. */
+  from: string
+}
+
+/** Player → lobby. A new seek replaces the player's old one. */
+export type SeekerMessage = LobbyEnvelope & ({ type: 'seek'; settings: RuleSettings } | { type: 'cancel' })
+
+/** Lobby → one player. */
+export type LobbyReply = LobbyEnvelope &
+  (
+    | { type: 'seeking'; to: string; pool: string; rating: number }
+    | { type: 'paired'; to: string; matchId: string; seat: PlayerId; settings: RuleSettings; opponentRating: number }
+    | { type: 'seek-ended'; to: string; reason: string }
+  )
+
+export type LobbyMessage = SeekerMessage | LobbyReply
+
+export const isLobbyMessage = (value: unknown): value is LobbyMessage =>
+  typeof value === 'object' &&
+  value !== null &&
+  (value as { v?: unknown }).v === PROTOCOL_VERSION &&
+  (value as { channel?: unknown }).channel === 'lobby' &&
+  typeof (value as { from?: unknown }).from === 'string' &&
+  typeof (value as { type?: unknown }).type === 'string'
 
 /** Match ids are short and URL safe; a server refuses anything else before it reaches storage. */
 export const MATCH_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/

@@ -131,18 +131,20 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/net/` — online play (transport-agnostic)
 
-| File             | Purpose                                                                                                                             |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `protocol.ts`    | Wire messages between guests and the host; the `Transport` interface; match id format; heartbeat timings.                           |
-| `api.ts`         | Where the server is (`VITE_MATCH_SERVER` or the site itself), its socket URL, and creating a match.                                 |
-| `transport.ts`   | `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id.                                               |
-| `hostLink.ts`    | Connects a `MatchHost` to a transport: binds seats, forwards guest intents, broadcasts actions and presence.                        |
-| `guest.ts`       | `MatchGuest`: mirrors a remote host's log, sends intents, resynchronises on gaps.                                                   |
-| `websocket.ts`   | `WebSocketTransport`: a browser's link to a match server; queues while down, reconnects with backoff.                               |
-| `server.ts`      | `MatchServer`: a server's match logic without the network (rooms, saving, server clock flags).                                      |
-| `net.test.ts`    | Join, sync both ways, refusals, seat ownership, reconnect.                                                                          |
-| `matchmaking.ts` | `SeekQueue`: pairs compatible seeks within a rating window that widens with waiting; resolves "match opponent".                     |
-| `server.test.ts` | Server rooms end to end over a fake socket network (sync, refusals, spoofing, reconnect, restart, flags); matchmaking; rating hook. |
+| File             | Purpose                                                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `protocol.ts`    | Wire messages between guests and the host, and between seekers and the lobby; the `Transport` interface; match id format; heartbeats. |
+| `api.ts`         | Where the server is (`VITE_MATCH_SERVER` or the site itself), its socket URL, and creating a match.                                   |
+| `transport.ts`   | `BroadcastChannelTransport` (same browser); `MemoryHub` for tests; per-tab client id.                                                 |
+| `hostLink.ts`    | Connects a `MatchHost` to a transport: binds seats, forwards guest intents, broadcasts actions and presence.                          |
+| `guest.ts`       | `MatchGuest`: mirrors a remote host's log, sends intents, resynchronises on gaps.                                                     |
+| `websocket.ts`   | `WebSocketTransport`: a browser's link to a match server; queues while down, reconnects with backoff.                                 |
+| `server.ts`      | `MatchServer`: a server's match logic without the network (rooms, saving, server clock flags).                                        |
+| `net.test.ts`    | Join, sync both ways, refusals, seat ownership, reconnect.                                                                            |
+| `matchmaking.ts` | `SeekQueue`: pairs compatible seeks within a rating window that widens with waiting; resolves "match opponent".                       |
+| `server.test.ts` | Server rooms end to end over a fake socket network (sync, refusals, spoofing, reconnect, restart, flags); matchmaking; rating hook.   |
+| `lobby.ts`       | `Lobby`: the matchmaking server's logic without the network: seeks in, ratings looked up, games made, players told their seat.        |
+| `lobby.test.ts`  | Pairing, server-side ratings, checked settings, cancel and leave, spoofed ids, a second tab, failed games, joining the paired game.   |
 
 ## `src/hooks/` — React adapters
 

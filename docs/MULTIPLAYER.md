@@ -220,8 +220,17 @@ player } }` as `system` at `flagTime(state.clock)`, retrying shortly if a
    a player with themselves, picks who moves first at random, and resolves
    "match opponent" with `agreedSettings`. Call `sweep(now)` every few
    seconds; turn each pairing into a game with `MatchServer.createMatch`.
-   Still to do: messages for posting and cancelling a seek, and telling both
-   players where their game is.
+   **Lobby — logic done.** `Lobby` in `src/net/lobby.ts` takes connections
+   like `MatchServer` does. A player sends `{ channel: 'lobby', type: 'seek',
+settings }` (or `cancel`); the lobby passes the settings through
+   `sanitizeSettings`, looks the rating up itself with `ratingOf(player,
+pool)`, answers `seeking`, sweeps every 2 s while two or more wait, and on
+   a pairing calls `createMatch` and sends each player `paired` with the
+   match id, their seat and the opponent's rating (or `seek-ended` if the game
+   could not be made). Leaving or cancelling ends the seek. Still to do: a
+   lobby Durable Object and route, the app's seek button, and keeping a paired
+   seat for its player (today anyone holding the match id could take it,
+   though only the two players are told it; real reservations need step 7).
 9. **Ratings — arithmetic done.** `src/match/rating.ts` has Elo per pool
    (board size and time control; K 40 for the first 20 games, then 20) and
    `ratedScore`, which skips unfinished games and games where a side never

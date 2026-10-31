@@ -458,10 +458,15 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
   and serves the app, and one Durable Object per match (`room.ts`) that runs
   `MatchServer` with its own storage. `npm run server` runs it locally;
   MULTIPLAYER.md has the deploy steps.
-- `matchmaking.ts` is the queue a server would pair players from, and
+- `matchmaking.ts` is the queue a server pairs players from, and
   `src/match/rating.ts` the Elo arithmetic it would rate finished games with
-  (through `MatchServer`'s `onFinished`). The leaderboard page still shows
-  sample data.
+  (through `MatchServer`'s `onFinished`). `lobby.ts` is the matchmaking
+  counterpart of `server.ts`: players send a `seek` with the rules they want,
+  the lobby looks up their rating itself, runs the queue, makes a game for
+  each pairing and answers both with `paired` (match id and seat), after
+  which they join that match like invited players. Nothing listens for the
+  lobby yet (no Durable Object, no button in the app), and the leaderboard
+  page still shows sample data.
 
 ---
 
@@ -678,6 +683,7 @@ Where the tests are and what they protect:
 | `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving                                                                |
 | `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                                  |
 | `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), matchmaking, rating hook |
+| `src/net/lobby.test.ts`               | The matchmaking lobby: pairing, server-side ratings, checked settings, cancelling, spoofing, a game both can join   |
 | `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal; every puzzle's answers, mistakes and punishments replay and are judged correctly   |
 | `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                   |
 | `src/audio/audio.test.ts`             | Synth output, which sound a step makes, every theme has every sound                                                 |
