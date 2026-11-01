@@ -257,11 +257,13 @@
 }
 
 /*
- * Icon-only buttons are circles, except in Atelier, whose square, hairline
- * buttons are part of its look. The extra selectors outrank each theme's
- * [data-theme] .btn radius.
+ * Everything in the top bar is round, to match the bar: icon-only buttons are
+ * circles and the sign-in link is a pill. Atelier keeps its square, hairline
+ * buttons, which are part of its look. The extra selectors outrank each
+ * theme's [data-theme] .btn radius.
  */
-:root:not([data-theme='atelier']) .btn.btn--icon {
+:root:not([data-theme='atelier']) .btn.btn--icon,
+:root:not([data-theme='atelier']) .btn.account-signin {
   border-radius: 999px;
 }
 
