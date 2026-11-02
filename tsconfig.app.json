@@ -22,5 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Checked by tsconfig.sw.json, with the service worker's types.
+  "exclude": ["src/pwa/serviceWorker.ts"]
 }

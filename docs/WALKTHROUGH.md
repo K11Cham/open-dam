@@ -613,6 +613,43 @@ and whether sound is on. `npm run sounds` renders them all to WAV files to
 listen to. `docs/SOUNDS.md` explains the recipes and which recorded sounds may
 replace them.
 
+### The logo
+
+The mark is four sticks against four stones on a 3×3 grid with the centre
+open: the opening position of the game, the sticks and stones of a game drawn
+in the sand, and an O for Open. Its geometry lives once, in
+`src/themes/brand.ts`. `BrandMark` draws it in the current theme's piece
+colours (sticks in the second side's, stones in the first's) in the top bar
+and on the Home page; `npm run icons` draws it in fixed sand colours for the
+favicon and the app icons, which must look the same whatever the theme.
+
+### The installed app and offline play
+
+Open Dam is a progressive web app: it installs from the browser, and once
+opened it works with no connection, except for online play, accounts and
+leaderboards.
+
+- `public/manifest.webmanifest` names the app, its icons and colours, and
+  asks for a window of its own.
+- `src/pwa/serviceWorker.ts` is built to `/sw.js` after each build by
+  `scripts/vite-service-worker.ts`, which writes into it the list of files to
+  save (every script and stylesheet, the Latin fonts, the icons) and a version
+  made from their names. It answers every page of the app with the saved
+  `index.html`, built files from the cache, and leaves `/api` alone, so
+  accounts and live games never come from a stale copy. The rules are in
+  `src/pwa/policy.ts`, with tests.
+- A new version installs in the background and waits. `src/pwa/pwa.ts`
+  notices and the page shows "A new version of Open Dam is ready"; only
+  "Update now" swaps it in and reloads, so a game is never reloaded unasked.
+- Without a network, every page says so under the top bar. A signed-in player
+  stays signed in as the account last heard from the server
+  (`openDam.account`), and when the connection returns the account is asked
+  again and caught up with what changed meanwhile.
+- Settings → App installs the app where the browser allows a button (Chrome,
+  Edge, Android) and explains Safari's Add to Home Screen elsewhere.
+- No worker runs in development or in the static copy; check it with a
+  production build (`npm run build` and `npm run server`) in a real browser.
+
 ## Part 9 — The screens (`src/pages`, `src/components`)
 
 | Route                  | Page               | Notes                                                                                                         |
@@ -687,13 +724,14 @@ blocking.
 | Command                  | What it runs                              |
 | ------------------------ | ----------------------------------------- |
 | `npm run dev`            | Vite dev server with hot reload           |
-| `npm test`               | Vitest: ~300 tests in a few seconds       |
+| `npm test`               | Vitest: ~310 tests in a few seconds       |
 | `npm run typecheck`      | TypeScript in strict mode                 |
 | `npm run lint`           | ESLint                                    |
 | `npm run format`         | Prettier                                  |
 | `npm run verify`         | All of the above, then a production build |
 | `npm run check:ai`       | Tier-vs-tier matches (several minutes)    |
 | `npm run sounds`         | Render every theme's sounds to WAV        |
+| `npm run icons`          | Draw the favicon and app icons            |
 | `npm run build:static`   | A copy for any static host (hash routes)  |
 | `npm run check:endgames` | Endgame conversion from random starts     |
 | `npm run replay`         | Print one computer game ply by ply        |

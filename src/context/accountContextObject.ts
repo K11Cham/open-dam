@@ -6,7 +6,8 @@ import type { PrivateUser } from '../net/account'
  * - `loading`: asking the server who is signed in.
  * - `signed-out` / `signed-in`: as it says. `offline` is set when the server
  *   could not be reached, so pages can say so rather than offer a sign-in that
- *   would fail.
+ *   would fail; a player who was signed in stays signed in meanwhile, as the
+ *   account last heard from the server.
  */
 export type AccountStatus = 'unavailable' | 'loading' | 'signed-out' | 'signed-in'
 

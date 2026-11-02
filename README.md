@@ -43,6 +43,7 @@ The full rules, with example boards, are on the **Learn** page.
   against sticks.
 - Hear each theme's own sound effects, synthesised in code.
 - Play with the keyboard or a screen reader.
+- Install it as an app on a phone or computer, and play with no connection: everything but online play works offline.
 
 ## Running it
 

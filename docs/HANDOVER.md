@@ -2,10 +2,20 @@
 
 How to pick up work on Open Dam, whether you are a person or an agent.
 
-## Current state (2026-10-31)
+## Current state (2026-11-01)
 
-- `feat/overhaul` builds and `npm run verify` passes (299 tests). Every work
+- `feat/overhaul` builds and `npm run verify` passes (308 tests). Every work
   row and every verification row is done.
+- **An installable, offline app with a real logo** (w48, 2026-11-01, the
+  owner's request, "the final major milestone"): the mark (sticks against
+  stones, centre open) in the top bar, the Home page and every icon; a web
+  app manifest; a service worker that saves the app so everything but online
+  play works offline; an update notice that never reloads a game unasked;
+  Settings → App to install. How it works: WALKTHROUGH.md Part 8, "The
+  logo" and "The installed app and offline play". **Not deployed yet**: deploy
+  only on the owner's yes. The browser pane in the Claude app cannot run a
+  service worker from a local server; check one in real Chrome (a production
+  build served locally) or on the live site.
 - **Accounts, ratings and leaderboards exist** (w47, 2026-10-31, the owner's
   request): username and password accounts with recovery codes, public
   profiles at `/u/<name>`, a Settings page (preferences, profile, password,
@@ -33,7 +43,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   the book with `npm run openings` after any change to the rules or the
   evaluation (recipe in WALKTHROUGH.md Part 11).
 - With the board clear, shifts do the quality pass described in the scheduled
-  task: look for real problems, add rows (next ids **w48**, **v15**), fix them.
+  task: look for real problems, add rows (next ids **w49**, **v15**), fix them.
 - `feat/overhaul` is on GitHub: the owner asked for it to be pushed on
   2026-10-29. `main` is untouched; to release, open a pull request from
   `feat/overhaul` into `main`.
@@ -144,6 +154,26 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-11-01 (owner's request: PWA, offline, a logo)
+
+- **Rows:** w48 (new: installable offline app and logo) → done.
+- **Logo:** `src/themes/brand.ts` (one geometry), `BrandMark` in the top bar
+  and on the Home page in each theme's colours, icons drawn by
+  `npm run icons` (favicon.svg and .ico, 192, 512, maskable 512, Apple touch
+  icon). The old favicon was Vite's default.
+- **App:** manifest; `src/pwa/` (policy, service worker, registration);
+  `scripts/vite-service-worker.ts`; offline notice and update card
+  (`AppNotices`); Settings → App; the account remembered for opening
+  offline, and caught up on reconnecting.
+- **Checks:** `npm run verify` (308 tests); in headless Chrome against a
+  production build: the first visit saves 28 files, then offline every page
+  opens, every saved file loads, a game against the computer starts and its
+  worker loads; a rebuild shows the update card, and "Update now" switches
+  versions and deletes the old cache. The four themes' marks checked in the
+  browser pane.
+- **Not done:** the deploy (needs the owner's yes); trying an install on a
+  real phone (the owner's to do).
 
 ### 2026-10-31 evening (owner's request: accounts, users, leaderboards)
 

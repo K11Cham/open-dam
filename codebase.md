@@ -12,25 +12,25 @@ every visual decision. Lower layers never import higher ones.
 
 ## Root
 
-| File                                                       | Purpose                                                                                                                                                                        |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `README.md`                                                | What the project is, how to run it, where to read next.                                                                                                                        |
-| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                                                                                   |
-| `codebase.md`                                              | This file.                                                                                                                                                                     |
-| `LICENSE`                                                  | MIT licence.                                                                                                                                                                   |
-| `index.html`                                               | Vite entry document (meta tags, root element).                                                                                                                                 |
-| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `build:static`, `verify`, `server`, `check:online`, `deploy`, `review`. |
-| `vite.config.ts`                                           | Vite: React plugin, React Compiler, ES-module workers, `/api` proxy to the local server, Vitest settings.                                                                      |
-| `wrangler.jsonc`                                           | Cloudflare Workers config: the server's entry, the built app as assets, the Durable Objects for matches, accounts and matchmaking.                                             |
-| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                                                                                    |
-| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references (plus `worker/tsconfig.json`); the app is `strict`.                                                                                              |
-| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                                                                                             |
-| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                                                                                  |
-| `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                                                                          |
-| `.gitattributes`                                           | Normalises line endings to LF.                                                                                                                                                 |
-| `.gitignore`                                               | Ignore rules.                                                                                                                                                                  |
-| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                                                                   |
-| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                                                                            |
+| File                                                       | Purpose                                                                                                                                                                                 |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`                                                | What the project is, how to run it, where to read next.                                                                                                                                 |
+| `CLAUDE.md`                                                | Short orientation for AI coding agents working in this repo.                                                                                                                            |
+| `codebase.md`                                              | This file.                                                                                                                                                                              |
+| `LICENSE`                                                  | MIT licence.                                                                                                                                                                            |
+| `index.html`                                               | Vite entry document (meta tags, icons, the app manifest, root element).                                                                                                                 |
+| `package.json` / `package-lock.json`                       | Dependencies and scripts: `dev`, `build`, `typecheck`, `lint`, `format`, `test`, `check:ai`, `sounds`, `build:static`, `verify`, `server`, `check:online`, `deploy`, `review`, `icons`. |
+| `vite.config.ts`                                           | Vite: React plugin, React Compiler, the service worker build, ES-module workers, `/api` proxy to the local server, Vitest settings.                                                     |
+| `wrangler.jsonc`                                           | Cloudflare Workers config: the server's entry, the built app as assets, the Durable Objects for matches, accounts and matchmaking.                                                      |
+| `vitest.ai.config.ts`                                      | Separate Vitest config for the slow AI strength match (`npm run check:ai`).                                                                                                             |
+| `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript project references (plus `tsconfig.sw.json` for the service worker and `worker/tsconfig.json`); the app is `strict`.                                                         |
+| `eslint.config.js`                                         | ESLint flat config (TypeScript, React Hooks, React Refresh rules).                                                                                                                      |
+| `.prettierrc.json`, `.prettierignore`                      | Formatting rules (no semicolons, single quotes, 130 columns).                                                                                                                           |
+| `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                                                                                   |
+| `.gitattributes`                                           | Normalises line endings to LF.                                                                                                                                                          |
+| `.gitignore`                                               | Ignore rules.                                                                                                                                                                           |
+| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                                                                            |
+| `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                                                                                     |
 
 ## `docs/`
 
@@ -54,6 +54,8 @@ every visual decision. Lower layers never import higher ones.
 | `scripts/ai-review.test.ts`              | Grades a finished game against Seriñ, move by move (`npm run review`).                                                                  |
 | `scripts/online-server.test.ts`          | Real games against a running online server, local or deployed (`npm run check:online`).                                                 |
 | `scripts/online-server-accounts.test.ts` | Accounts against a running server: sign-up, sign-in, profile, a rated game through the lobby, the leaderboard (`npm run check:online`). |
+| `scripts/render-icons.test.ts`           | Draws the favicon and app icons in `public/` from the mark in `src/themes/brand.ts` (`npm run icons`).                                  |
+| `scripts/vite-service-worker.ts`         | Vite plugin: builds `src/pwa/serviceWorker.ts` to `/sw.js` with the list of files to save on the device.                                |
 
 ## `worker/` — the online server (Cloudflare Workers)
 
@@ -69,15 +71,17 @@ every visual decision. Lower layers never import higher ones.
 
 ## `public/`
 
-| File                 | Purpose    |
-| -------------------- | ---------- |
-| `public/favicon.svg` | Site icon. |
+| File                                | Purpose                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------- |
+| `public/favicon.svg`, `favicon.ico` | Site icon (the `.ico` for browsers that still ask for one). Drawn by `npm run icons`. |
+| `public/icons/`                     | App icons: 192 and 512 px, a maskable 512 px for Android, the Apple touch icon.       |
+| `public/manifest.webmanifest`       | The installed app: name, icons, colours, standalone window, shortcuts.                |
 
 ## `src/` entry
 
 | File           | Purpose                                                                                                                            |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `src/main.tsx` | Imports fonts and global CSS, mounts `<App>` in StrictMode.                                                                        |
+| `src/main.tsx` | Imports fonts and global CSS, starts the installed-app support (`startPwa`), mounts `<App>` in StrictMode.                         |
 | `src/App.tsx`  | `AppProviders` (theme, motion, toasts), `AppRoutes` (all routes, lazy-loading the rarer pages), and `App` with the browser router. |
 
 ## `src/game/` — the rules engine (pure: no React, no DOM, no storage, no clock)
@@ -166,6 +170,7 @@ every visual decision. Lower layers never import higher ones.
 | `useNow.ts`              | A ticking "now" for clocks, only while a clock runs.                                                          |
 | `useAnalysisBoard.ts`    | The analysis board's state: edit, play both sides, undo and redo, and the move list of the line being played. |
 | `useMatchmaking.ts`      | A search for a rated game: the lobby socket, its status, and cancelling.                                      |
+| `usePwa.ts`              | The installed-app state: saved for offline, update waiting, installable, installed, online.                   |
 
 ## `src/components/`
 
@@ -181,8 +186,10 @@ every visual decision. Lower layers never import higher ones.
 | `game/ResultDialog.tsx`    | End-of-game summary.                                                                                    |
 | `game/OutcomeSplash.tsx`   | The result banner played before the summary: a different staging for a win, a loss and a draw.          |
 | `game/ClockDisplay.tsx`    | One side's remaining time.                                                                              |
-| `layout/AppShell.tsx`      | Skip link, top bar, main, footer.                                                                       |
-| `layout/Navbar.tsx`        | Top bar, logo mark, navigation drawer on small screens.                                                 |
+| `layout/AppShell.tsx`      | Skip link, top bar, app notices, main, footer.                                                          |
+| `layout/Navbar.tsx`        | Top bar, logo, navigation drawer on small screens.                                                      |
+| `layout/BrandMark.tsx`     | The logo in the current theme's piece colours (geometry from `themes/brand.ts`).                        |
+| `layout/AppNotices.tsx`    | "You are offline" under the top bar, and the "new version ready" card.                                  |
 | `layout/AccountMenu.tsx`   | Sign-in link, or the player's avatar with a menu: profile, settings, sign out.                          |
 | `account/Avatar.tsx`       | A player's initial on their chosen colour.                                                              |
 | `account/GameList.tsx`     | Finished online games as rows: result, opponent, pool, rating change, review link.                      |
@@ -226,14 +233,15 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/themes/`
 
-| File                | Purpose                                                                              |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| `types.ts`          | The theme contract: tokens, parts, motion, side names.                               |
-| `registry.ts`       | The four themes and the default.                                                     |
-| `<theme>/theme.ts`  | Tokens, motion, side names.                                                          |
-| `<theme>/parts.tsx` | Piece, square decoration, board frame, end-of-game sequence.                         |
-| `<theme>/sounds.ts` | The theme's sound for every cue, as synthesis recipes (plain data, no CSS or React). |
-| `<theme>/theme.css` | The theme's signature styles, scoped to `[data-theme='<theme>']`.                    |
+| File                | Purpose                                                                                |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `types.ts`          | The theme contract: tokens, parts, motion, side names.                                 |
+| `registry.ts`       | The four themes and the default.                                                       |
+| `<theme>/theme.ts`  | Tokens, motion, side names.                                                            |
+| `<theme>/parts.tsx` | Piece, square decoration, board frame, end-of-game sequence.                           |
+| `<theme>/sounds.ts` | The theme's sound for every cue, as synthesis recipes (plain data, no CSS or React).   |
+| `<theme>/theme.css` | The theme's signature styles, scoped to `[data-theme='<theme>']`.                      |
+| `brand.ts`          | The logo's geometry (sticks against stones, centre open) and the icons' fixed colours. |
 
 ## Elsewhere in `src/`
 
@@ -250,6 +258,9 @@ every visual decision. Lower layers never import higher ones.
 | `lib/usePageTitle.ts`             | Sets the browser tab title.                                                               |
 | `services/storage.ts`             | Safe wrapper around localStorage; key list; announces each change and where it came from. |
 | `services/preferences.ts`         | The Settings page's preferences (motion, move hints, premoves, result banner) as a store. |
+| `pwa/policy.ts`                   | What the service worker does with each request, and which built files it saves.           |
+| `pwa/serviceWorker.ts`            | The service worker: saves the app, serves it offline, waits to be told to update.         |
+| `pwa/pwa.ts`                      | Registers the worker; tracks updates, the install prompt and being online.                |
 | `styles/base.css`                 | Reset, document defaults, focus ring, utilities, reduced motion.                          |
 | `styles/app.css`                  | Structure for every component, using theme tokens only.                                   |
 | `test/setup.ts`                   | Test environment setup (jest-dom, cleanup, browser API stubs).                            |

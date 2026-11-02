@@ -22,6 +22,81 @@
   outline: none;
 }
 
+/* Offline, under the top bar on every page (AppNotices). */
+.app-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: calc(100% - var(--gutter) - var(--gutter-right));
+  max-width: var(--page-wide);
+  margin: 0 auto var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--dam-border-width) solid var(--dam-border-soft);
+  border-radius: var(--dam-radius);
+  background: var(--dam-surface-2);
+  color: var(--dam-ink-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.app-notice strong {
+  color: var(--dam-ink);
+}
+
+.app-notice svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--dam-ink);
+}
+
+/* A new version is ready: in a corner, out of the board's way, until the player chooses. */
+.update-card {
+  position: fixed;
+  z-index: 70;
+  right: var(--gutter-right);
+  left: var(--gutter);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-3);
+  align-items: start;
+  padding: var(--space-4);
+  border: var(--dam-border-width) solid var(--dam-border);
+  border-radius: var(--dam-radius);
+  background: var(--dam-surface);
+  color: var(--dam-ink);
+  box-shadow: var(--dam-shadow-lg);
+}
+
+.update-card svg {
+  margin-top: 2px;
+}
+
+.update-card__text {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--dam-ink-muted);
+}
+
+.update-card__text strong {
+  display: block;
+  color: var(--dam-ink);
+}
+
+.update-card__actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (min-width: 640px) {
+  .update-card {
+    left: auto;
+    width: 380px;
+  }
+}
+
 .app__footer {
   display: flex;
   flex-wrap: wrap;
@@ -74,24 +149,37 @@
   border-radius: var(--dam-radius-sm);
 }
 
-.brand__mark {
-  width: 26px;
-  height: 26px;
+/*
+ * The logo (BrandMark): sticks in the second side's colour, stones in the
+ * first's, on grooves in the board's line colour, so it matches every theme.
+ */
+.brand-mark {
+  display: block;
   flex: none;
 }
 
-.brand__dot {
+.brand-mark__grid {
+  fill: none;
+  stroke: var(--dam-border-soft);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.brand-mark__stone {
+  fill: var(--dam-p1);
   stroke: var(--dam-p1-edge);
   stroke-width: 1.2;
 }
 
-.brand__dot.is-p1 {
-  fill: var(--dam-p1);
-}
-
-.brand__dot.is-p2 {
+.brand-mark__stick {
   fill: var(--dam-p2);
   stroke: var(--dam-p2-edge);
+  stroke-width: 1.2;
+}
+
+.brand__mark {
+  width: 30px;
+  height: 30px;
 }
 
 .brand__name {
@@ -1069,6 +1157,24 @@
   font-size: clamp(44px, 9vw, 84px);
   line-height: 0.95;
   text-transform: var(--dam-display-transform);
+}
+
+/* The logo on a tile, as on the app icon, in the theme's own board and pieces. */
+.hero__badge {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  padding: 8px;
+  border: var(--dam-border-width) solid var(--dam-border);
+  border-radius: var(--dam-radius-lg);
+  background: var(--dam-board-bg);
+  box-shadow: var(--dam-shadow);
+}
+
+.hero__badge .brand-mark {
+  width: 100%;
+  height: 100%;
 }
 
 .hero__lede {
@@ -3018,6 +3124,29 @@
 
 .settings__facts dd {
   font-weight: 650;
+}
+
+/* Settings → App: the app's icon beside how to install it. */
+.app-install {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.app-install__icon {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+.app-install__text {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.app-install__text svg {
+  vertical-align: -2px;
 }
 
 .settings__danger {
