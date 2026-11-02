@@ -7,6 +7,7 @@ import BoardThumbnail from '../components/board/BoardThumbnail'
 import DemoBoard from '../components/board/DemoBoard'
 import AppShell from '../components/layout/AppShell'
 import BrandMark from '../components/layout/BrandMark'
+import InstallCard from '../components/layout/InstallCard'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import Panel from '../components/ui/Panel'
@@ -319,6 +320,7 @@ export default function HomePage() {
           setConfirmDiscard(false)
         }}
       />
+      <InstallCard />
     </AppShell>
   )
 }

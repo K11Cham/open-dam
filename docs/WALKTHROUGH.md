@@ -645,8 +645,16 @@ leaderboards.
   stays signed in as the account last heard from the server
   (`openDam.account`), and when the connection returns the account is asked
   again and caught up with what changed meanwhile.
-- Settings → App installs the app where the browser allows a button (Chrome,
-  Edge, Android) and explains Safari's Add to Home Screen elsewhere.
+- Installing is offered in three places: a button in the top bar, a card
+  that appears as soon as Home opens ("Not now" puts it away for three days),
+  and Settings → App. All three go through `useInstall`: Chrome, Edge and
+  Android open their own install dialog, which a browser allows only after a
+  tap, so no page can open it by itself; on an iPhone or iPad they show
+  Safari's Add to Home Screen steps (`InstallHelp`). None shows once the app
+  is installed.
+- The service worker saves the page as `/`, never `/index.html`: Cloudflare
+  answers `/index.html` with a redirect, and a browser refuses a saved
+  redirect as a page (this broke page loads on the first deploy).
 - No worker runs in development or in the static copy; check it with a
   production build (`npm run build` and `npm run server`) in a real browser.
 

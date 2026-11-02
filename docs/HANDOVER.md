@@ -11,9 +11,10 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   stones, centre open) in the top bar, the Home page and every icon; a web
   app manifest; a service worker that saves the app so everything but online
   play works offline; an update notice that never reloads a game unasked;
-  Settings → App to install. How it works: WALKTHROUGH.md Part 8, "The
-  logo" and "The installed app and offline play". **Not deployed yet**: deploy
-  only on the owner's yes. The browser pane in the Claude app cannot run a
+  Settings → App, a top bar button and a card on Home to install. How it
+  works: WALKTHROUGH.md Part 8, "The logo" and "The installed app and offline
+  play". **Live** since 2026-11-01 (version 60a12bae, with the owner's yes);
+  the install button and Home card came after and are **not deployed yet**. The browser pane in the Claude app cannot run a
   service worker from a local server; check one in real Chrome (a production
   build served locally) or on the live site.
 - **Accounts, ratings and leaderboards exist** (w47, 2026-10-31, the owner's
@@ -172,8 +173,22 @@ commits, checks run, notes for the next shift.
   worker loads; a rebuild shows the update card, and "Update now" switches
   versions and deletes the old cache. The four themes' marks checked in the
   browser pane.
-- **Not done:** the deploy (needs the owner's yes); trying an install on a
-  real phone (the owner's to do).
+- **Deployed** with the owner's yes as be278349, which broke page loads
+  once its worker took over: Cloudflare redirects `/index.html`, and the
+  worker had saved that redirect as the page. Fixed in the next commit (save
+  `/`), deployed as 60a12bae within minutes; checked in headless Chrome that
+  a browser holding the broken worker recovers on its second load, and that
+  the live site opens and works offline.
+- **Then, at the owner's request:** an install button in the top bar and an
+  install card on Home as soon as it opens (browsers only open their install
+  dialog after a tap, so the card is that tap). At 375px the top bar's
+  spacing and name tighten while the button shows, so a signed-in avatar
+  still fits in all four themes. Not deployed yet.
+- **Not done:** trying an install on a real phone (the owner's to do).
+- **Local servers:** `wrangler dev` on Windows does not pick up a rebuild's
+  new file names (it answers them with the page); restart it after each
+  build, and stop leftover `workerd` processes. The Claude app's browser pane
+  cannot run a service worker from a local server; use real Chrome.
 
 ### 2026-10-31 evening (owner's request: accounts, users, leaderboards)
 
