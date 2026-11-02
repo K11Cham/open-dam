@@ -1,4 +1,4 @@
-import { Cloud, CloudOff, Download, LogOut, Monitor, Trash2 } from 'lucide-react'
+import { Cloud, CloudOff, Download, LogOut, Monitor, RefreshCw, Share, Trash2 } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -13,6 +13,7 @@ import Segmented from '../components/ui/Segmented'
 import Switch from '../components/ui/Switch'
 import { useToast } from '../components/ui/Toasts'
 import { useAccount } from '../context/useAccount'
+import { usePwa } from '../hooks/usePwa'
 import { useSideNames, useTheme } from '../context/useTheme'
 import { relativeTime } from '../lib/describe'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -21,6 +22,7 @@ import { AVATAR_COLOURS, BIO_MAX, DISPLAY_NAME_MAX, USERNAME_MAX, checkPassword,
 import type { AvatarColour, PrivateUser, SessionInfo } from '../net/account'
 import * as api from '../net/accountApi'
 import { accountSync } from '../net/accountSync'
+import { applyUpdate, isAppleMobile, promptInstall } from '../pwa/pwa'
 import { preferences, usePreferences } from '../services/preferences'
 import type { ThemeKey } from '../themes/types'
 import { RecoveryCode } from './AuthPage'
@@ -657,6 +659,71 @@ function DataSection({ user }: { user: PrivateUser }) {
   )
 }
 
+// -- App ---------------------------------------------------------------------------------------
+
+/** Installing the app, and whether it is saved for use offline. */
+function AppSection() {
+  const { offlineReady, updateReady, canInstall, installed } = usePwa()
+  const toast = useToast()
+
+  const install = async () => {
+    if (await promptInstall()) toast.show('Open Dam is installed.', 'success')
+  }
+
+  return (
+    <Section id="app" title="App" lede="Open Dam installs like an app and works without a connection.">
+      <div className="app-install">
+        <img className="app-install__icon" src="/icons/icon-192.png" alt="" width={56} height={56} />
+        <div className="app-install__text">
+          {installed ? (
+            <p className="panel__text">Installed: this is the Open Dam app.</p>
+          ) : canInstall ? (
+            <p className="panel__text">Install it to open Open Dam from your home screen or dock, in a window of its own.</p>
+          ) : isAppleMobile() ? (
+            <p className="panel__text">
+              To install it on an iPhone or iPad, open this site in Safari, tap <Share size={14} aria-label="Share" /> Share, then{' '}
+              <strong>Add to Home Screen</strong>.
+            </p>
+          ) : (
+            <p className="panel__text">
+              To install it, use your browser's menu: look for <strong>Install Open Dam</strong> or{' '}
+              <strong>Add to Home screen</strong>.
+            </p>
+          )}
+          {canInstall && !installed && (
+            <div className="panel__actions">
+              <Button variant="primary" icon={<Download size={16} />} onClick={() => void install()}>
+                Install Open Dam
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+      <dl className="settings__facts">
+        <div>
+          <dt>Offline</dt>
+          <dd>{offlineReady ? 'Saved on this device' : 'Not saved yet'}</dd>
+        </div>
+        <div>
+          <dt>Works offline</dt>
+          <dd>The computer, a friend here, lessons, puzzles, analysis</dd>
+        </div>
+        <div>
+          <dt>Needs a connection</dt>
+          <dd>Online games, accounts, leaderboards</dd>
+        </div>
+      </dl>
+      {updateReady && (
+        <div className="panel__actions">
+          <Button icon={<RefreshCw size={16} />} onClick={applyUpdate}>
+            Update to the new version
+          </Button>
+        </div>
+      )}
+    </Section>
+  )
+}
+
 function SyncBadge() {
   const status = useSyncExternalStore(accountSync.subscribe, accountSync.getStatus, accountSync.getStatus)
   if (status.state === 'error') {
@@ -688,8 +755,12 @@ export default function SettingsPage() {
         ['security', 'Sign-in'],
         ['devices', 'Devices'],
         ['data', 'Your data'],
+        ['app', 'App'],
       ]
-    : [['preferences', 'Preferences']]
+    : [
+        ['preferences', 'Preferences'],
+        ['app', 'App'],
+      ]
 
   return (
     <AppShell>
@@ -733,6 +804,7 @@ export default function SettingsPage() {
         {user && <SecuritySection user={user} />}
         {user && <DevicesSection />}
         {user && <DataSection user={user} />}
+        <AppSection />
       </div>
     </AppShell>
   )

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import AppNotices from './AppNotices'
 import Navbar from './Navbar'
 
 interface AppShellProps {
@@ -19,6 +20,7 @@ export default function AppShell({ children, wide = false }: AppShellProps) {
         Skip to content
       </a>
       <Navbar />
+      <AppNotices />
       <main id="main" tabIndex={-1} className={`app__main ${wide ? 'is-wide' : ''}`}>
         {children}
       </main>

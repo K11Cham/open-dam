@@ -2,10 +2,11 @@
 import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
+import { serviceWorker } from './scripts/vite-service-worker.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), serviceWorker()],
   // `npm run dev` serves the app; online games go to the Worker from
   // `npm run server` on port 8787 (see docs/MULTIPLAYER.md).
   server: {

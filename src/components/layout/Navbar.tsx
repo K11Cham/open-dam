@@ -5,30 +5,10 @@ import { useAccount } from '../../context/useAccount'
 import { Dialog } from '../ui/Dialog'
 import { IconButton } from '../ui/Button'
 import AccountMenu from './AccountMenu'
+import BrandMark from './BrandMark'
 import SoundToggle from './SoundToggle'
 import ThemeMenu from './ThemeMenu'
 import { NAV_ITEMS, nextAfterSignIn } from './navItems'
-
-/** The board-mark used as the logo: a 3x3 grid with the centre left open, as at the start of a game. */
-export function BrandMark() {
-  return (
-    <svg className="brand__mark" viewBox="0 0 24 24" aria-hidden focusable="false">
-      {[0, 1, 2].flatMap((r) =>
-        [0, 1, 2].map((c) =>
-          r === 1 && c === 1 ? null : (
-            <circle
-              key={`${r}${c}`}
-              cx={4 + c * 8}
-              cy={4 + r * 8}
-              r="3.1"
-              className={r < 1 || (r === 1 && c < 1) ? 'brand__dot is-p2' : 'brand__dot is-p1'}
-            />
-          ),
-        ),
-      )}
-    </svg>
-  )
-}
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -47,7 +27,7 @@ export default function Navbar() {
           aria-haspopup="dialog"
         />
         <Link to="/" className="brand" aria-label="Open Dam, home">
-          <BrandMark />
+          <BrandMark className="brand__mark" />
           <span className="brand__name">Open Dam</span>
         </Link>
 

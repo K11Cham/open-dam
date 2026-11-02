@@ -13,6 +13,9 @@ import '@fontsource-variable/nunito'
 import './styles/base.css'
 import './styles/app.css'
 import App from './App'
+import { startPwa } from './pwa/pwa'
+
+startPwa()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -6,6 +6,7 @@ import { DIFFICULTIES, DIFFICULTY_IDS } from '../ai/difficulty'
 import BoardThumbnail from '../components/board/BoardThumbnail'
 import DemoBoard from '../components/board/DemoBoard'
 import AppShell from '../components/layout/AppShell'
+import BrandMark from '../components/layout/BrandMark'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import Panel from '../components/ui/Panel'
@@ -114,6 +115,9 @@ export default function HomePage() {
       <div className="page">
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero__copy">
+            <span className="hero__badge">
+              <BrandMark />
+            </span>
             <p className="eyebrow">A board game from The Gambia</p>
             <h1 id="hero-title" className="hero__title">
               Open Dam
