@@ -1,4 +1,5 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import { AppProviders, AppRoutes } from '../App'
@@ -95,5 +96,56 @@ describe('offline', () => {
     renderAt('/settings')
     expect(await screen.findByRole('heading', { name: 'App' })).toBeInTheDocument()
     expect(screen.getByText(/Online games, accounts, leaderboards/)).toBeInTheDocument()
+  })
+})
+
+/** What Chrome sends when it would install the app: the dialog opens only through `prompt`. */
+function offerInstall(outcome: 'accepted' | 'dismissed' = 'accepted') {
+  const prompt = vi.fn(async () => {})
+  const event = Object.assign(new Event('beforeinstallprompt'), { prompt, userChoice: Promise.resolve({ outcome }) })
+  act(() => {
+    window.dispatchEvent(event)
+  })
+  return prompt
+}
+
+describe('installing', () => {
+  const signedOut = () =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ user: null }))),
+    )
+
+  test('Home offers to install as soon as the browser allows it, and Install opens the browser’s dialog', async () => {
+    signedOut()
+    const user = userEvent.setup()
+    renderAt('/')
+    await screen.findByRole('heading', { name: 'Open Dam' })
+    expect(screen.queryByRole('region', { name: 'Install the app' })).not.toBeInTheDocument()
+    const prompt = offerInstall()
+    const card = screen.getByRole('region', { name: 'Install the app' })
+    expect(screen.getByRole('button', { name: 'Install the app' })).toBeInTheDocument()
+    await user.click(within(card).getByRole('button', { name: 'Install' }))
+    expect(prompt).toHaveBeenCalledOnce()
+    // The browser's offer is used up: neither the card nor the button stays.
+    expect(screen.queryByRole('region', { name: 'Install the app' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Install the app' })).not.toBeInTheDocument()
+  })
+
+  test('“Not now” puts the card away for days; the top bar’s button stays', async () => {
+    signedOut()
+    const user = userEvent.setup()
+    const first = renderAt('/')
+    await screen.findByRole('heading', { name: 'Open Dam' })
+    const prompt = offerInstall()
+    await user.click(screen.getByRole('button', { name: 'Not now' }))
+    expect(screen.queryByRole('region', { name: 'Install the app' })).not.toBeInTheDocument()
+    first.unmount()
+
+    renderAt('/')
+    await screen.findByRole('heading', { name: 'Open Dam' })
+    expect(screen.queryByRole('region', { name: 'Install the app' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Install the app' }))
+    expect(prompt).toHaveBeenCalledOnce()
   })
 })

@@ -6,6 +6,7 @@ import { Dialog } from '../ui/Dialog'
 import { IconButton } from '../ui/Button'
 import AccountMenu from './AccountMenu'
 import BrandMark from './BrandMark'
+import InstallButton from './InstallButton'
 import SoundToggle from './SoundToggle'
 import ThemeMenu from './ThemeMenu'
 import { NAV_ITEMS, nextAfterSignIn } from './navItems'
@@ -41,6 +42,7 @@ export default function Navbar() {
         </nav>
 
         <div className="topbar__end">
+          <InstallButton />
           <SoundToggle />
           <ThemeMenu />
           <AccountMenu />

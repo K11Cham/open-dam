@@ -171,6 +171,7 @@ every visual decision. Lower layers never import higher ones.
 | `useAnalysisBoard.ts`    | The analysis board's state: edit, play both sides, undo and redo, and the move list of the line being played. |
 | `useMatchmaking.ts`      | A search for a rated game: the lobby socket, its status, and cancelling.                                      |
 | `usePwa.ts`              | The installed-app state: saved for offline, update waiting, installable, installed, online.                   |
+| `useInstall.ts`          | Installing, wherever it is offered: the browser's dialog, or Safari's steps.                                  |
 
 ## `src/components/`
 
@@ -190,6 +191,9 @@ every visual decision. Lower layers never import higher ones.
 | `layout/Navbar.tsx`        | Top bar, logo, navigation drawer on small screens.                                                      |
 | `layout/BrandMark.tsx`     | The logo in the current theme's piece colours (geometry from `themes/brand.ts`).                        |
 | `layout/AppNotices.tsx`    | "You are offline" under the top bar, and the "new version ready" card.                                  |
+| `layout/InstallButton.tsx` | "Install the app" in the top bar, where installing is possible and not done yet.                        |
+| `layout/InstallCard.tsx`   | Home's offer to install, shown as soon as the page opens; "Not now" snoozes it for three days.          |
+| `layout/InstallHelp.tsx`   | Safari's Add to Home Screen steps, for iPhones and iPads.                                               |
 | `layout/AccountMenu.tsx`   | Sign-in link, or the player's avatar with a menu: profile, settings, sign out.                          |
 | `account/Avatar.tsx`       | A player's initial on their chosen colour.                                                              |
 | `account/GameList.tsx`     | Finished online games as rows: result, opponent, pool, rating change, review link.                      |

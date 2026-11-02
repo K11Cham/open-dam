@@ -49,8 +49,11 @@
   color: var(--dam-ink);
 }
 
-/* A new version is ready: in a corner, out of the board's way, until the player chooses. */
-.update-card {
+/*
+ * Cards in a corner, out of the board's way, until the player chooses: a new
+ * version is ready (AppNotices), or Home's offer to install (InstallCard).
+ */
+.corner-card {
   position: fixed;
   z-index: 70;
   right: var(--gutter-right);
@@ -68,22 +71,22 @@
   box-shadow: var(--dam-shadow-lg);
 }
 
-.update-card svg {
+.corner-card > svg {
   margin-top: 2px;
 }
 
-.update-card__text {
+.corner-card__text {
   font-size: 14px;
   line-height: 1.45;
   color: var(--dam-ink-muted);
 }
 
-.update-card__text strong {
+.corner-card__text strong {
   display: block;
   color: var(--dam-ink);
 }
 
-.update-card__actions {
+.corner-card__actions {
   grid-column: 2;
   display: flex;
   flex-wrap: wrap;
@@ -91,7 +94,7 @@
 }
 
 @media (min-width: 640px) {
-  .update-card {
+  .corner-card {
     left: auto;
     width: 380px;
   }
@@ -2988,6 +2991,28 @@
     display: none;
   }
 
+  /* With the install button too, the bar's spacing tightens so every control still fits. */
+  .topbar__inner:has(.install-button) {
+    gap: var(--space-1);
+  }
+
+  .topbar__inner:has(.install-button) .topbar__end {
+    gap: var(--space-1);
+  }
+
+  .topbar__inner:has(.install-button) .brand {
+    padding-inline: var(--space-1);
+  }
+
+  .topbar__inner:has(.install-button) .brand__name {
+    font-size: 15px;
+  }
+
+  .topbar__inner:has(.install-button) .brand__mark {
+    width: 26px;
+    height: 26px;
+  }
+
   .account-signin .btn__label {
     position: absolute;
     width: 1px;
@@ -3127,6 +3152,24 @@
 }
 
 /* Settings → App: the app's icon beside how to install it. */
+.install-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+}
+
+/* Safari's Add to Home Screen steps (InstallHelp). */
+.install-steps {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.install-steps svg {
+  vertical-align: -3px;
+  margin-right: var(--space-1);
+}
+
 .app-install {
   display: flex;
   gap: var(--space-4);

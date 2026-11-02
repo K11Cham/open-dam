@@ -22,12 +22,12 @@ export default function AppNotices() {
         </p>
       )}
       {updateReady && (
-        <div className="update-card" role="status">
+        <div className="corner-card" role="status">
           <RefreshCw size={18} aria-hidden />
-          <p className="update-card__text">
+          <p className="corner-card__text">
             <strong>A new version of Open Dam is ready.</strong> Reloading takes a second; a game in progress is kept.
           </p>
-          <div className="update-card__actions">
+          <div className="corner-card__actions">
             <Button size="sm" variant="primary" onClick={applyUpdate}>
               Update now
             </Button>

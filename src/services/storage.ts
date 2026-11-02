@@ -31,6 +31,8 @@ export const STORAGE_KEYS = {
   syncMeta: 'openDam.syncMeta',
   /** The signed-in account as last heard from the server, so the app opens signed in without a network. */
   account: 'openDam.account',
+  /** When the player last said "Not now" to installing the app (Home's install card). */
+  installSnoozed: 'openDam.installSnoozed',
 } as const
 
 export type ChangeOrigin = 'local' | 'remote'
