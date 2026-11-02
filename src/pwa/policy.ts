@@ -13,8 +13,13 @@
 /** Every cache this app makes starts with this, so a new version can clear the old ones and no one else's. */
 export const CACHE_PREFIX = 'open-dam-'
 
-/** Where the built app's page is kept, served for every page of the app (React Router draws the rest). */
-export const SHELL_URL = '/index.html'
+/**
+ * The built app's page, served for every page of the app (React Router draws
+ * the rest). Saved as `/`, not `/index.html`: Cloudflare answers
+ * `/index.html` with a redirect to `/`, and a browser refuses a saved
+ * redirect as a page.
+ */
+export const SHELL_URL = '/'
 
 export type Strategy =
   /** Not the service worker's business: the browser goes to the network as if there were no worker. */

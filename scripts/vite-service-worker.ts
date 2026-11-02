@@ -42,6 +42,7 @@ export function serviceWorker(): Plugin {
         ...Object.values(bundle).map((file) => file.fileName),
         ...publicFiles.map((file) => relative(publicDir, file).split(sep).join('/')),
       ])
+      // The page is saved under SHELL_URL instead.
       names.delete('index.html')
       const precache = [SHELL_URL, ...[...names].filter(shouldPrecache).map((name) => `/${name}`)].sort()
 

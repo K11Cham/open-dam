@@ -42,7 +42,9 @@ self.addEventListener('message', (event) => {
 
 async function shell(request: Request): Promise<Response> {
   const saved = await caches.match(SHELL_URL, { cacheName: CACHE })
-  return saved ?? fetch(request)
+  if (!saved) return fetch(request)
+  // A copy saved after a redirect cannot answer a page load as it is; the same page in a fresh response can.
+  return saved.redirected ? new Response(saved.body, { status: saved.status, headers: saved.headers }) : saved
 }
 
 async function cacheFirst(request: Request): Promise<Response> {
