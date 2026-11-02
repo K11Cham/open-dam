@@ -13,8 +13,7 @@ How to pick up work on Open Dam, whether you are a person or an agent.
   play works offline; an update notice that never reloads a game unasked;
   Settings → App, a top bar button and a card on Home to install. How it
   works: WALKTHROUGH.md Part 8, "The logo" and "The installed app and offline
-  play". **Live** since 2026-11-01 (version 60a12bae, with the owner's yes);
-  the install button and Home card came after and are **not deployed yet**. The browser pane in the Claude app cannot run a
+  play". **Live** since 2026-11-01 (version 080db774, with the owner's yes), install button and Home card included. The browser pane in the Claude app cannot run a
   service worker from a local server; check one in real Chrome (a production
   build served locally) or on the live site.
 - **Accounts, ratings and leaderboards exist** (w47, 2026-10-31, the owner's
@@ -183,7 +182,9 @@ commits, checks run, notes for the next shift.
   install card on Home as soon as it opens (browsers only open their install
   dialog after a tap, so the card is that tap). At 375px the top bar's
   spacing and name tighten while the button shows, so a signed-in avatar
-  still fits in all four themes. Not deployed yet.
+  still fits in all four themes. Deployed with the owner's yes as
+  080db774; checked live: works offline, the card and button appear when
+  the browser offers installing, Install opens its dialog, the top bar fits.
 - **Not done:** trying an install on a real phone (the owner's to do).
 - **Local servers:** `wrangler dev` on Windows does not pick up a rebuild's
   new file names (it answers them with the page); restart it after each
