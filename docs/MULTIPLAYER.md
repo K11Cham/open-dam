@@ -285,6 +285,19 @@ A rated game in which one side never moved has no running clock (the clock
 starts after both first moves). It is cleaned up after 30 days without being
 stored; it would not have been rated anyway (`ratedScore`).
 
+### Security headers
+
+Every response carries a Content Security Policy (scripts, workers, fonts and
+images only from this site; inline styles allowed for framer-motion; no
+framing; no plugins), `X-Content-Type-Options: nosniff`, `X-Frame-Options:
+DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and a
+`Permissions-Policy` that turns off camera, microphone and location. Static
+files get them from `public/_headers`; the Worker's own `/api` answers get the
+same ones from `worker/securityHeaders.ts`, because Cloudflare does not apply
+`_headers` to responses a Worker makes. `/sw.js` is `no-cache`. HSTS is not
+sent: that is the owner's decision. `npm run check:browser` loads every page
+in real Chrome and fails on any policy violation.
+
 Why this host: a Durable Object is "one small server per game", which is
 exactly the shape `MatchServer` already had. It does not sleep the way free
 Node hosts do, and the free plan's limits (requests, duration, storage) are far

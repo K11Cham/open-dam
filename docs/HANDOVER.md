@@ -129,18 +129,19 @@ change a row's status and notes directly on the page.
 
 ## Commands
 
-| Command                | What it does                                    |
-| ---------------------- | ----------------------------------------------- |
-| `npm run dev`          | Dev server at http://localhost:5173             |
-| `npm run verify`       | Typecheck, lint, format check, tests, build     |
-| `npm test`             | Unit and UI tests (about 240, a few seconds)    |
-| `npm run check:ai`     | AI strength match between tiers (slow)          |
-| `npm run format`       | Apply Prettier formatting                       |
-| `npm run build`        | Production build into `dist/`                   |
-| `npm run build:static` | A copy for any static host, into `dist-static/` |
-| `npm run server`       | The online server locally (port 8787)           |
-| `npm run check:online` | Real games against a running server             |
-| `npm run deploy`       | `verify`, then publish to Cloudflare            |
+| Command                 | What it does                                                |
+| ----------------------- | ----------------------------------------------------------- |
+| `npm run dev`           | Dev server at http://localhost:5173                         |
+| `npm run verify`        | Typecheck, lint, format check, tests, build                 |
+| `npm test`              | Unit and UI tests (about 240, a few seconds)                |
+| `npm run check:ai`      | AI strength match between tiers (slow)                      |
+| `npm run format`        | Apply Prettier formatting                                   |
+| `npm run build`         | Production build into `dist/`                               |
+| `npm run build:static`  | A copy for any static host, into `dist-static/`             |
+| `npm run server`        | The online server locally (port 8787)                       |
+| `npm run check:online`  | Real games against a running server                         |
+| `npm run check:browser` | Real Chrome against a running server: CSP, offline, updates |
+| `npm run deploy`        | `verify`, then publish to Cloudflare                        |
 
 ## Scheduled shifts
 

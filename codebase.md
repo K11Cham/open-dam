@@ -44,43 +44,47 @@ every visual decision. Lower layers never import higher ones.
 
 ## `scripts/`
 
-| File                                     | Purpose                                                                                                                                 |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/ai-strength.test.ts`            | Tier-vs-tier matches; asserts stronger tiers outscore weaker ones. Slow; run with `npm run check:ai`.                                   |
-| `scripts/ai-endgames.test.ts`            | Endgame conversion from random starts (`npm run check:endgames`).                                                                       |
-| `scripts/ai-replay.test.ts`              | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.                                              |
-| `scripts/ai-openings.test.ts`            | Seriñ plays itself from every first move; the source of the opening book (`npm run openings`).                                          |
-| `scripts/render-sounds.test.ts`          | Renders every theme's sounds to `sound-preview/` as WAV files with a listening page (`npm run sounds`).                                 |
-| `scripts/ai-review.test.ts`              | Grades a finished game against Seriñ, move by move (`npm run review`).                                                                  |
-| `scripts/online-server.test.ts`          | Real games against a running online server, local or deployed (`npm run check:online`).                                                 |
-| `scripts/online-server-accounts.test.ts` | Accounts against a running server: sign-up, sign-in, profile, a rated game through the lobby, the leaderboard (`npm run check:online`). |
-| `scripts/online-server-clock.test.ts`    | With `ONLINE_SLOW=1`: a timed game both players leave is flagged by the room's alarm a minute later (`npm run check:online`).           |
-| `scripts/render-icons.test.ts`           | Draws the favicon and app icons in `public/` from the mark in `src/themes/brand.ts` (`npm run icons`).                                  |
-| `scripts/vite-service-worker.ts`         | Vite plugin: builds `src/pwa/serviceWorker.ts` to `/sw.js` with the list of files to save on the device.                                |
+| File                                     | Purpose                                                                                                                                                  |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/ai-strength.test.ts`            | Tier-vs-tier matches; asserts stronger tiers outscore weaker ones. Slow; run with `npm run check:ai`.                                                    |
+| `scripts/ai-endgames.test.ts`            | Endgame conversion from random starts (`npm run check:endgames`).                                                                                        |
+| `scripts/ai-replay.test.ts`              | Prints one computer game ply by ply with scores (`npm run replay`), for studying its play.                                                               |
+| `scripts/ai-openings.test.ts`            | Seriñ plays itself from every first move; the source of the opening book (`npm run openings`).                                                           |
+| `scripts/render-sounds.test.ts`          | Renders every theme's sounds to `sound-preview/` as WAV files with a listening page (`npm run sounds`).                                                  |
+| `scripts/ai-review.test.ts`              | Grades a finished game against Seriñ, move by move (`npm run review`).                                                                                   |
+| `scripts/online-server.test.ts`          | Real games against a running online server, local or deployed (`npm run check:online`).                                                                  |
+| `scripts/online-server-accounts.test.ts` | Accounts against a running server: sign-up, sign-in, profile, a rated game through the lobby, the leaderboard (`npm run check:online`).                  |
+| `scripts/online-server-clock.test.ts`    | With `ONLINE_SLOW=1`: a timed game both players leave is flagged by the room's alarm a minute later (`npm run check:online`).                            |
+| `scripts/render-icons.test.ts`           | Draws the favicon and app icons in `public/` from the mark in `src/themes/brand.ts` (`npm run icons`).                                                   |
+| `scripts/browser-check.test.ts`          | In real Chrome (playwright-core) against a running server: no CSP violations on any page, every page offline, the update flow (`npm run check:browser`). |
+| `scripts/vite-service-worker.ts`         | Vite plugin: builds `src/pwa/serviceWorker.ts` to `/sw.js` with the list of files to save on the device.                                                 |
 
 ## `worker/` — the online server (Cloudflare Workers)
 
-| File                   | Purpose                                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`             | The Worker: every `/api` route (games, accounts, profiles, leaderboards), sockets to rooms and the lobby, the app for other paths.                                  |
-| `rateLimit.ts`         | Per-network limits on match creation, sign-in and recovery, username checks: the binding as a flood filter, exact counts in the store.                              |
-| `rateLimit.test.ts`    | Limiter tests: allowed, refused with 429 and Retry-After, the window resetting, the store used when the binding is missing or failing.                              |
-| `room.ts`              | `MatchRoom`, one Durable Object per match: connects `RoomCore` to Cloudflare (hibernatable sockets, keepalive auto-response, the alarm).                            |
-| `roomCore.ts`          | The match room's logic: `MatchServer` over the object's storage, resuming sockets after hibernation, one alarm for flag / report retry / clean-up, pending reports. |
-| `roomCore.test.ts`     | Room tests on fake storage and sockets: an abandoned rated game flagged by alarm, a failed report retried once, waking from hibernation.                            |
-| `accounts.ts`          | `Accounts`, the one Durable Object holding every account; forwards each call to `AccountStore`.                                                                     |
-| `accountStore.ts`      | Accounts over SQL: sign-up and sign-in, sessions, lockouts, recovery, profiles, synced settings and games, ratings, leaderboards.                                   |
-| `accountStore.test.ts` | `AccountStore` on Node's SQLite.                                                                                                                                    |
-| `lobbyRoom.ts`         | `LobbyRoom`, the matchmaking Durable Object: runs `Lobby` for signed-in players, timed games only, with hibernatable sockets; starts rated games.                   |
-| `tsconfig.json`        | Type checking with the Workers runtime's types instead of the DOM's (tests are checked by `tsconfig.node.json`).                                                    |
+| File                      | Purpose                                                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`                | The Worker: every `/api` route (games, accounts, profiles, leaderboards), sockets to rooms and the lobby, the app for other paths.                                  |
+| `securityHeaders.ts`      | The security headers, and `secured`, which adds them to the Worker's own `/api` responses.                                                                          |
+| `securityHeaders.test.ts` | Checks `public/_headers` forbids framing, matches the Worker's headers, and keeps `/sw.js` uncached.                                                                |
+| `rateLimit.ts`            | Per-network limits on match creation, sign-in and recovery, username checks: the binding as a flood filter, exact counts in the store.                              |
+| `rateLimit.test.ts`       | Limiter tests: allowed, refused with 429 and Retry-After, the window resetting, the store used when the binding is missing or failing.                              |
+| `room.ts`                 | `MatchRoom`, one Durable Object per match: connects `RoomCore` to Cloudflare (hibernatable sockets, keepalive auto-response, the alarm).                            |
+| `roomCore.ts`             | The match room's logic: `MatchServer` over the object's storage, resuming sockets after hibernation, one alarm for flag / report retry / clean-up, pending reports. |
+| `roomCore.test.ts`        | Room tests on fake storage and sockets: an abandoned rated game flagged by alarm, a failed report retried once, waking from hibernation.                            |
+| `accounts.ts`             | `Accounts`, the one Durable Object holding every account; forwards each call to `AccountStore`.                                                                     |
+| `accountStore.ts`         | Accounts over SQL: sign-up and sign-in, sessions, lockouts, recovery, profiles, synced settings and games, ratings, leaderboards.                                   |
+| `accountStore.test.ts`    | `AccountStore` on Node's SQLite.                                                                                                                                    |
+| `lobbyRoom.ts`            | `LobbyRoom`, the matchmaking Durable Object: runs `Lobby` for signed-in players, timed games only, with hibernatable sockets; starts rated games.                   |
+| `tsconfig.json`           | Type checking with the Workers runtime's types instead of the DOM's (tests are checked by `tsconfig.node.json`).                                                    |
 
 ## `public/`
 
-| File                                | Purpose                                                                               |
-| ----------------------------------- | ------------------------------------------------------------------------------------- |
-| `public/favicon.svg`, `favicon.ico` | Site icon (the `.ico` for browsers that still ask for one). Drawn by `npm run icons`. |
-| `public/icons/`                     | App icons: 192 and 512 px, a maskable 512 px for Android, the Apple touch icon.       |
-| `public/manifest.webmanifest`       | The installed app: name, icons, colours, standalone window, shortcuts.                |
+| File                                | Purpose                                                                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `public/favicon.svg`, `favicon.ico` | Site icon (the `.ico` for browsers that still ask for one). Drawn by `npm run icons`.                                        |
+| `public/icons/`                     | App icons: 192 and 512 px, a maskable 512 px for Android, the Apple touch icon.                                              |
+| `public/manifest.webmanifest`       | The installed app: name, icons, colours, standalone window, shortcuts.                                                       |
+| `public/_headers`                   | Security headers (CSP, nosniff, no framing, referrer, permissions) Cloudflare adds to static files; `no-cache` for `/sw.js`. |
 
 ## `src/` entry
 

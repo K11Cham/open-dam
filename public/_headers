@@ -1,0 +1,13 @@
+# Headers Cloudflare adds to the app's static files. The Worker adds the same
+# ones to /api responses (worker/securityHeaders.ts, which explains each one);
+# worker/securityHeaders.test.ts checks the two agree.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# The browser checks for a new service worker itself; it must always ask.
+/sw.js
+  Cache-Control: no-cache

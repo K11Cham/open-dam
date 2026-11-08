@@ -9,6 +9,7 @@ import { LobbyRoom } from './lobbyRoom'
 import { checkLimit } from './rateLimit'
 import type { BurstLimiter, LimitGroup } from './rateLimit'
 import { MatchRoom } from './room'
+import { secured } from './securityHeaders'
 
 export { Accounts, LobbyRoom, MatchRoom }
 
@@ -474,12 +475,13 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
     const path = url.pathname
+    // Static files get their headers from public/_headers; the Worker's own answers get the same ones here.
     if (!path.startsWith('/api/')) return env.ASSETS.fetch(request)
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
+    if (request.method === 'OPTIONS') return secured(new Response(null, { status: 204, headers: CORS }))
     try {
-      return await handleApi(request, env, path)
+      return secured(await handleApi(request, env, path))
     } catch (error) {
-      if (error instanceof BadRequest) return publicJson({ error: error.message }, error.status)
+      if (error instanceof BadRequest) return secured(publicJson({ error: error.message }, error.status))
       throw error
     }
   },
