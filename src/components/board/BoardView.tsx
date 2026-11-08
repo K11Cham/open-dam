@@ -5,6 +5,9 @@ import { useTheme, useThemeParts } from '../../context/useTheme'
 import type { Destinations } from '../../game/engine'
 import { coordToNotation } from '../../game/notation'
 import type { Coord, EngineState, PieceData, PlayerId } from '../../game/types'
+import { CALL_MIN_MS } from '../../hooks/useBoardAnimations'
+import { boardDebugEnabled } from '../../lib/boardDebug'
+import BoardDebug from './BoardDebug'
 import type { BoardAnimation } from '../../hooks/useBoardAnimations'
 import { usePointerDrag } from '../../hooks/usePointerDrag'
 
@@ -88,6 +91,8 @@ export default function BoardView({
   const cellRefs = useRef(new Map<string, HTMLDivElement>())
   const [metrics, setMetrics] = useState<Metrics>({ cell: 0, gap: 0 })
   const [focusDisplay, setFocusDisplay] = useState({ row: Math.floor(size / 2), col: Math.floor(size / 2) })
+  // `?debug=board` checks every frame that each piece in the engine is drawn (BoardDebug.tsx).
+  const [debugBoard] = useState(boardDebugEnabled)
 
   useEffect(() => {
     const element = boardRef.current
@@ -294,23 +299,36 @@ export default function BoardView({
               {metrics.cell > 0 &&
                 animations.map((animation) => {
                   const isTravel = animation.kind === 'travel'
+                  const isCall = animation.kind === 'call'
                   const origin = isTravel ? animation.from : animation.at
                   const target = isTravel ? animation.to : animation.at
+                  const fade = theme.motion.fadeRemovals !== false
                   const startPx = pixelOf(origin)
                   const endPx = pixelOf(target)
                   return (
                     <motion.div
                       key={animation.id}
-                      className="board__anim-piece"
+                      className={isCall ? 'board__anim-piece is-called' : 'board__anim-piece'}
+                      data-to={isTravel ? coordToNotation(target.row, target.col, size) : undefined}
+                      data-at={isTravel ? undefined : coordToNotation(target.row, target.col, size)}
                       style={{ left: startPx.left, top: startPx.top, width: metrics.cell, height: metrics.cell }}
-                      initial={isTravel ? { x: 0, y: 0 } : { scale: 1, opacity: 1 }}
+                      initial={isTravel ? { x: 0, y: 0 } : fade ? { scale: 1, opacity: 1 } : { scale: 1 }}
                       animate={
                         isTravel
                           ? { x: endPx.left - startPx.left, y: endPx.top - startPx.top }
-                          : { scale: 0.2, opacity: 0, rotate: animation.kind === 'call' ? 180 : 0 }
+                          : fade
+                            ? { scale: 0.2, opacity: 0, rotate: isCall ? 180 : 0 }
+                            : { scale: 0, rotate: isCall ? 180 : 0 }
                       }
-                      exit={{ opacity: 0 }}
-                      transition={isTravel ? theme.motion.moveTransition : { duration: theme.motion.captureDurationMs / 1000 }}
+                      exit={fade ? { opacity: 0 } : undefined}
+                      transition={
+                        isTravel
+                          ? theme.motion.moveTransition
+                          : isCall
+                            ? // Held, highlighted, for the first part; then taken away. With reduced motion only the fade remains.
+                              { duration: (CALL_MIN_MS * 0.55) / 1000, delay: (CALL_MIN_MS * 0.4) / 1000 }
+                            : { duration: theme.motion.captureDurationMs / 1000 }
+                      }
                       onAnimationComplete={isTravel ? () => onAnimationComplete?.(animation.id) : undefined}
                     >
                       <Piece piece={animation.piece} />
@@ -323,6 +341,8 @@ export default function BoardView({
           {!hideEndSequence && <EndSequence status={position.status} gridSize={size} perspective={perspective} />}
         </div>
       </BoardFrame>
+
+      {debugBoard && !hideEndSequence && <BoardDebug position={position} boardRef={boardRef} />}
 
       {drag && metrics.cell > 0 && (
         <div

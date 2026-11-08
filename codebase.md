@@ -184,40 +184,41 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/components/`
 
-| File                       | Purpose                                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `board/BoardView.tsx`      | The board: geometry, keyboard and pointer input, spoken labels, travelling pieces, the theme's parts.   |
-| `board/BoardThumbnail.tsx` | A small static picture of a position (one SVG from theme tokens) for cards and lists.                   |
-| `board/DemoBoard.tsx`      | Home's live demo game; runs only while visible and not under reduced motion.                            |
-| `game/MatchScreen.tsx`     | Match layout: player cards, board, review bar, status, moves, info, resign confirmation, result dialog. |
-| `game/PlayerCard.tsx`      | One side: name, pieces, turn state, clock, Undo/Draw/Resign.                                            |
-| `game/StatusPanel.tsx`     | Whose turn, call and chain decisions, pending offers, the result.                                       |
-| `game/MoveList.tsx`        | Notation list with review controls; takes a small `MoveListSource` (match or analysis line).            |
-| `game/ResultDialog.tsx`    | End-of-game summary.                                                                                    |
-| `game/OutcomeSplash.tsx`   | The result banner played before the summary: a different staging for a win, a loss and a draw.          |
-| `game/ClockDisplay.tsx`    | One side's remaining time.                                                                              |
-| `layout/AppShell.tsx`      | Skip link, top bar, app notices, main, footer.                                                          |
-| `layout/Navbar.tsx`        | Top bar, logo, navigation drawer on small screens.                                                      |
-| `layout/BrandMark.tsx`     | The logo in the current theme's piece colours (geometry from `themes/brand.ts`).                        |
-| `layout/AppNotices.tsx`    | "You are offline" under the top bar, and the "new version ready" card.                                  |
-| `layout/InstallButton.tsx` | "Install the app" in the top bar, where installing is possible and not done yet.                        |
-| `layout/InstallCard.tsx`   | Home's offer to install, shown as soon as the page opens; "Not now" snoozes it for three days.          |
-| `layout/InstallHelp.tsx`   | Safari's Add to Home Screen steps, for iPhones and iPads.                                               |
-| `layout/AccountMenu.tsx`   | Sign-in link, or the player's avatar with a menu: profile, settings, sign out.                          |
-| `account/Avatar.tsx`       | A player's initial on their chosen colour.                                                              |
-| `account/GameList.tsx`     | Finished online games as rows: result, opponent, pool, rating change, review link.                      |
-| `layout/ThemeMenu.tsx`     | Theme picker menu with swatches.                                                                        |
-| `layout/SoundToggle.tsx`   | Sound effects on/off button in the top bar.                                                             |
-| `layout/navItems.ts`       | Navigation destinations.                                                                                |
-| `settings/RulesForm.tsx`   | Board and clock settings, and the house rules as a summary with an edit dialog.                         |
-| `ui/Button.tsx`            | `Button`, `ButtonLink`, `IconButton`.                                                                   |
-| `ui/Dialog.tsx`            | Accessible modal and drawer; `ConfirmDialog`.                                                           |
-| `ui/Toasts.tsx`            | Toast provider and `useToast`.                                                                          |
-| `ui/Segmented.tsx`         | Radio group drawn as segments.                                                                          |
-| `ui/ChoiceCards.tsx`       | Radio group drawn as cards.                                                                             |
-| `ui/Switch.tsx`            | On/off switch.                                                                                          |
-| `ui/Panel.tsx`             | Themed surface.                                                                                         |
-| `ui/Field.tsx`             | A labelled form field with its help text and error.                                                     |
+| File                       | Purpose                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `board/BoardDebug.tsx`     | The `?debug=board` check under the board: reports any engine piece that is not drawn, with the moves, and copies a report. |
+| `board/BoardView.tsx`      | The board: geometry, keyboard and pointer input, spoken labels, travelling pieces, the theme's parts.                      |
+| `board/BoardThumbnail.tsx` | A small static picture of a position (one SVG from theme tokens) for cards and lists.                                      |
+| `board/DemoBoard.tsx`      | Home's live demo game; runs only while visible and not under reduced motion.                                               |
+| `game/MatchScreen.tsx`     | Match layout: player cards, board, review bar, status, moves, info, resign confirmation, result dialog.                    |
+| `game/PlayerCard.tsx`      | One side: name, pieces, turn state, clock, Undo/Draw/Resign.                                                               |
+| `game/StatusPanel.tsx`     | Whose turn, call and chain decisions, pending offers, the result.                                                          |
+| `game/MoveList.tsx`        | Notation list with review controls; takes a small `MoveListSource` (match or analysis line).                               |
+| `game/ResultDialog.tsx`    | End-of-game summary.                                                                                                       |
+| `game/OutcomeSplash.tsx`   | The result banner played before the summary: a different staging for a win, a loss and a draw.                             |
+| `game/ClockDisplay.tsx`    | One side's remaining time.                                                                                                 |
+| `layout/AppShell.tsx`      | Skip link, top bar, app notices, main, footer.                                                                             |
+| `layout/Navbar.tsx`        | Top bar, logo, navigation drawer on small screens.                                                                         |
+| `layout/BrandMark.tsx`     | The logo in the current theme's piece colours (geometry from `themes/brand.ts`).                                           |
+| `layout/AppNotices.tsx`    | "You are offline" under the top bar, and the "new version ready" card.                                                     |
+| `layout/InstallButton.tsx` | "Install the app" in the top bar, where installing is possible and not done yet.                                           |
+| `layout/InstallCard.tsx`   | Home's offer to install, shown as soon as the page opens; "Not now" snoozes it for three days.                             |
+| `layout/InstallHelp.tsx`   | Safari's Add to Home Screen steps, for iPhones and iPads.                                                                  |
+| `layout/AccountMenu.tsx`   | Sign-in link, or the player's avatar with a menu: profile, settings, sign out.                                             |
+| `account/Avatar.tsx`       | A player's initial on their chosen colour.                                                                                 |
+| `account/GameList.tsx`     | Finished online games as rows: result, opponent, pool, rating change, review link.                                         |
+| `layout/ThemeMenu.tsx`     | Theme picker menu with swatches.                                                                                           |
+| `layout/SoundToggle.tsx`   | Sound effects on/off button in the top bar.                                                                                |
+| `layout/navItems.ts`       | Navigation destinations.                                                                                                   |
+| `settings/RulesForm.tsx`   | Board and clock settings, and the house rules as a summary with an edit dialog.                                            |
+| `ui/Button.tsx`            | `Button`, `ButtonLink`, `IconButton`.                                                                                      |
+| `ui/Dialog.tsx`            | Accessible modal and drawer; `ConfirmDialog`.                                                                              |
+| `ui/Toasts.tsx`            | Toast provider and `useToast`.                                                                                             |
+| `ui/Segmented.tsx`         | Radio group drawn as segments.                                                                                             |
+| `ui/ChoiceCards.tsx`       | Radio group drawn as cards.                                                                                                |
+| `ui/Switch.tsx`            | On/off switch.                                                                                                             |
+| `ui/Panel.tsx`             | Themed surface.                                                                                                            |
+| `ui/Field.tsx`             | A labelled form field with its help text and error.                                                                        |
 
 ## `src/pages/`
 
@@ -258,24 +259,26 @@ every visual decision. Lower layers never import higher ones.
 
 ## Elsewhere in `src/`
 
-| File                              | Purpose                                                                                   |
-| --------------------------------- | ----------------------------------------------------------------------------------------- |
-| `context/ThemeContext.tsx`        | Applies the theme's tokens to `<html>` and provides it.                                   |
-| `context/themeContextObject.ts`   | The context object and its type.                                                          |
-| `context/useTheme.ts`             | `useTheme`, `useThemeParts`, `useSideNames`.                                              |
-| `context/useSound.ts`             | `useSound`: play a cue in the current theme's voice, and the on/off setting.              |
-| `context/AccountContext.tsx`      | `AccountProvider`: who is signed in; signs in, up and out; starts the sync.               |
-| `context/accountContextObject.ts` | The account context object and its type.                                                  |
-| `context/useAccount.ts`           | `useAccount`.                                                                             |
-| `lib/describe.ts`                 | Every sentence the game says about itself: outcomes, notices, spoken moves.               |
-| `lib/usePageTitle.ts`             | Sets the browser tab title.                                                               |
-| `services/storage.ts`             | Safe wrapper around localStorage; key list; announces each change and where it came from. |
-| `services/preferences.ts`         | The Settings page's preferences (motion, move hints, premoves, result banner) as a store. |
-| `pwa/policy.ts`                   | What the service worker does with each request, and which built files it saves.           |
-| `pwa/serviceWorker.ts`            | The service worker: saves the app, serves it offline, waits to be told to update.         |
-| `pwa/pwa.ts`                      | Registers the worker; tracks updates, the install prompt and being online.                |
-| `styles/base.css`                 | Reset, document defaults, focus ring, utilities, reduced motion.                          |
-| `styles/app.css`                  | Structure for every component, using theme tokens only.                                   |
-| `test/setup.ts`                   | Test environment setup (jest-dom, cleanup, browser API stubs).                            |
-| `test/ui.test.tsx`                | UI tests through the real routes.                                                         |
-| `test/accounts.test.tsx`          | The account pages through the real routes, against a pretend server.                      |
+| File                              | Purpose                                                                                                  |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `context/ThemeContext.tsx`        | Applies the theme's tokens to `<html>` and provides it.                                                  |
+| `context/themeContextObject.ts`   | The context object and its type.                                                                         |
+| `context/useTheme.ts`             | `useTheme`, `useThemeParts`, `useSideNames`.                                                             |
+| `context/useSound.ts`             | `useSound`: play a cue in the current theme's voice, and the on/off setting.                             |
+| `context/AccountContext.tsx`      | `AccountProvider`: who is signed in; signs in, up and out; starts the sync.                              |
+| `context/accountContextObject.ts` | The account context object and its type.                                                                 |
+| `context/useAccount.ts`           | `useAccount`.                                                                                            |
+| `lib/describe.ts`                 | Every sentence the game says about itself: outcomes, notices, spoken moves, why a piece was called.      |
+| `lib/boardDebug.ts`               | The board check's logic: is `?debug=board` on, and which engine pieces have nothing visible drawn.       |
+| `lib/usePageTitle.ts`             | Sets the browser tab title.                                                                              |
+| `services/storage.ts`             | Safe wrapper around localStorage; key list; announces each change and where it came from.                |
+| `services/preferences.ts`         | The Settings page's preferences (motion, move hints, premoves, result banner) as a store.                |
+| `pwa/policy.ts`                   | What the service worker does with each request, and which built files it saves.                          |
+| `pwa/serviceWorker.ts`            | The service worker: saves the app, serves it offline, waits to be told to update.                        |
+| `pwa/pwa.ts`                      | Registers the worker; tracks updates, the install prompt and being online.                               |
+| `styles/base.css`                 | Reset, document defaults, focus ring, utilities, reduced motion.                                         |
+| `styles/app.css`                  | Structure for every component, using theme tokens only.                                                  |
+| `test/setup.ts`                   | Test environment setup (jest-dom, cleanup, browser API stubs).                                           |
+| `test/ui.test.tsx`                | UI tests through the real routes.                                                                        |
+| `test/calls.test.tsx`             | The computer calls a piece: the explanation appears and the piece is ringed for 600 ms; the board check. |
+| `test/accounts.test.tsx`          | The account pages through the real routes, against a pretend server.                                     |

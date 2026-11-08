@@ -529,6 +529,27 @@ Hooks are where pure logic meets React's rendering.
   entries (a piece travelling, a captured piece shrinking away, a crowning). A travelling piece hides the real one only
   until it lands, or after 1.5 s at the latest: a page in the background runs
   no animations, and a slide that never finished once left pieces invisible.
+  A called piece stays at least 600 ms (`CALL_MIN_MS`): ringed in the offender
+  colour where it stood, then taken away. `useMatchController` also tells the
+  player who lost it, as a toast and to screen readers ("Seriñ called your
+  piece on c3 — you skipped a capture", `callExplanation` in
+  `src/lib/describe.ts`), because a call removes a piece with no move landing
+  on it and players read that as pieces vanishing. A theme in real 3D (Sand)
+  sets `fadeRemovals: false`, so leaving pieces shrink rather than fade:
+  opacity flattens 3D layers, which Safari has been known to drop.
+
+**Checking that every piece is drawn (`?debug=board`).** Open any page with
+`?debug=board` in the address (it stays on for that tab; `?debug=off` turns
+it off). Under the board, `BoardDebug` (`src/components/board/BoardDebug.tsx`,
+checks in `src/lib/boardDebug.ts`) compares, every animation frame, the
+engine's position with what is drawn: each piece needs a visible
+`.piece-slot` on its square, or a travelling copy on the animation layer
+heading there. A piece missing for more than 1.8 s is logged to the console
+with the moves so far, counted on screen, and can be copied with "Copy
+report". It cannot see what the GPU paints, so a piece whose element is in
+place but not drawn (a dropped 3D layer) passes; that needs eyes on a real
+device.
+
 - **`usePointerDrag`** handles tap-or-drag for mouse, touch and pen.
 - **`useNow`** provides a ticking "now" only while a clock is running.
 - **`useAnalysisBoard`** is the analysis page's own small state machine: edit

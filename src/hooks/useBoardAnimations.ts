@@ -25,6 +25,13 @@ export interface BoardAnimationState {
 const PROMOTION_MS = 900
 
 /**
+ * A called piece stays on screen at least this long, highlighted first and
+ * then taken away, so a player sees which piece went and why. A call removes
+ * a piece with no move landing on it; a quick fade read as pieces vanishing.
+ */
+export const CALL_MIN_MS = 600
+
+/**
  * A travelling piece normally removes itself when its slide lands. A browser
  * runs no animation frames while the page is hidden (another app or tab in
  * front, a locked phone), so that can come late or, in practice, never; and
@@ -91,8 +98,15 @@ export function useBoardAnimations(captureDurationMs: number) {
       if (added.length === 0) return
       setAnimations((prev) => [...prev, ...added])
       // Exits are timed; travel animations remove themselves when they land, or at the fallback.
-      const exits = added.filter((a) => a.kind !== 'travel').map((a) => a.id)
+      const exits = added.filter((a) => a.kind === 'capture').map((a) => a.id)
       if (exits.length > 0) schedule(() => setAnimations((prev) => prev.filter((a) => !exits.includes(a.id))), captureDurationMs)
+      const calls = added.filter((a) => a.kind === 'call').map((a) => a.id)
+      if (calls.length > 0) {
+        schedule(
+          () => setAnimations((prev) => prev.filter((a) => !calls.includes(a.id))),
+          Math.max(captureDurationMs, CALL_MIN_MS),
+        )
+      }
       const travels = added.filter((a) => a.kind === 'travel').map((a) => a.id)
       if (travels.length > 0) {
         schedule(() => setAnimations((prev) => prev.filter((a) => !travels.includes(a.id))), TRAVEL_FALLBACK_MS)

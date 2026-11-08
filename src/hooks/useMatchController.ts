@@ -8,7 +8,7 @@ import type { Coord, EngineAction, EngineState, PlayerId } from '../game/types'
 import { flagTime } from '../match/clock'
 import type { MatchSession, SessionSnapshot, SessionUpdate } from '../match/session'
 import type { OfferKind } from '../match/types'
-import { noticeText, seatLabel, spokenMove } from '../lib/describe'
+import { callExplanation, noticeText, seatLabel, spokenMove } from '../lib/describe'
 import { usePreferences } from '../services/preferences'
 import type { Names } from '../lib/describe'
 import { useBoardAnimations } from './useBoardAnimations'
@@ -130,7 +130,14 @@ export function useMatchController({
       if (text) notify(text, notice.type === 'offer-declined' ? 'info' : 'success')
       if (notice.type === 'undo-applied' && text) setAnnouncement(text)
     }
-    if (action.intent.type === 'engine' || (action.intent.type === 'answer-offer' && action.intent.accept)) {
+    let explained: string | null = null
+    for (const event of events) {
+      if (event.type !== 'call') continue
+      explained = callExplanation(event, namesNow, localSeats, update.snapshot.state.position.settings.boardSize)
+      if (explained) notify(explained, 'info')
+    }
+    if (explained) setAnnouncement(explained)
+    else if (action.intent.type === 'engine' || (action.intent.type === 'answer-offer' && action.intent.accept)) {
       const latest = update.snapshot.state.position.moves.at(-1)
       if (latest) setAnnouncement(spokenMove(latest, namesNow))
     }

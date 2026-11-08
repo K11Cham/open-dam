@@ -130,6 +130,13 @@ export interface ThemeMotion {
   moveTransition: { type: 'spring'; stiffness: number; damping: number } | { duration: number }
   /** How long the capture exit animation runs, in ms. */
   captureDurationMs: number
+  /**
+   * Whether pieces leaving the board (captured, called, or a slide's moving
+   * copy as it lands) fade out. A board in real 3D says no: opacity below 1
+   * flattens a 3D layer, and Safari has been seen to drop such layers, so its
+   * pieces shrink away instead. Default true.
+   */
+  fadeRemovals?: boolean
 }
 
 export interface SideStyle {

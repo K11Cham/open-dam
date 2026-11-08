@@ -13,9 +13,12 @@ import '@fontsource-variable/nunito'
 import './styles/base.css'
 import './styles/app.css'
 import App from './App'
+import { boardDebugEnabled } from './lib/boardDebug'
 import { startPwa } from './pwa/pwa'
 
 startPwa()
+// Read `?debug=board` before any redirect drops it; it then stays on for this tab.
+boardDebugEnabled()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

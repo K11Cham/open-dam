@@ -1,3 +1,4 @@
+import { coordToNotation } from '../game/notation'
 import type { GameStatus, MoveRecord, PlayerId, RuleSettings } from '../game/types'
 import type { MatchNotice, Seat } from '../match/types'
 
@@ -63,6 +64,31 @@ export function outcomeReason(
     case 'timeout':
       return `${who} ran out of time.`
   }
+}
+
+/**
+ * Why pieces just left the board after a call, for the player who lost them:
+ * "Seriñ called your piece on c3 — you skipped a capture." A call removes a
+ * piece without any move landing on it, so without this line it can look as
+ * if the piece simply vanished. Null when the caller is the only side played
+ * on this device (they did it themselves).
+ */
+export function callExplanation(
+  event: { caller: PlayerId; removed: Array<{ at: { row: number; col: number } }> },
+  names: Names,
+  local: PlayerId[],
+  boardSize: number,
+): string | null {
+  if (event.removed.length === 0) return null
+  if (local.length === 1 && local[0] === event.caller) return null
+  const victim: PlayerId = event.caller === 'player1' ? 'player2' : 'player1'
+  const yours = local.length === 1 && local[0] === victim
+  const squares = event.removed.map(({ at }) => coordToNotation(at.row, at.col, boardSize))
+  const list = squares.length === 1 ? squares[0] : `${squares.slice(0, -1).join(', ')} and ${squares.at(-1)}`
+  const pieces = squares.length === 1 ? 'piece' : 'pieces'
+  const whose = yours ? `your ${pieces}` : `${names[victim]}’s ${pieces}`
+  const skipped = yours ? 'you skipped a capture' : `${names[victim]} skipped a capture`
+  return `${names[event.caller]} called ${whose} on ${list} — ${skipped}.`
 }
 
 /** Notation squares joined with a readable dash for speech and captions. */

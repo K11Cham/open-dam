@@ -80,6 +80,8 @@ export const sandTheme: ThemeDefinition = {
     // Pushed across sand: smooth, no bounce.
     moveTransition: { type: 'spring', stiffness: 300, damping: 32 },
     captureDurationMs: 380,
+    // Opacity would flatten the pieces' 3D layers mid-animation; they shrink away instead.
+    fadeRemovals: false,
   },
   sides: { player1: { name: 'Stone' }, player2: { name: 'Stick' } },
   boardGap: 0,

@@ -1724,6 +1724,12 @@
   justify-content: center;
 }
 
+/* A called piece: ringed in the offender colour while it is taken, so the player sees which one went. */
+.board__anim-piece.is-called {
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--dam-offender);
+}
+
 .board__drag-ghost {
   position: fixed;
   z-index: 70;
@@ -3487,4 +3493,16 @@
 .result__rating {
   font-size: 13px;
   font-weight: 650;
+}
+
+/* The board check (`?debug=board`, BoardDebug.tsx): a small line under the board. */
+.board-debug {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: var(--dam-border-width) solid var(--dam-border);
+  border-radius: var(--dam-radius-sm);
+  background: var(--dam-surface);
+  color: var(--dam-ink);
+  font-family: var(--dam-font-mono);
+  font-size: 0.8rem;
 }
