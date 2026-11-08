@@ -173,9 +173,17 @@ export interface SessionInfo {
 // -- Rating pools --------------------------------------------------------------
 
 /** The pools a leaderboard lists even before anyone has played in them: the board sizes people pick most, with each clock. */
+/**
+ * The leaderboards shown first. Rated play is timed only, so untimed pools
+ * are not featured; ratings from before that rule stay in the database and
+ * still show on profiles.
+ */
 export const FEATURED_POOLS: string[] = [5, 7, 9].flatMap((size) =>
-  [...TIME_CONTROLS.map((tc) => tc.label), 'untimed'].map((clock) => `${size}x${size}:${clock}`),
+  TIME_CONTROLS.map((tc) => tc.label).map((clock) => `${size}x${size}:${clock}`),
 )
+
+/** The clock a rated search starts with when the form had none. */
+export const DEFAULT_RATED_CLOCK = '10+1'
 
 const POOL_PATTERN = /^(\d{1,2})x\1:([0-9+]{3,6}|untimed)$/
 

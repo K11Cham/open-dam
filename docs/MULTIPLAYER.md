@@ -194,9 +194,11 @@ The server runs on Cloudflare Workers, on the free plan:
   wrong values take the default, and a clock must be one of `TIME_CONTROLS`.
   Saved games loaded by `parseRecord` go through it too.
 - `worker/room.ts` is `MatchRoom`, a Durable Object: Cloudflare runs exactly
-  one per match id, and every player of that match reaches the same one. It
-  runs `MatchServer` unchanged, with a `MatchStore` backed by the object's
-  own storage.
+  one per match id, and every player of that match reaches the same one. Its
+  logic is `RoomCore` (`worker/roomCore.ts`), which runs `MatchServer` with a
+  `MatchStore` backed by the object's own storage; `room.ts` only connects it
+  to Cloudflare, so `worker/roomCore.test.ts` runs the real thing on a fake
+  storage, fake sockets and a fake clock.
 - `worker/accounts.ts` and `worker/lobbyRoom.ts` are the accounts database
   and the matchmaking lobby, one Durable Object each (see "Accounts and
   ratings" above).
@@ -204,6 +206,76 @@ The server runs on Cloudflare Workers, on the free plan:
   SQLite-backed, the kind the free plan includes. Each new class needs a new
   migration tag (`v1` was the match rooms, `v2` the accounts and the lobby);
   a deployed tag is never edited.
+
+### Sleeping between moves (hibernation)
+
+A Durable Object holding an ordinary WebSocket stays in memory, and is billed
+for every second, as long as the socket is open, even while both players
+think. The free plan allows 13,000 GB-s of Durable Object duration a day
+(about 28 object-hours at 128 MB), so a few games left open would use it up.
+Both socket objects therefore use the **Hibernatable WebSockets API**:
+
+- `ctx.acceptWebSocket` instead of `socket.accept()`, and the
+  `webSocketMessage` / `webSocketClose` / `webSocketError` handlers. Between
+  frames, the runtime may evict the object while its sockets stay open.
+- **No timers.** The server's host link runs in `presence: 'connection'`
+  mode: a seat is held while its client's connection is open (or until it has
+  been silent for 20 s and someone else asks for the seat), not by heartbeat
+  pings, so no interval runs. A clock's flag is a Durable Object alarm, not a
+  `setTimeout` (`MatchServer`'s `schedule` and `runDue`). The lobby's sweep is
+  an alarm too, and stops once no rating window can widen further.
+- **Keepalives that do not wake the object.** Once a socket has sent one full
+  message, `WebSocketTransport` sends each later heartbeat ping as the fixed
+  text `KEEPALIVE_REQUEST`. `MatchRoom` registers it with
+  `setWebSocketAutoResponse`, so the runtime answers it (with an `alive`
+  message for that match) without waking the room. A server that does wake for
+  one treats it as a ping from whoever holds that connection. Older clients
+  that still send full pings get an `alive` answer too.
+- **Waking up.** Each socket carries an attachment: its own id, its account,
+  and what `MatchServer` needs to pick it up (`ConnectionMemo`: client id and
+  matches joined). Seat holders are kept in storage (`seats`). When the object
+  wakes, `RoomCore.open` hands every open socket to `MatchServer.resume`,
+  which reopens the room with the same seats, sending nothing. In the lobby a
+  waiting seek lives in its socket's attachment and `Lobby.resume` puts it back
+  on the queue.
+
+A deploy or a restart of `wrangler dev` drops the sockets. The clients
+reconnect on their own; the first message on each new socket is a full one,
+so the server learns who they are and gives them their seats back.
+
+### One alarm, three deadlines
+
+`MatchRoom` keeps one alarm, set for the earliest of:
+
+1. **The running clock's flag.** When it rings, the room opens the game even
+   with nobody connected, submits the timeout as `system`, saves, and reports
+   the result. A rated game abandoned by both players therefore ends on time
+   and is rated: the side whose clock ran out loses.
+2. **A report to retry.** When a game with accounts ends, the room writes a
+   `pendingReport` to storage before calling `Accounts.recordGame`, and
+   deletes it only after that succeeds. A failure is logged
+   (`report-failed`) and retried after 1 minute, 5 minutes, 30 minutes, then
+   hourly. `recordGame` is idempotent per game id, so a retry that races a
+   slow success stores the game once. Ratings that arrive late are announced
+   to whoever is still connected.
+3. **The clean-up.** A game nobody has opened for 30 days is deleted (a game
+   with accounts lives on in their histories). A report still pending then is
+   logged as `report-abandoned`.
+
+The deadlines are stored under `deadlines` so a woken object knows which one
+rang.
+
+**Rated play is timed only**, so every rated game has a clock that ends it.
+The lobby refuses an untimed seek (`requireClock`, with the reason "Rated
+games need a clock…"), the Play page hides "Untimed" while "Find a rated game"
+is chosen and starts the form at 10+1, and untimed pools are no longer
+featured on the leaderboards (`FEATURED_POOLS`). Ratings earned in untimed
+pools before this stay in the database and still show on profiles. Casual
+games (invite links, the computer, pass and play) may be untimed.
+
+A rated game in which one side never moved has no running clock (the clock
+starts after both first moves). It is cleaned up after 30 days without being
+stored; it would not have been rated anyway (`ratedScore`).
 
 Why this host: a Durable Object is "one small server per game", which is
 exactly the shape `MatchServer` already had. It does not sleep the way free
@@ -225,7 +297,9 @@ reloaded from storage after everyone left, and unknown ids. Its second file
 (`scripts/online-server-accounts.test.ts`) signs up throwaway accounts,
 checks sign-in, profiles, settings and devices, pairs two of them in the
 lobby, plays a rated game, finds them on the leaderboard, and deletes them. Point it at a
-deployed server with `ONLINE_URL=https://… npm run check:online`.
+deployed server with `ONLINE_URL=https://… npm run check:online`. With
+`ONLINE_SLOW=1` it also plays a 1+0 game both players leave and checks, a
+minute later, that the room's alarm flagged it (`scripts/online-server-clock.test.ts`).
 
 ### Deploying
 
@@ -267,7 +341,8 @@ All nine steps are done.
 4. **Use the server's clock — done.** The room's host stamps `at` with server
    time, and the room submits `{ type: 'engine', action: { type: 'timeout',
 player } }` as `system` at `flagTime(state.clock)`, retrying shortly if a
-   timer fires a hair early.
+   timer fires a hair early. On Cloudflare that time is an alarm, so it fires
+   with nobody connected (see "One alarm, three deadlines").
 5. **Persist records — done.** `MatchStore` is the seam: `save` is called
    after every accepted action with the full record. `MatchRoom` keeps it in
    memory and writes it to Durable Object storage; Cloudflare holds back the
@@ -292,7 +367,9 @@ settings }` (or `cancel`); the lobby passes the settings through
 pool)`, answers `seeking`, sweeps every 2 s while two or more wait, and on
    a pairing calls `createMatch` and sends each player `paired` with the
    match id, their seat and the opponent's rating (or `seek-ended` if the game
-   could not be made). Leaving or cancelling ends the seek. With
+   could not be made). The sweep runs only while some window can still widen
+   (`SeekQueue.canWiden`); with `schedule` it is an alarm instead of a timer.
+   With `requireClock`, untimed seeks are refused. Leaving or cancelling ends the seek. With
    `requireAccount`, the lobby takes the account id the server checked in
    place of the client id. **Done:** the `LobbyRoom` Durable Object at
    `/api/lobby/socket`, the Play page's "Find a rated game", and seats

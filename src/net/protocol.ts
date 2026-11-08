@@ -46,6 +46,8 @@ export type HostMessage = Envelope &
     /** Who is signed in at each seat, and whether the game is rated; sent on joining and whenever it changes. */
     | { type: 'accounts'; accounts: SeatAccounts; rated: boolean }
     | { type: 'closed' }
+    /** The server is there. The answer to a keepalive; it carries nothing else. */
+    | { type: 'alive' }
   )
 
 export type NetMessage = GuestMessage | HostMessage
@@ -105,6 +107,19 @@ export const isLobbyMessage = (value: unknown): value is LobbyMessage =>
 
 /** Match ids are short and URL safe; a server refuses anything else before it reaches storage. */
 export const MATCH_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
+
+/**
+ * A connection's heartbeat to a server, once the server knows who is on it.
+ * It is the same text from every client, so a Cloudflare Durable Object can
+ * answer it without waking up (`setWebSocketAutoResponse`); a server that does
+ * wake for it treats it as a ping from whoever holds that connection. It is
+ * not a `NetMessage`, so nothing else mistakes it for one.
+ */
+export const KEEPALIVE_REQUEST = '{"v":1,"type":"keepalive"}'
+
+/** The server's answer to a keepalive for one match: an `alive` message, so the guest counts it as hearing from the host. */
+export const keepaliveResponse = (matchId: string, from = 'server'): string =>
+  JSON.stringify({ v: PROTOCOL_VERSION, matchId, from, type: 'alive' })
 
 /** How often clients announce themselves, and when silence means "gone". */
 export const HEARTBEAT_MS = 2000

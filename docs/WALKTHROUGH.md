@@ -451,15 +451,21 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
   a new game.
 - `hostLink.ts` is the host-side "server logic": binding a browser tab to a
   seat, forwarding its intents to the reducer, broadcasting accepted actions,
-  and tracking who is online through heartbeats.
+  and tracking who is online: through heartbeats in a browser host, or
+  through open connections on a server (`presence: 'connection'`), so no
+  timer keeps a sleeping server awake.
 - `server.ts` is everything the server does apart from the network: one
   room per match, both seats remote, the record saved after every action, and
   the server's own clock calling flags. `server.test.ts` plays games through
   it end to end, including a server crash and restart.
 - `worker/` puts it on the internet: a Cloudflare Worker that creates matches
-  and serves the app, and one Durable Object per match (`room.ts`) that runs
-  `MatchServer` with its own storage. `npm run server` runs it locally;
-  MULTIPLAYER.md has the deploy steps.
+  and serves the app, and one Durable Object per match (`room.ts`, logic in
+  `roomCore.ts`) that runs `MatchServer` with its own storage. Its sockets
+  hibernate between moves; one alarm calls a running clock's flag even with
+  nobody connected, retries a report that failed, and cleans up a game nobody
+  opens for a month. `npm run server` runs it locally; MULTIPLAYER.md
+  ("Sleeping between moves", "One alarm, three deadlines") has the details
+  and the deploy steps.
 - `matchmaking.ts` is the queue a server pairs players from, and
   `src/match/rating.ts` the Elo arithmetic it would rate finished games with
   (through `MatchServer`'s `onFinished`). `lobby.ts` is the matchmaking

@@ -134,6 +134,9 @@ export class MatchGuest extends SessionBase {
           },
         })
         return
+      case 'alive':
+        // Only proves the host is there, which hearing it already recorded.
+        return
       case 'closed':
         if (!this.everWelcomed) {
           // The server does not know this game. Asking again will not change that.

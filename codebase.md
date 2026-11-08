@@ -54,20 +54,23 @@ every visual decision. Lower layers never import higher ones.
 | `scripts/ai-review.test.ts`              | Grades a finished game against Seriñ, move by move (`npm run review`).                                                                  |
 | `scripts/online-server.test.ts`          | Real games against a running online server, local or deployed (`npm run check:online`).                                                 |
 | `scripts/online-server-accounts.test.ts` | Accounts against a running server: sign-up, sign-in, profile, a rated game through the lobby, the leaderboard (`npm run check:online`). |
+| `scripts/online-server-clock.test.ts`    | With `ONLINE_SLOW=1`: a timed game both players leave is flagged by the room's alarm a minute later (`npm run check:online`).           |
 | `scripts/render-icons.test.ts`           | Draws the favicon and app icons in `public/` from the mark in `src/themes/brand.ts` (`npm run icons`).                                  |
 | `scripts/vite-service-worker.ts`         | Vite plugin: builds `src/pwa/serviceWorker.ts` to `/sw.js` with the list of files to save on the device.                                |
 
 ## `worker/` — the online server (Cloudflare Workers)
 
-| File                   | Purpose                                                                                                                             |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `index.ts`             | The Worker: every `/api` route (games, accounts, profiles, leaderboards), sockets to rooms and the lobby, the app for other paths.  |
-| `room.ts`              | `MatchRoom`, one Durable Object per match: runs `MatchServer` with its own storage and the seats' accounts; reports finished games. |
-| `accounts.ts`          | `Accounts`, the one Durable Object holding every account; forwards each call to `AccountStore`.                                     |
-| `accountStore.ts`      | Accounts over SQL: sign-up and sign-in, sessions, lockouts, recovery, profiles, synced settings and games, ratings, leaderboards.   |
-| `accountStore.test.ts` | `AccountStore` on Node's SQLite.                                                                                                    |
-| `lobbyRoom.ts`         | `LobbyRoom`, the matchmaking Durable Object: runs `Lobby` for signed-in players and starts rated games.                             |
-| `tsconfig.json`        | Type checking with the Workers runtime's types instead of the DOM's (tests are checked by `tsconfig.node.json`).                    |
+| File                   | Purpose                                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.ts`             | The Worker: every `/api` route (games, accounts, profiles, leaderboards), sockets to rooms and the lobby, the app for other paths.                                  |
+| `room.ts`              | `MatchRoom`, one Durable Object per match: connects `RoomCore` to Cloudflare (hibernatable sockets, keepalive auto-response, the alarm).                            |
+| `roomCore.ts`          | The match room's logic: `MatchServer` over the object's storage, resuming sockets after hibernation, one alarm for flag / report retry / clean-up, pending reports. |
+| `roomCore.test.ts`     | Room tests on fake storage and sockets: an abandoned rated game flagged by alarm, a failed report retried once, waking from hibernation.                            |
+| `accounts.ts`          | `Accounts`, the one Durable Object holding every account; forwards each call to `AccountStore`.                                                                     |
+| `accountStore.ts`      | Accounts over SQL: sign-up and sign-in, sessions, lockouts, recovery, profiles, synced settings and games, ratings, leaderboards.                                   |
+| `accountStore.test.ts` | `AccountStore` on Node's SQLite.                                                                                                                                    |
+| `lobbyRoom.ts`         | `LobbyRoom`, the matchmaking Durable Object: runs `Lobby` for signed-in players, timed games only, with hibernatable sockets; starts rated games.                   |
+| `tsconfig.json`        | Type checking with the Workers runtime's types instead of the DOM's (tests are checked by `tsconfig.node.json`).                                                    |
 
 ## `public/`
 

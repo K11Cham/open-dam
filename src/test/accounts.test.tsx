@@ -288,4 +288,16 @@ describe('finding a rated game', () => {
     await user.click(screen.getByRole('button', { name: 'Find a game' }))
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
+
+  test('rated games are timed only: the clock defaults to 10+1 and Untimed is not offered', async () => {
+    const user = userEvent.setup()
+    renderAt('/play?online=find')
+    expect(await screen.findByRole('radio', { name: /^Find a rated game/ })).toBeChecked()
+    const clock = screen.getByRole('radiogroup', { name: 'Clock' })
+    expect(within(clock).queryByRole('radio', { name: 'Untimed' })).toBeNull()
+    expect(within(clock).getByRole('radio', { name: /^10\+1/ })).toBeChecked()
+    // Inviting a friend may be untimed.
+    await user.click(screen.getByRole('radio', { name: /^Invite a friend/ }))
+    expect(within(screen.getByRole('radiogroup', { name: 'Clock' })).getByRole('radio', { name: 'Untimed' })).toBeInTheDocument()
+  })
 })

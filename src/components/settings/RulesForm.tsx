@@ -22,6 +22,8 @@ interface RulesFormProps {
   onChange: (next: RuleSettings) => void
   /** Hide the "match opponent" promotion option (it only means something online). */
   online?: boolean
+  /** Leave out "Untimed": rated games are timed only. */
+  requireClock?: boolean
 }
 
 /** The house rules in force, one short line each, for the summary on the form. */
@@ -52,7 +54,7 @@ const isStandard = (settings: RuleSettings): boolean =>
  * as a short summary and edited in a dialog, because most players never change
  * them and a long expanding section would push the rest of the page around.
  */
-export default function RulesForm({ settings, onChange, online = false }: RulesFormProps) {
+export default function RulesForm({ settings, onChange, online = false, requireClock = false }: RulesFormProps) {
   const [editing, setEditing] = useState(false)
   const headingId = useId()
   const patch = (next: Partial<RuleSettings>) => onChange({ ...settings, ...next })
@@ -91,7 +93,7 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
         wrap
         value={settings.timeControl?.label ?? 'untimed'}
         options={[
-          { value: 'untimed', label: 'Untimed' },
+          ...(requireClock ? [] : [{ value: 'untimed', label: 'Untimed' }]),
           ...TIME_CONTROLS.map((tc) => ({
             value: tc.label,
             label: tc.label,
@@ -102,7 +104,9 @@ export default function RulesForm({ settings, onChange, online = false }: RulesF
           patch({ timeControl: label === 'untimed' ? null : (TIME_CONTROLS.find((tc) => tc.label === label) ?? null) })
         }
       />
-      <p className="field__help">Minutes each + seconds added per move.</p>
+      <p className="field__help">
+        Minutes each + seconds added per move.{requireClock && ' Rated games always have a clock, so every one of them ends.'}
+      </p>
 
       <div className="house-rules">
         <div className="house-rules__head">

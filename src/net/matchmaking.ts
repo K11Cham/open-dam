@@ -30,7 +30,7 @@ export interface Pairing {
 const WINDOW_START = 100
 const WINDOW_STEP = 50
 const WINDOW_STEP_MS = 5_000
-const WINDOW_MAX = 500
+export const WINDOW_MAX = 500
 
 /** The rating gap a seek accepts after waiting `waitedMs`. */
 export const ratingWindow = (waitedMs: number): number =>
@@ -68,6 +68,16 @@ export class SeekQueue {
     }
     this.seeks.push(seek)
     return null
+  }
+
+  /** Put back a seek the queue had before its server slept, without pairing it now. */
+  restore(seek: Seek) {
+    if (!this.seeks.some((s) => s.playerId === seek.playerId)) this.seeks.push(seek)
+  }
+
+  /** Whether a sweep could still pair anyone: two or more wait and some window is still widening. */
+  canWiden(now: number): boolean {
+    return this.seeks.length >= 2 && this.seeks.some((s) => ratingWindow(now - s.since) < WINDOW_MAX)
   }
 
   remove(seekId: string) {

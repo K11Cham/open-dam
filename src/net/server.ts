@@ -5,7 +5,7 @@ import { isOver } from '../match/reducer'
 import { MatchHost, createRecord } from '../match/session'
 import type { MatchRecord, MatchState, SeatAccount, SeatAccounts } from '../match/types'
 import { linkHost } from './hostLink'
-import { PROTOCOL_VERSION, isNetMessage } from './protocol'
+import { KEEPALIVE_REQUEST, PROTOCOL_VERSION, isNetMessage, keepaliveResponse } from './protocol'
 import type { GuestMessage, NetMessage, Transport } from './protocol'
 
 /**
@@ -21,13 +21,36 @@ import type { GuestMessage, NetMessage, Transport } from './protocol'
  *  - time is the server's, and the server calls a flag when a clock runs out;
  *  - each connection keeps the client id it first used, so it cannot speak
  *    for another client.
+ *
+ * A server whose process sleeps between messages (a hibernating Durable
+ * Object) uses three more hooks: `presence: 'connection'`, so no heartbeat
+ * timer runs; `schedule`, so a flag becomes an alarm instead of a timer, with
+ * `runDue` called when it rings; and `resume`, to pick its connections up
+ * again after waking.
  */
 
 /** One client connection as the server sees it: text out, and a way to hang up. */
 export interface ServerSocket {
   send(text: string): void
   close(): void
+  /**
+   * Keep what the server knows about this connection with the connection
+   * itself, so `resume` can rebuild it after the server sleeps. A server that
+   * never sleeps can leave it out.
+   */
+  remember?(memo: ConnectionMemo): void
+  /** When this connection was last heard from (epoch ms), if the socket layer knows. A silent one loses its seat to a newcomer. */
+  lastActive?(): number | null
 }
+
+/** What a connection must remember to be picked up again: the client id it speaks for and the matches it joined. */
+export interface ConnectionMemo {
+  clientId: string | null
+  matchIds: string[]
+}
+
+/** Who holds each seat, by client id. */
+export type SeatHolders = Partial<Record<PlayerId, string>>
 
 /**
  * What a server keeps beside a match's record: who is signed in at each seat
@@ -48,6 +71,9 @@ export interface MatchStore {
   /** The match's seat accounts; a store without them serves games without accounts. */
   loadMeta?(matchId: string): RoomMeta | null
   saveMeta?(matchId: string, meta: RoomMeta): void
+  /** Which client holds each seat, for a server that resumes after sleeping. */
+  loadSeats?(matchId: string): SeatHolders | null
+  saveSeats?(matchId: string, seats: SeatHolders): void
 }
 
 /** The signed-in person behind a connection, as whatever accepted it vouches. */
@@ -66,9 +92,31 @@ export interface MatchServerOptions {
    * then shown.
    */
   onFinished?: (record: MatchRecord, state: MatchState, meta: RoomMeta) => void | SeatAccounts | Promise<void | SeatAccounts>
+  /**
+   * How a seated client counts as present: by heartbeat pings (the default)
+   * or by its connection being open (see `linkHost`). A server that sleeps
+   * between messages needs `connection`.
+   */
+  presence?: 'heartbeat' | 'connection'
+  /**
+   * Called with the time a match next needs attention (its running clock's
+   * flag), or null when it needs none. When given, the server sets no timers
+   * of its own: the caller calls `runDue` at that time (a Durable Object
+   * alarm). Without it, the server calls flags itself with `setTimeout`.
+   */
+  schedule?: (matchId: string, at: number | null) => void
 }
 
-type RoomOptions = Required<Omit<MatchServerOptions, 'onFinished'>> & Pick<MatchServerOptions, 'onFinished'>
+interface RoomOptions {
+  store: MatchStore
+  now: () => number
+  serverId: string
+  onFinished: MatchServerOptions['onFinished']
+  presence: 'heartbeat' | 'connection'
+  schedule: MatchServerOptions['schedule']
+  /** Seats held by connections being resumed. */
+  claims?: SeatHolders
+}
 
 /** What `accept` returns: give it each text frame, and tell it when the connection closes. */
 export interface ServerConnection {
@@ -89,6 +137,14 @@ const isGuestMessage = (message: NetMessage): message is GuestMessage =>
 const FLAG_RETRY_MS = 200
 
 /**
+ * A connection silent this long no longer holds its seat against someone
+ * else asking for it. Clients send a keepalive every two seconds, so a live
+ * one is never this quiet; a phone that lost its network without closing the
+ * socket is.
+ */
+export const SILENT_CONNECTION_MS = 20_000
+
+/**
  * One live match. It is the `Transport` its host link talks to: messages the
  * link sends go to the room's connections, and guest messages arriving on any
  * connection go to the link.
@@ -98,22 +154,24 @@ class Room implements Transport {
   private members = new Map<ServerSocket, string>()
   /** Who each client id is signed in as, for the clients that are. */
   private identities = new Map<string, Identity>()
+  /** Which client holds each seat, as the link last welcomed them; saved so a sleeping server can restore it. */
+  private seated: SeatHolders
   private meta: RoomMeta
-  private readonly saveMeta: (meta: RoomMeta) => void
+  private readonly matchId: string
   private handlers = new Set<(message: NetMessage) => void>()
   private readonly unlink: () => void
   private readonly stopWatching: () => void
   private flagTimer: ReturnType<typeof setTimeout> | undefined
-  private readonly now: () => number
-  private readonly serverId: string
+  private readonly options: RoomOptions
+  /** The report of the game's end, while it is being made. */
+  finishing: Promise<void> | null = null
 
   constructor(record: MatchRecord, options: RoomOptions) {
-    const { store, serverId, now, onFinished } = options
-    this.now = now
-    this.serverId = serverId
-    const matchId = record.config.id
-    this.meta = store.loadMeta?.(matchId) ?? emptyMeta()
-    this.saveMeta = (meta) => store.saveMeta?.(matchId, meta)
+    const { store, now, onFinished } = options
+    this.options = options
+    this.matchId = record.config.id
+    this.meta = store.loadMeta?.(this.matchId) ?? emptyMeta()
+    this.seated = { ...(options.claims ?? {}) }
     this.host = new MatchHost(record, { now, connection: 'waiting-for-opponent' })
     // A room reopened on a finished game must not report it again.
     let finished = isOver(this.host.getSnapshot().state)
@@ -123,10 +181,17 @@ class Room implements Transport {
       this.scheduleFlag()
       if (!finished && isOver(update.snapshot.state)) {
         finished = true
-        void this.finish(onFinished, update.snapshot.record, update.snapshot.state)
+        this.finishing = this.finish(onFinished, update.snapshot.record, update.snapshot.state)
       }
     })
-    this.unlink = linkHost(this.host, this, { hostSeat: null, clientId: serverId, now })
+    this.unlink = linkHost(this.host, this, {
+      hostSeat: null,
+      clientId: options.serverId,
+      now,
+      presence: options.presence,
+      isPresent: (clientId) => this.isPresent(clientId),
+      claims: options.claims,
+    })
     this.scheduleFlag()
   }
 
@@ -139,21 +204,25 @@ class Room implements Transport {
     try {
       accounts = await onFinished?.(record, state, this.meta)
     } catch {
-      // Rating failed (the accounts store was unreachable). The game itself is saved; it just goes unrated.
+      // Rating failed (the accounts store was unreachable). The game itself is
+      // saved; the caller may retry and hand the ratings over with `setAccounts`.
       return
     }
-    if (!accounts) return
+    if (accounts) this.setAccounts(accounts)
+  }
+
+  /** New accounts for the seats (or ratings that just moved): keep them and tell everyone here. */
+  setAccounts(accounts: SeatAccounts) {
     this.meta = { ...this.meta, accounts }
-    this.saveMeta(this.meta)
+    this.options.store.saveMeta?.(this.matchId, this.meta)
     this.announceAccounts()
   }
 
   private accountsMessage(): NetMessage {
-    const matchId = this.host.getSnapshot().record.config.id
     return {
       v: PROTOCOL_VERSION,
-      matchId,
-      from: this.serverId,
+      matchId: this.matchId,
+      from: this.options.serverId,
       type: 'accounts',
       accounts: this.meta.accounts,
       rated: this.meta.rated,
@@ -163,6 +232,17 @@ class Room implements Transport {
   private announceAccounts() {
     const text = JSON.stringify(this.accountsMessage())
     for (const socket of this.members.keys()) socket.send(text)
+  }
+
+  /** Whether a client has a connection here that has not gone silent. */
+  private isPresent(clientId: string): boolean {
+    const t = this.options.now()
+    for (const [socket, id] of this.members) {
+      if (id !== clientId) continue
+      const last = socket.lastActive?.() ?? null
+      if (last === null || t - last < SILENT_CONNECTION_MS) return true
+    }
+    return false
   }
 
   /**
@@ -177,29 +257,70 @@ class Room implements Transport {
 
   /** The link welcomed a client into a seat: if it is signed in and the seat is free, the seat becomes theirs. */
   private claim(seat: PlayerId, clientId: string) {
+    if (this.seated[seat] !== clientId) this.setSeated(seat, clientId)
     const identity = this.identities.get(clientId)
     if (!identity || this.meta.accounts[seat]) return
     // One account at both seats is someone playing themselves: the second seat stays anonymous.
     const other = this.meta.accounts[seat === 'player1' ? 'player2' : 'player1']
     if (other?.id === identity.id) return
-    this.meta = { ...this.meta, accounts: { ...this.meta.accounts, [seat]: { ...identity } } }
-    this.saveMeta(this.meta)
-    this.announceAccounts()
+    this.setAccounts({ ...this.meta.accounts, [seat]: { ...identity } })
   }
 
-  /** Call time exactly when the running side's clock reaches zero. */
-  private scheduleFlag() {
-    if (this.flagTimer !== undefined) clearTimeout(this.flagTimer)
+  private setSeated(seat: PlayerId, clientId: string | null) {
+    const next = { ...this.seated }
+    if (clientId === null) delete next[seat]
+    else next[seat] = clientId
+    this.seated = next
+    this.options.store.saveSeats?.(this.matchId, next)
+  }
+
+  /** When the running side's clock reaches zero, or null when no clock runs. */
+  get deadline(): number | null {
     const { state } = this.host.getSnapshot()
-    const at = state.clock && !isOver(state) ? flagTime(state.clock) : null
-    const running = state.clock?.running
-    if (at === null || !running) return
-    const claim = () => {
-      if (this.host.submit('system', { type: 'engine', action: { type: 'timeout', player: running } })) {
-        this.flagTimer = setTimeout(claim, FLAG_RETRY_MS)
-      }
+    if (!state.clock?.running || isOver(state)) return null
+    return flagTime(state.clock)
+  }
+
+  /** Call time exactly when the running side's clock reaches zero, by timer or through `schedule`. */
+  private scheduleFlag(at = this.deadline) {
+    if (this.options.schedule) {
+      this.options.schedule(this.matchId, at)
+      return
     }
-    this.flagTimer = setTimeout(claim, Math.max(0, at - this.now()))
+    if (this.flagTimer !== undefined) clearTimeout(this.flagTimer)
+    this.flagTimer = undefined
+    if (at === null) return
+    this.flagTimer = setTimeout(() => this.callFlag(), Math.max(0, at - this.options.now()))
+  }
+
+  /** Claim the flag for the running side. Refused (a hair early): try again shortly. */
+  callFlag() {
+    const { state } = this.host.getSnapshot()
+    const running = state.clock?.running
+    const at = this.deadline
+    if (!running || at === null) return
+    if (this.host.submit('system', { type: 'engine', action: { type: 'timeout', player: running } })) {
+      this.scheduleFlag(Math.max(at, this.options.now()) + FLAG_RETRY_MS)
+    }
+  }
+
+  /** A connection picked up again after the server slept: a member at once, and nobody is told. */
+  restore(socket: ServerSocket, clientId: string | null, identity: Identity | null) {
+    if (clientId === null) return
+    this.members.set(socket, clientId)
+    if (identity) this.identities.set(clientId, identity)
+  }
+
+  /** A keepalive on a connection: an answer, and a ping for each seat its client holds. */
+  keepalive(socket: ServerSocket) {
+    socket.send(keepaliveResponse(this.matchId, this.options.serverId))
+    const clientId = this.members.get(socket)
+    if (clientId === undefined) return
+    for (const seat of SEATS) {
+      if (this.seated[seat] !== clientId) continue
+      const ping: GuestMessage = { v: PROTOCOL_VERSION, matchId: this.matchId, from: clientId, type: 'ping', seat }
+      for (const handler of [...this.handlers]) handler(ping)
+    }
   }
 
   /** A guest message from one of the room's connections (or one about to join). */
@@ -207,11 +328,10 @@ class Room implements Transport {
     if (identity) this.identities.set(clientId, identity)
     if (!this.mayUse(message.seat, clientId)) {
       if (message.type === 'join') {
-        const matchId = this.host.getSnapshot().record.config.id
         const taken: NetMessage = {
           v: PROTOCOL_VERSION,
-          matchId,
-          from: this.serverId,
+          matchId: this.matchId,
+          from: this.options.serverId,
           type: 'seat-taken',
           to: clientId,
           seat: message.seat,
@@ -228,15 +348,20 @@ class Room implements Transport {
       const { record } = this.host.getSnapshot()
       const snapshot: NetMessage = {
         v: PROTOCOL_VERSION,
-        matchId: record.config.id,
-        from: this.serverId,
+        matchId: this.matchId,
+        from: this.options.serverId,
         type: 'snapshot',
         record,
       }
       socket.send(JSON.stringify(snapshot))
       socket.send(JSON.stringify(this.accountsMessage()))
     }
+    // With no presence timer, a full ping (from an older client) gets an answer, so it keeps hearing from the server.
+    if (message.type === 'ping' && this.options.presence === 'connection') {
+      socket.send(keepaliveResponse(this.matchId, this.options.serverId))
+    }
     for (const handler of [...this.handlers]) handler(message)
+    if (message.type === 'leave' && this.seated[message.seat] === clientId) this.setSeated(message.seat, null)
   }
 
   /** The connection closed. Free whichever seat it held straight away rather than waiting for its heartbeat to lapse. */
@@ -246,10 +371,10 @@ class Room implements Transport {
     this.members.delete(socket)
     // The same client may already be back on a new connection; its seat stays.
     if ([...this.members.values()].includes(clientId)) return
-    const matchId = this.host.getSnapshot().record.config.id
     for (const seat of SEATS) {
-      const message: GuestMessage = { v: PROTOCOL_VERSION, matchId, from: clientId, type: 'leave', seat }
+      const message: GuestMessage = { v: PROTOCOL_VERSION, matchId: this.matchId, from: clientId, type: 'leave', seat }
       for (const handler of [...this.handlers]) handler(message)
+      if (this.seated[seat] === clientId) this.setSeated(seat, null)
     }
   }
 
@@ -284,6 +409,8 @@ export class MatchServer {
   private readonly now: () => number
   private readonly serverId: string
   private readonly onFinished: MatchServerOptions['onFinished']
+  private readonly presence: 'heartbeat' | 'connection'
+  private readonly schedule: MatchServerOptions['schedule']
   private rooms = new Map<string, Room>()
 
   constructor(options: MatchServerOptions) {
@@ -291,6 +418,8 @@ export class MatchServer {
     this.now = options.now ?? Date.now
     this.serverId = options.serverId ?? 'server'
     this.onFinished = options.onFinished
+    this.presence = options.presence ?? 'heartbeat'
+    this.schedule = options.schedule
   }
 
   /** Start a new online game with both seats open to whoever joins first. Returns its id. */
@@ -320,10 +449,51 @@ export class MatchServer {
    * caller checked (a session cookie, in the Worker); null for a guest.
    */
   accept(socket: ServerSocket, identity: Identity | null = null): ServerConnection {
-    let clientId: string | null = null
-    const joined = new Set<string>()
+    return this.connect(socket, identity, { clientId: null, matchIds: [] })
+  }
+
+  /**
+   * Pick connections up again after the server slept and lost its memory (a
+   * Durable Object waking from hibernation), each with the memo it last
+   * remembered. Rooms reopen from the store with the seats their connected
+   * holders had, and nobody is sent anything.
+   */
+  resume(entries: Array<{ socket: ServerSocket; identity: Identity | null; memo: ConnectionMemo }>): ServerConnection[] {
+    const clientsByMatch = new Map<string, Set<string>>()
+    for (const { memo } of entries) {
+      if (memo.clientId === null) continue
+      for (const matchId of memo.matchIds) {
+        const clients = clientsByMatch.get(matchId) ?? new Set<string>()
+        clients.add(memo.clientId)
+        clientsByMatch.set(matchId, clients)
+      }
+    }
+    for (const [matchId, clients] of clientsByMatch) {
+      if (this.rooms.has(matchId)) continue
+      const saved = this.store.loadSeats?.(matchId) ?? {}
+      const claims: SeatHolders = {}
+      for (const seat of SEATS) {
+        const holder = saved[seat]
+        if (holder !== undefined && clients.has(holder)) claims[seat] = holder
+      }
+      this.roomFor(matchId, claims)
+    }
+    return entries.map(({ socket, identity, memo }) => {
+      for (const matchId of memo.matchIds) this.rooms.get(matchId)?.restore(socket, memo.clientId, identity)
+      return this.connect(socket, identity, memo)
+    })
+  }
+
+  private connect(socket: ServerSocket, identity: Identity | null, memo: ConnectionMemo): ServerConnection {
+    let clientId: string | null = memo.clientId
+    const joined = new Set<string>(memo.matchIds.filter((matchId) => this.rooms.has(matchId)))
+    const remember = () => socket.remember?.({ clientId, matchIds: [...joined] })
 
     const receive = (text: string) => {
+      if (text === KEEPALIVE_REQUEST) {
+        for (const matchId of joined) this.rooms.get(matchId)?.keepalive(socket)
+        return
+      }
       let message: unknown
       try {
         message = JSON.parse(text)
@@ -332,6 +502,7 @@ export class MatchServer {
       }
       if (!isNetMessage(message) || !isGuestMessage(message)) return
       // The first id a connection uses is its identity from then on.
+      const known = clientId !== null
       clientId ??= message.from
       if (message.from !== clientId) return
 
@@ -339,9 +510,12 @@ export class MatchServer {
       if (!room) {
         const closed: NetMessage = { v: PROTOCOL_VERSION, matchId: message.matchId, from: this.serverId, type: 'closed' }
         socket.send(JSON.stringify(closed))
+        if (!known) remember()
         return
       }
+      const fresh = !joined.has(message.matchId)
       joined.add(message.matchId)
+      if (fresh || !known) remember()
       try {
         room.deliver(socket, clientId, message, identity)
       } catch {
@@ -354,10 +528,7 @@ export class MatchServer {
         const room = this.rooms.get(matchId)
         if (!room) continue
         room.leave(socket)
-        if (room.size === 0) {
-          room.close()
-          this.rooms.delete(matchId)
-        }
+        if (room.size === 0) this.closeRoom(matchId)
       }
       joined.clear()
     }
@@ -365,7 +536,41 @@ export class MatchServer {
     return { receive, drop }
   }
 
-  private roomFor(matchId: string): Room | null {
+  private closeRoom(matchId: string) {
+    const room = this.rooms.get(matchId)
+    if (!room) return
+    room.close()
+    this.rooms.delete(matchId)
+  }
+
+  /**
+   * Whatever a match needs now that its scheduled time has come: a flag whose
+   * time is up is called, even with nobody connected. Resolves once a game
+   * this ended has been reported. For a server that passed `schedule`.
+   */
+  async runDue(matchId: string): Promise<void> {
+    const wasOpen = this.rooms.has(matchId)
+    const room = this.roomFor(matchId)
+    if (!room) return
+    const deadline = room.deadline
+    if (deadline !== null && deadline <= this.now()) room.callFlag()
+    else this.schedule?.(matchId, deadline)
+    await room.finishing
+    if (!wasOpen && room.size === 0) this.closeRoom(matchId)
+  }
+
+  /** Accounts with ratings that arrived late (a report that was retried): keep them, and tell anyone connected. */
+  setAccounts(matchId: string, accounts: SeatAccounts) {
+    const room = this.rooms.get(matchId)
+    if (room) {
+      room.setAccounts(accounts)
+      return
+    }
+    const meta = this.store.loadMeta?.(matchId) ?? emptyMeta()
+    this.store.saveMeta?.(matchId, { ...meta, accounts })
+  }
+
+  private roomFor(matchId: string, claims?: SeatHolders): Room | null {
     const open = this.rooms.get(matchId)
     if (open) return open
     let record: MatchRecord | null
@@ -380,7 +585,15 @@ export class MatchServer {
       // Only online games with both seats remote belong on a server.
       if (SEATS.some((seat) => record.config.seats[seat].kind !== 'remote')) return null
       // A stored record that no longer replays throws here; it is refused rather than taking the server down.
-      room = new Room(record, { store: this.store, serverId: this.serverId, now: this.now, onFinished: this.onFinished })
+      room = new Room(record, {
+        store: this.store,
+        serverId: this.serverId,
+        now: this.now,
+        onFinished: this.onFinished,
+        presence: this.presence,
+        schedule: this.schedule,
+        claims,
+      })
     } catch {
       return null
     }

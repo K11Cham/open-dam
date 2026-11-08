@@ -15,6 +15,7 @@ import Segmented from '../components/ui/Segmented'
 import { useAccount } from '../context/useAccount'
 import { useSideNames } from '../context/useTheme'
 import { formatClock } from '../game/clock'
+import { TIME_CONTROLS } from '../game/settings'
 import type { PlayerId } from '../game/types'
 import { useMatchmaking } from '../hooks/useMatchmaking'
 import { useNow } from '../hooks/useNow'
@@ -23,7 +24,7 @@ import { timeControlLabel } from '../lib/describe'
 import { loadLastSetup, opponentLabel, recordFromSetup, saveLastSetup } from '../match/setup'
 import type { GameSetup, OpponentChoice } from '../match/setup'
 import { clearActiveMatch, loadActiveMatch, saveActiveMatch } from '../match/storage'
-import { poolLabel } from '../net/account'
+import { DEFAULT_RATED_CLOCK, poolLabel } from '../net/account'
 import { accountsAvailable } from '../net/accountApi'
 import { createOnlineMatch } from '../net/api'
 
@@ -34,6 +35,15 @@ type OnlineKind = 'find' | 'invite'
 const DEFAULT_SETUP_BOT: DifficultyId = 'ndo'
 
 const isDifficulty = (value: OpponentChoice): value is DifficultyId => (DIFFICULTY_IDS as string[]).includes(value)
+
+/** Rated games are timed only: a setup without a clock gets the default one for a rated search. */
+const withClock = (setup: GameSetup): GameSetup =>
+  setup.settings.timeControl
+    ? setup
+    : {
+        ...setup,
+        settings: { ...setup.settings, timeControl: TIME_CONTROLS.find((tc) => tc.label === DEFAULT_RATED_CLOCK) ?? null },
+      }
 
 /** How strong an opponent is, as filled pips beside its rating. */
 function Strength({ level, elo }: { level: number; elo: number }) {
@@ -67,11 +77,13 @@ export default function NewGamePage() {
   const [params] = useSearchParams()
   // `?online=find` or `?online=invite` (from the leaderboards and profiles) opens the online choice directly.
   const asked = params.get('online')
+  const initialKind: OnlineKind = asked === 'invite' || !accountsAvailable() ? 'invite' : 'find'
   const [setup, setSetup] = useState<GameSetup>(() => {
     const last = loadLastSetup()
-    return asked === 'find' || asked === 'invite' ? { ...last, opponent: 'online' } : last
+    const chosen: GameSetup = asked === 'find' || asked === 'invite' ? { ...last, opponent: 'online' } : last
+    return chosen.opponent === 'online' && initialKind === 'find' ? withClock(chosen) : chosen
   })
-  const [onlineKind, setOnlineKind] = useState<OnlineKind>(asked === 'invite' || !accountsAvailable() ? 'invite' : 'find')
+  const [onlineKind, setOnlineKindState] = useState<OnlineKind>(initialKind)
   const matchmaking = useMatchmaking()
   const searching = matchmaking.status.state === 'connecting' || matchmaking.status.state === 'seeking'
   const now = useNow(searching, 1000)
@@ -110,7 +122,16 @@ export default function NewGamePage() {
     description: DIFFICULTIES[id].blurb,
   }))
 
-  const chooseMode = (next: Mode) => setSetup({ ...setup, opponent: next === 'computer' ? bot : next })
+  // Choosing to find a rated game gives an untimed form the default clock.
+  const rated = (nextMode: Mode, kind: OnlineKind) => nextMode === 'online' && kind === 'find'
+  const setOnlineKind = (kind: OnlineKind) => {
+    setOnlineKindState(kind)
+    if (rated(mode, kind)) setSetup(withClock(setup))
+  }
+  const chooseMode = (next: Mode) => {
+    const chosen = { ...setup, opponent: next === 'computer' ? bot : next }
+    setSetup(rated(next, onlineKind) ? withClock(chosen) : chosen)
+  }
   const chooseBot = (next: DifficultyId) => {
     setBot(next)
     setSetup({ ...setup, opponent: next })
@@ -135,8 +156,9 @@ export default function NewGamePage() {
       navigate(`/signin?next=${encodeURIComponent('/play?online=find')}`)
       return
     }
-    saveLastSetup(setup)
-    matchmaking.seek(setup.settings)
+    const timed = withClock(setup)
+    saveLastSetup(timed)
+    matchmaking.seek(timed.settings)
   }
 
   // The server holds an online game, so starting one leaves any saved game on this device alone.
@@ -267,6 +289,7 @@ export default function NewGamePage() {
             <RulesForm
               settings={settings}
               online={setup.opponent === 'online'}
+              requireClock={mode === 'online' && onlineKind === 'find'}
               onChange={(next) => setSetup({ ...setup, settings: next })}
             />
           </Panel>

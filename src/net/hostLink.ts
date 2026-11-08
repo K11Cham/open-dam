@@ -9,6 +9,22 @@ export interface HostLinkOptions {
   /** The host tab's client id. */
   clientId: string
   now?: () => number
+  /**
+   * How the link knows a seated client is still there.
+   *
+   * - `heartbeat` (the default, for a browser host): each guest pings every
+   *   few seconds, and a seat whose pings stop for `PRESENCE_TIMEOUT_MS` is
+   *   free again. The link refreshes presence on a timer.
+   * - `connection` (for a server that sees connections open and close): a
+   *   seat stays its client's until the server says it left, or
+   *   `isPresent` says it has gone quiet. No timer runs, so a server that
+   *   sleeps between messages (a hibernating Durable Object) can.
+   */
+  presence?: 'heartbeat' | 'connection'
+  /** In `connection` mode: whether a client still has a live connection. Absent means every claim is live. */
+  isPresent?: (clientId: string) => boolean
+  /** Seats already held when the link starts, for a server picking up where it left off. Nobody is welcomed again. */
+  claims?: Partial<Record<PlayerId, string>>
 }
 
 interface Claim {
@@ -29,6 +45,14 @@ export function linkHost(host: MatchHost, transport: Transport, options: HostLin
   const now = options.now ?? Date.now
   const matchId = host.getSnapshot().record.config.id
   const claims = new Map<PlayerId, Claim>()
+  const byConnection = options.presence === 'connection'
+  for (const [seat, clientId] of Object.entries(options.claims ?? {}) as [PlayerId, string][]) {
+    claims.set(seat, { clientId, lastSeen: now() })
+  }
+
+  /** Whether a claim still holds its seat. */
+  const live = (claim: Claim, t: number): boolean =>
+    byConnection ? (options.isPresent?.(claim.clientId) ?? true) : t - claim.lastSeen < PRESENCE_TIMEOUT_MS
 
   const send = (body: HostBody) => {
     transport.send({ v: PROTOCOL_VERSION, matchId, from: options.clientId, ...body } as HostMessage)
@@ -41,7 +65,7 @@ export function linkHost(host: MatchHost, transport: Transport, options: HostLin
     const t = now()
     const online: Record<PlayerId, boolean> = { player1: false, player2: false }
     if (options.hostSeat) online[options.hostSeat] = true
-    for (const [seat, claim] of claims) online[seat] = t - claim.lastSeen < PRESENCE_TIMEOUT_MS
+    for (const [seat, claim] of claims) online[seat] = live(claim, t)
     return online
   }
 
@@ -61,7 +85,7 @@ export function linkHost(host: MatchHost, transport: Transport, options: HostLin
     const claim = claims.get(seat)
     const t = now()
     const ownedBySender = claim?.clientId === message.from
-    const claimIsStale = !claim || t - claim.lastSeen >= PRESENCE_TIMEOUT_MS
+    const claimIsStale = !claim || !live(claim, t)
 
     const seatSender = () => {
       claims.set(seat, { clientId: message.from, lastSeen: t })
@@ -116,13 +140,13 @@ export function linkHost(host: MatchHost, transport: Transport, options: HostLin
     if (update.step) send({ type: 'action', action: update.step.action })
   })
 
-  const heartbeat = setInterval(refreshPresence, HEARTBEAT_MS)
+  const heartbeat = byConnection ? undefined : setInterval(refreshPresence, HEARTBEAT_MS)
   refreshPresence()
   // A guest that was already waiting gets the game straight away.
   send({ type: 'snapshot', record: host.getSnapshot().record })
 
   return () => {
-    clearInterval(heartbeat)
+    if (heartbeat !== undefined) clearInterval(heartbeat)
     stopListening()
     stopForwarding()
     send({ type: 'closed' })

@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { TIME_CONTROLS, makeSettings } from '../game/settings'
 import type { RuleSettings } from '../game/types'
 import type { MatchRecord } from '../match/types'
-import { Lobby, SWEEP_MS } from './lobby'
+import { Lobby, NEEDS_CLOCK, SWEEP_MS } from './lobby'
+import type { Seek } from './matchmaking'
 import type { LobbyOptions } from './lobby'
 import { PROTOCOL_VERSION } from './protocol'
 import type { LobbyReply, NetMessage } from './protocol'
@@ -204,6 +205,73 @@ describe('lobby', () => {
     second.seek('tab-2', { boardSize: 5 })
     await flush()
     expect(made).toEqual(['m1'])
+    lobby.close()
+  })
+
+  test('with a clock required, an untimed seek is refused with a reason and a timed one waits', () => {
+    const lobby = lobbyWith({ requireAccount: true, requireClock: true })
+    const a = connect(lobby, 'acct-a')
+    a.seek('tab', { boardSize: 7 })
+    expect(a.last()).toMatchObject({ type: 'seek-ended', reason: NEEDS_CLOCK })
+    expect(lobby.waiting).toBe(0)
+    a.seek('tab', { boardSize: 7, timeControl: TIME_CONTROLS[3] })
+    expect(a.last()).toMatchObject({ type: 'seeking', pool: '7x7:10+1' })
+    expect(lobby.waiting).toBe(1)
+    lobby.close()
+  })
+
+  test('a lobby that slept puts waiting seeks back as they were, and pairs them with the next seeker', async () => {
+    const kept = new Map<string, Seek | null>()
+    const sleepy = () => {
+      const inbox: LobbyReply[] = []
+      const socket = {
+        send: (text: string) => inbox.push(JSON.parse(text) as LobbyReply),
+        close: () => {},
+        rememberSeek: (seek: Seek | null) => void kept.set('a', seek),
+      }
+      return { inbox, socket }
+    }
+    const first = lobbyWith({ requireAccount: true, requireClock: true })
+    const a = sleepy()
+    first.accept(a.socket, 'acct-a').receive(
+      JSON.stringify({
+        v: PROTOCOL_VERSION,
+        channel: 'lobby',
+        from: 'x',
+        type: 'seek',
+        settings: { timeControl: TIME_CONTROLS[1] },
+      }),
+    )
+    expect(kept.get('a')).toMatchObject({ playerId: 'acct-a', since: 1_000 })
+    first.close()
+
+    // A new lobby with no memory, handed the socket that stayed open.
+    const woken = lobbyWith({ requireAccount: true, requireClock: true })
+    woken.resume([{ socket: a.socket, accountId: 'acct-a', seek: kept.get('a') ?? null }])
+    expect(woken.waiting).toBe(1)
+    const b = connect(woken, 'acct-b')
+    b.seek('y', { timeControl: TIME_CONTROLS[1] })
+    await flush()
+    expect(made).toEqual(['m1'])
+    expect(a.inbox.at(-1)).toMatchObject({ type: 'paired', matchId: 'm1' })
+    // Paired: nothing is waiting, so the socket forgets its seek.
+    expect(kept.get('a')).toBeNull()
+    woken.close()
+  })
+
+  test('with an alarm instead of a timer, sweeps are asked for only while a window can still widen', () => {
+    const asked: Array<number | null> = []
+    const lobby = lobbyWith({ schedule: (at) => asked.push(at) })
+    connect(lobby, 'acct-a').seek('a', { boardSize: 5 })
+    expect(asked.at(-1)).toBeNull()
+    // Different boards: they can never pair, but the queue only knows that windows stop widening after 40 seconds.
+    const b = connect(lobby, null)
+    b.seek('b', { boardSize: 7 })
+    expect(asked.at(-1)).toBe(clock + SWEEP_MS)
+    clock += 60_000
+    lobby.sweep()
+    expect(lobby.waiting).toBe(2)
+    expect(asked.at(-1)).toBeNull()
     lobby.close()
   })
 })

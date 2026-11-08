@@ -1,4 +1,4 @@
-import { isNetMessage } from './protocol'
+import { KEEPALIVE_REQUEST, isNetMessage } from './protocol'
 import type { NetMessage, Transport } from './protocol'
 
 /** The part of the browser's WebSocket this transport uses, so tests can pass a fake. */
@@ -35,7 +35,9 @@ export class WebSocketTransport implements Transport {
   private readonly maxDelayMs: number
   private socket: SocketLike | null = null
   private handlers = new Set<(message: NetMessage) => void>()
-  private outbox: string[] = []
+  private outbox: NetMessage[] = []
+  /** Whether the current socket has carried a full message yet, which tells the server who is on it. */
+  private introduced = false
   private failures = 0
   private retry: ReturnType<typeof setTimeout> | undefined
   private closed = false
@@ -59,7 +61,8 @@ export class WebSocketTransport implements Transport {
     this.socket = socket
     socket.onopen = () => {
       this.failures = 0
-      for (const text of this.outbox.splice(0)) socket.send(text)
+      this.introduced = false
+      for (const message of this.outbox.splice(0)) socket.send(this.encode(message))
     }
     socket.onmessage = (event) => {
       if (typeof event.data !== 'string') return
@@ -92,14 +95,26 @@ export class WebSocketTransport implements Transport {
     return this.socket?.readyState === OPEN
   }
 
+  /**
+   * A heartbeat ping becomes the shared keepalive once this socket has told
+   * the server who it is, so a server that can answer keepalives without
+   * waking (a hibernating Durable Object) does. The first message on every new
+   * socket goes in full, so a server that restarted learns the client and its
+   * seat again.
+   */
+  private encode(message: NetMessage): string {
+    if (message.type === 'ping' && this.introduced) return KEEPALIVE_REQUEST
+    this.introduced = true
+    return JSON.stringify(message)
+  }
+
   send(message: NetMessage) {
     if (this.closed) return
-    const text = JSON.stringify(message)
     if (this.socket?.readyState === OPEN) {
-      this.socket.send(text)
+      this.socket.send(this.encode(message))
       return
     }
-    this.outbox.push(text)
+    this.outbox.push(message)
     if (this.outbox.length > MAX_QUEUED) this.outbox.shift()
   }
 
