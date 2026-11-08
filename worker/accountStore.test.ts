@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
-import { AccountStore, ARCHIVE_LIMIT, describeDevice } from './accountStore'
+import { AccountStore, ARCHIVE_LIMIT, MIGRATIONS, describeDevice } from './accountStore'
 import type { FinishedGame, Sql } from './accountStore'
 import { stretchPassword } from '../src/net/account'
 
@@ -336,5 +336,42 @@ describe('helpers', () => {
     expect(one).toMatch(/^[0-9a-f]{64}$/)
     expect(await stretchPassword('kylar', 'correct horse', 1000)).toBe(one)
     expect(await stretchPassword('other', 'correct horse', 1000)).not.toBe(one)
+  })
+})
+
+describe('schema migrations', () => {
+  it('brings a new database to the latest version', () => {
+    const { store } = makeStore()
+    expect(store.schemaVersion).toBe(MIGRATIONS.length)
+  })
+
+  it('adopts a database made before migrations were counted, keeping its rows', async () => {
+    const db = new DatabaseSync(':memory:')
+    const sql: Sql = { exec: (query, ...bindings) => db.prepare(query).all(...bindings) as never }
+    // The tables exactly as the first deployed version made them, with an account in them.
+    for (const statement of MIGRATIONS[0]) sql.exec(statement)
+    const first = new AccountStore(sql)
+    db.exec('DELETE FROM schema_version')
+    await signUp(first, 'Kylar')
+    const reopened = new AccountStore(sql)
+    expect(reopened.schemaVersion).toBe(MIGRATIONS.length)
+    expect(await reopened.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+  })
+
+  it('runs each migration once, however often the store opens', () => {
+    const db = new DatabaseSync(':memory:')
+    const sql: Sql = { exec: (query, ...bindings) => db.prepare(query).all(...bindings) as never }
+    const seen: string[] = []
+    const counting: Sql = {
+      exec: (query, ...bindings) => {
+        seen.push(query)
+        return sql.exec(query, ...bindings)
+      },
+    }
+    new AccountStore(counting)
+    const firstRun = seen.length
+    new AccountStore(counting)
+    // The second opening only reads the version.
+    expect(seen.length - firstRun).toBe(2)
   })
 })

@@ -141,7 +141,8 @@ interface RatingRow {
   last_played_at: number
 }
 
-const SCHEMA = [
+/** The tables as the first deployed version created them. Kept exactly as it was: a deployed migration is never edited. */
+const SCHEMA_V1 = [
   `CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL,
@@ -218,6 +219,18 @@ const SCHEMA = [
   )`,
   `CREATE INDEX IF NOT EXISTS archive_recent ON archive (user_id, finished_at DESC)`,
 ]
+
+/**
+ * Every change to the tables, oldest first. The database remembers how many it
+ * has run (in `schema_version`), and the store runs the rest when it opens, so
+ * a deploy that adds a column needs nothing done by hand. Never edit or reorder
+ * an entry once it is deployed; add a new one.
+ *
+ * The count lives in a table rather than `PRAGMA user_version`, because
+ * Cloudflare's documentation for Durable Object SQLite does not promise that
+ * pragma, and a table works on every SQLite.
+ */
+export const MIGRATIONS: string[][] = [SCHEMA_V1]
 
 // -- Helpers -------------------------------------------------------------------------
 
@@ -314,7 +327,31 @@ export class AccountStore {
     this.sql = sql
     this.now = options.now ?? Date.now
     this.randomBytes = options.randomBytes ?? ((bytes) => crypto.getRandomValues(bytes))
-    for (const statement of SCHEMA) this.sql.exec(statement)
+    this.migrate()
+  }
+
+  /**
+   * Bring the tables up to date. A database from before migrations were
+   * counted has version 0 and the first migration's tables already; those
+   * statements are all `IF NOT EXISTS`, so running it again is harmless. In a
+   * Durable Object nothing here awaits, so the runtime commits each migration
+   * and its new version together, or neither.
+   */
+  private migrate() {
+    this.sql.exec('CREATE TABLE IF NOT EXISTS schema_version (id INTEGER PRIMARY KEY CHECK (id = 1), version INTEGER NOT NULL)')
+    const current = this.sql.exec<{ version: number }>('SELECT version FROM schema_version WHERE id = 1')[0]?.version ?? 0
+    for (let version = current; version < MIGRATIONS.length; version++) {
+      for (const statement of MIGRATIONS[version]) this.sql.exec(statement)
+      this.sql.exec(
+        'INSERT INTO schema_version (id, version) VALUES (1, ?) ON CONFLICT (id) DO UPDATE SET version = excluded.version',
+        version + 1,
+      )
+    }
+  }
+
+  /** How many migrations this database has run. */
+  get schemaVersion(): number {
+    return this.sql.exec<{ version: number }>('SELECT version FROM schema_version WHERE id = 1')[0]?.version ?? 0
   }
 
   // -- Ids and secrets --------------------------------------------------------

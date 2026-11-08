@@ -170,6 +170,11 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   device (newest change wins; solved puzzles are combined), and finished local
   games combined by id (the account keeps 200, a device 50). Signing out
   removes the account's games and puzzle progress from the device.
+- **Changing the tables.** `MIGRATIONS` in `worker/accountStore.ts` lists
+  every change to the database, oldest first; the store runs the ones a
+  database has not had when the Accounts object starts (the count is kept in a
+  `schema_version` table). Add a new entry for a new column or table, never
+  edit a deployed one.
 - **Your data.** Settings can download everything the server keeps for an
   account as JSON, clear the game history, and delete the account (password
   needed). A deleted player's online games stay in their opponents' histories,
