@@ -47,7 +47,7 @@ The full rules, with example boards, are on the **Learn** page.
 
 ## Running it
 
-You need Node.js 20.19 or newer.
+You need Node.js 22.13 or newer (the account tests use Node's built-in SQLite).
 
 ```bash
 npm install
