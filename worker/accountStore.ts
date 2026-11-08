@@ -230,7 +230,18 @@ const SCHEMA_V1 = [
  * Cloudflare's documentation for Durable Object SQLite does not promise that
  * pragma, and a table works on every SQLite.
  */
-export const MIGRATIONS: string[][] = [SCHEMA_V1]
+export const MIGRATIONS: string[][] = [
+  SCHEMA_V1,
+  // 2: per-network request counts for the Worker's rate limits (worker/rateLimit.ts).
+  [
+    `CREATE TABLE rate_limits (
+      key TEXT PRIMARY KEY,
+      count INTEGER NOT NULL,
+      window_start INTEGER NOT NULL,
+      window_ms INTEGER NOT NULL
+    )`,
+  ],
+]
 
 // -- Helpers -------------------------------------------------------------------------
 
@@ -509,6 +520,44 @@ export class AccountStore {
     return refuse(429, `Too many attempts. Try again in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`)
   }
 
+  /** A network address, hashed, for counting requests from it without keeping it. */
+  private async ipHash(ip: string): Promise<string> {
+    return sha256(`ip:${ip}`)
+  }
+
+  /**
+   * Count a request from a network in a group, in fixed windows. Refused once
+   * the window's count reaches `limit`, with the seconds until it resets.
+   * Nothing is awaited between the read and the write, so two requests cannot
+   * both take the last place.
+   */
+  async throttle(
+    group: string,
+    ip: string,
+    limit: number,
+    windowMs: number,
+  ): Promise<{ ok: true } | { ok: false; retryAfter: number }> {
+    const key = `${group}:${await this.ipHash(ip)}`
+    const t = this.now()
+    const row = this.sql.exec<{ count: number; window_start: number }>(
+      'SELECT count, window_start FROM rate_limits WHERE key = ?',
+      key,
+    )[0]
+    if (!row || t - row.window_start >= windowMs) {
+      this.sql.exec(
+        `INSERT INTO rate_limits (key, count, window_start, window_ms) VALUES (?, 1, ?, ?)
+         ON CONFLICT (key) DO UPDATE SET count = 1, window_start = excluded.window_start, window_ms = excluded.window_ms`,
+        key,
+        t,
+        windowMs,
+      )
+      return { ok: true }
+    }
+    if (row.count >= limit) return { ok: false, retryAfter: Math.ceil((row.window_start + windowMs - t) / 1000) }
+    this.sql.exec('UPDATE rate_limits SET count = count + 1 WHERE key = ?', key)
+    return { ok: true }
+  }
+
   // -- Accounts ------------------------------------------------------------------
 
   async signUp(
@@ -528,7 +577,7 @@ export class AccountStore {
     const [keyHash, recoveryHash, ipHash] = await Promise.all([
       this.keyHash(salt, input.key),
       sha256(normaliseRecoveryCode(recoveryCode)),
-      sha256(`ip:${context.ip}`),
+      this.ipHash(context.ip),
     ])
 
     // From here to the insert nothing is awaited, so the name cannot be taken in between.

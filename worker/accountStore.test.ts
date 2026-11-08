@@ -345,17 +345,18 @@ describe('schema migrations', () => {
     expect(store.schemaVersion).toBe(MIGRATIONS.length)
   })
 
-  it('adopts a database made before migrations were counted, keeping its rows', async () => {
+  it('adopts a database made before migrations were counted, keeping its rows', () => {
     const db = new DatabaseSync(':memory:')
     const sql: Sql = { exec: (query, ...bindings) => db.prepare(query).all(...bindings) as never }
     // The tables exactly as the first deployed version made them, with an account in them.
     for (const statement of MIGRATIONS[0]) sql.exec(statement)
-    const first = new AccountStore(sql)
-    db.exec('DELETE FROM schema_version')
-    await signUp(first, 'Kylar')
-    const reopened = new AccountStore(sql)
-    expect(reopened.schemaVersion).toBe(MIGRATIONS.length)
-    expect(await reopened.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    sql.exec(
+      `INSERT INTO users (id, username, username_key, display_name, avatar, created_at, key_salt, key_hash, recovery_hash)
+       VALUES ('u1', 'Kylar', 'kylar', 'Kylar', 'p1', 1, 's', 'h', 'r')`,
+    )
+    const store = new AccountStore(sql)
+    expect(store.schemaVersion).toBe(MIGRATIONS.length)
+    expect(store.me('u1')).toMatchObject({ username: 'Kylar' })
   })
 
   it('runs each migration once, however often the store opens', () => {

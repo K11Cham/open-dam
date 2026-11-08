@@ -119,4 +119,7 @@ export class Accounts extends DurableObject<Env> {
   export(...args: Parameters<AccountStore['export']>) {
     return this.store.export(...args)
   }
+  throttle(...args: Parameters<AccountStore['throttle']>) {
+    return this.store.throttle(...args)
+  }
 }

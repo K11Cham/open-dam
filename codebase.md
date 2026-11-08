@@ -63,6 +63,8 @@ every visual decision. Lower layers never import higher ones.
 | File                   | Purpose                                                                                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `index.ts`             | The Worker: every `/api` route (games, accounts, profiles, leaderboards), sockets to rooms and the lobby, the app for other paths.                                  |
+| `rateLimit.ts`         | Per-network limits on match creation, sign-in and recovery, username checks: the binding as a flood filter, exact counts in the store.                              |
+| `rateLimit.test.ts`    | Limiter tests: allowed, refused with 429 and Retry-After, the window resetting, the store used when the binding is missing or failing.                              |
 | `room.ts`              | `MatchRoom`, one Durable Object per match: connects `RoomCore` to Cloudflare (hibernatable sockets, keepalive auto-response, the alarm).                            |
 | `roomCore.ts`          | The match room's logic: `MatchServer` over the object's storage, resuming sockets after hibernation, one alarm for flag / report retry / clean-up, pending reports. |
 | `roomCore.test.ts`     | Room tests on fake storage and sockets: an abandoned rated game flagged by alarm, a failed report retried once, waking from hibernation.                            |

@@ -149,6 +149,14 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   because a free Worker has only milliseconds of CPU; a stolen database still
   costs an attacker the full PBKDF2 work per guess. Eight wrong passwords lock
   a username for 15 minutes; one network can make five accounts an hour.
+- **Rate limits.** `worker/rateLimit.ts` limits each network (by
+  `CF-Connecting-IP`, stored only as a hash): 30 new matches an hour, 30
+  sign-ins and recoveries together per 15 minutes, 120 username checks a
+  minute. The counts are kept in the Accounts store (`rate_limits`, exact and
+  global); Cloudflare's rate limiting binding (`RATE_LIMITER`, 120 a minute)
+  sits in front as a cheap flood filter when it is bound. A refusal is a 429
+  with a sentence and `Retry-After`. Requests without an address (only local
+  development) are not limited.
 - **Sessions.** A random token in an `HttpOnly`, `SameSite=Lax` cookie,
   stored hashed, kept 60 days from the last visit. Changing the password signs
   out every other device. Settings lists the devices and signs any of them out.

@@ -6,6 +6,8 @@ import type { Identity } from '../src/net/server'
 import { Accounts } from './accounts'
 import type { RequestContext } from './accountStore'
 import { LobbyRoom } from './lobbyRoom'
+import { checkLimit } from './rateLimit'
+import type { BurstLimiter, LimitGroup } from './rateLimit'
 import { MatchRoom } from './room'
 
 export { Accounts, LobbyRoom, MatchRoom }
@@ -15,6 +17,8 @@ export interface Env {
   ACCOUNTS: DurableObjectNamespace<Accounts>
   LOBBY: DurableObjectNamespace<LobbyRoom>
   ASSETS: Fetcher
+  /** Cloudflare's rate limiting binding (wrangler.jsonc `ratelimits`). Optional: without it the store's counts still apply. */
+  RATE_LIMITER?: BurstLimiter
 }
 
 /**
@@ -74,6 +78,10 @@ const fail = (status: number, error: string, headers: Record<string, string> = {
 const roomFor = (env: Env, matchId: string) => env.MATCHES.get(env.MATCHES.idFromName(matchId))
 const accountsOf = (env: Env) => env.ACCOUNTS.get(env.ACCOUNTS.idFromName('accounts'))
 const lobbyOf = (env: Env) => env.LOBBY.get(env.LOBBY.idFromName('lobby'))
+
+/** Null if this network may make this request now, or the 429 to answer. */
+const limited = (request: Request, env: Env, group: LimitGroup, headers: Record<string, string> = {}) =>
+  checkLimit(request, group, { burst: env.RATE_LIMITER, store: accountsOf(env) }, headers)
 
 class BadRequest extends Error {
   readonly status: number
@@ -169,6 +177,8 @@ const withIdentity = (request: Request, identity: Identity | null): Request => {
 // -- Games ----------------------------------------------------------------------------
 
 async function createMatch(request: Request, env: Env): Promise<Response> {
+  const refused = await limited(request, env, 'matches', CORS)
+  if (refused) return refused
   const body = await readJson(request)
   // sanitizeSettings keeps only known fields with allowed values, so a browser cannot
   // smuggle odd rules into a game.
@@ -209,6 +219,8 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     method: 'GET',
     pattern: /^\/api\/auth\/username$/,
     handler: async (request, env) => {
+      const refused = await limited(request, env, 'username')
+      if (refused) return refused
       const name = new URL(request.url).searchParams.get('name') ?? ''
       return json({ problem: await accountsOf(env).usernameProblem(name) })
     },
@@ -232,6 +244,8 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     method: 'POST',
     pattern: /^\/api\/auth\/signin$/,
     handler: async (request, env) => {
+      const refused = await limited(request, env, 'signin')
+      if (refused) return refused
       const body = await readJson(request)
       const result = await accountsOf(env).signIn({ username: body.username, key: body.key }, contextOf(request))
       if (!result.ok) return answer(result)
@@ -250,6 +264,8 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     method: 'POST',
     pattern: /^\/api\/auth\/recover$/,
     handler: async (request, env) => {
+      const refused = await limited(request, env, 'signin')
+      if (refused) return refused
       const body = await readJson(request)
       const result = await accountsOf(env).recover(
         { username: body.username, recoveryCode: body.recoveryCode, key: body.key },

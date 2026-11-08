@@ -28,5 +28,9 @@
     { "tag": "v1", "new_sqlite_classes": ["MatchRoom"] },
     { "tag": "v2", "new_sqlite_classes": ["Accounts", "LobbyRoom"] },
   ],
+  // A per-minute filter in front of the routes worker/rateLimit.ts limits. The
+  // exact limits (per hour, per 15 minutes) are counted in the Accounts store,
+  // so the site works the same if this binding is removed.
+  "ratelimits": [{ "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 120, "period": 60 } }],
   "observability": { "enabled": true },
 }
