@@ -68,8 +68,6 @@ npm run verify
 ## Where to read next
 
 - `docs/WALKTHROUGH.md` — how the whole codebase fits together, with exercises.
-- `codebase.md` — every file and what it does.
-- `docs/HANDOVER.md` — how to pick up work, and the work log.
 - `docs/MULTIPLAYER.md` — the match log, the online protocol, and adding a server.
 - `docs/SOUNDS.md` — how the sound effects are made and which recordings may be added.
 
