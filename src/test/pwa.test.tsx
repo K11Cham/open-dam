@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest'
 import { AppProviders, AppRoutes } from '../App'
 import type { PrivateUser } from '../net/account'
-import { startPwa } from '../pwa/pwa'
+import { keepStorage, resetKeepStorage, startPwa } from '../pwa/pwa'
 import { STORAGE_KEYS, storage } from '../services/storage'
 
 /**
@@ -160,6 +160,21 @@ describe('offline', () => {
     expect(submit).toBeDisabled()
     goOnline()
     expect(submit).toBeEnabled()
+  })
+
+  test('asks the browser once per visit to keep the saved games and the app', async () => {
+    const persist = vi.fn(async () => true)
+    vi.stubGlobal('navigator', Object.assign(Object.create(navigator), { storage: { persisted: async () => false, persist } }))
+    resetKeepStorage()
+    expect(await keepStorage()).toBe(true)
+    expect(await keepStorage()).toBeNull()
+    expect(persist).toHaveBeenCalledTimes(1)
+    // Already kept: nothing more is asked.
+    resetKeepStorage()
+    vi.stubGlobal('navigator', Object.assign(Object.create(navigator), { storage: { persisted: async () => true, persist } }))
+    expect(await keepStorage()).toBe(true)
+    expect(persist).toHaveBeenCalledTimes(1)
+    resetKeepStorage()
   })
 
   test('settings explains installing the app and what works offline', async () => {

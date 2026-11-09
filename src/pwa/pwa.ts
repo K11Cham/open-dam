@@ -1,3 +1,4 @@
+import { STORAGE_KEYS } from '../services/storage'
 /**
  * The app as an installed, offline-capable app: registers the service worker
  * (serviceWorker.ts), and tracks what the page shows about it. Read it in
@@ -32,6 +33,16 @@ interface InstallPromptEvent extends Event {
 const UPDATE_CHECK_MS = 60 * 60_000
 
 const browser = typeof window !== 'undefined' && typeof navigator !== 'undefined'
+
+/** Whether finished games are saved on this device (the archive kept by src/match/storage.ts). */
+const hasArchivedGames = (): boolean => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.archive)
+    return saved !== null && saved !== '[]'
+  } catch {
+    return false
+  }
+}
 
 const standalone = (): boolean =>
   browser &&
@@ -98,6 +109,33 @@ function watch(worker: ServiceWorker) {
   })
 }
 
+let persistenceAsked = false
+
+/**
+ * Ask the browser to keep this site's storage rather than clear it when the
+ * device runs short of space: the saved games and the offline copy of the
+ * app. Asked once per visit, and only once there is something worth keeping
+ * (a finished game) or the app is installed, since some browsers decide from
+ * how the site is used. Resolves to whether storage is kept, or null where the
+ * browser cannot say.
+ */
+export async function keepStorage(): Promise<boolean | null> {
+  if (persistenceAsked || !browser) return null
+  const manager = (navigator as Navigator & { storage?: StorageManager }).storage
+  if (!manager?.persist) return null
+  persistenceAsked = true
+  try {
+    return (await manager.persisted?.()) ? true : await manager.persist()
+  } catch {
+    return null
+  }
+}
+
+/** For tests: forget that storage was asked for. */
+export const resetKeepStorage = () => {
+  persistenceAsked = false
+}
+
 /** Start everything; called once from main.tsx. */
 export function startPwa() {
   if (!browser) return
@@ -113,7 +151,10 @@ export function startPwa() {
   window.addEventListener('appinstalled', () => {
     installPrompt = null
     set({ canInstall: false, installed: true })
+    void keepStorage()
   })
+  // Installed, or with finished games already saved: ask to keep them now.
+  if (state.installed || hasArchivedGames()) void keepStorage()
 
   // Not in development (the dev server's files change on every save) or in the static copy (opened from a folder).
   if (!import.meta.env.PROD || import.meta.env.MODE === 'static' || !('serviceWorker' in navigator)) return

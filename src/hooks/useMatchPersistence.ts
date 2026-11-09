@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { MatchHost } from '../match/session'
 import { archiveMatch, clearActiveMatch, saveActiveMatch } from '../match/storage'
+import { keepStorage } from '../pwa/pwa'
 
 /**
  * Keeps a hosted match saved on this device:
@@ -35,6 +36,8 @@ export function useMatchPersistence(host: MatchHost) {
       if (state.position.status.kind === 'playing') saveActiveMatch(record)
       else {
         archiveMatch(record)
+        // A finished game is worth keeping: ask the browser not to clear this site's storage.
+        void keepStorage()
         clearActiveMatch()
       }
     })

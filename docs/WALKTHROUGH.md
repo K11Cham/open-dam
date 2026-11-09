@@ -679,6 +679,11 @@ leaderboards.
   connection returns; the sign-in, sign-up and recovery forms say they need a
   connection and keep their button off until then. All of them read
   `usePwa().online`.
+- Browsers may clear a site's storage when a device runs short of space,
+  which would lose saved games and the offline copy. Once there is
+  something to keep (a finished game is archived) or the app is installed,
+  `keepStorage` in `src/pwa/pwa.ts` asks the browser to keep it
+  (`navigator.storage.persist()`), once per visit.
 - A shared link (an invite on WhatsApp, say) shows a picture and a line
   about the game: Open Graph and Twitter tags in `index.html`, and
   `public/og-image.png`, drawn by `npm run icons` from the mark
