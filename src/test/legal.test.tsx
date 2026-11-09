@@ -20,8 +20,11 @@ describe('privacy and terms', () => {
     expect(screen.getByText('od_session')).toBeInTheDocument()
     expect(screen.getByText(/never store your IP address as it is/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
-    // The contact address is the owner's to add.
-    expect(screen.getByText(/a contact address, which will be added here soon/)).toBeInTheDocument()
+    // Questions go to the owner's address, as a mail link.
+    expect(screen.getAllByRole('link', { name: 'kylar11cham@gmail.com' })[0]).toHaveAttribute(
+      'href',
+      'mailto:kylar11cham@gmail.com',
+    )
   })
 
   test('the terms cover fair play, behaviour and the service as it is', async () => {
