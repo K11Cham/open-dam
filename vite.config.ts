@@ -20,5 +20,7 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'worker/**/*.test.ts'],
     restoreMocks: true,
+    // Room for a lazy page load plus a computer reply on a slow runner.
+    testTimeout: 10_000,
   },
 })

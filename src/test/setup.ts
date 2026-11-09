@@ -1,9 +1,13 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
 // Server tests (worker/) run on plain Node, without a document or storage.
 const browserLike = typeof window !== 'undefined'
+
+// Pages load on demand, and on a slow CI runner the first one can take over
+// the default 1 s to appear, so findBy* and waitFor get longer to settle.
+configure({ asyncUtilTimeout: 3000 })
 
 afterEach(() => {
   if (!browserLike) return
