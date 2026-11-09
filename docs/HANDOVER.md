@@ -112,7 +112,9 @@ change a row's status and notes directly on the page.
   `src/match`, networking in `src/net`, AI in `src/ai`, React glue in
   `src/hooks`, visuals in `src/themes` and `src/styles`. Lower layers never
   import higher ones.
-- Every behaviour change gets a test. Rules: `src/game/engine.test.ts`. Match
+- Every behaviour change gets a test. Rules: `src/game/engine.test.ts`, and
+  the seeded random games in `src/test/engine-properties.test.ts` (a failure
+  names its seed, so the game can be played again). Match
   and clocks: `src/match/match.test.ts`. Online: `src/net/net.test.ts`. UI:
   `src/test/ui.test.tsx`. Tutorial examples are checked automatically.
 - Colours, borders and shadows come from theme tokens. Never write a colour in

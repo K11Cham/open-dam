@@ -276,30 +276,31 @@ every visual decision. Lower layers never import higher ones.
 
 ## Elsewhere in `src/`
 
-| File                              | Purpose                                                                                                  |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `context/ThemeContext.tsx`        | Applies the theme's tokens to `<html>` and provides it.                                                  |
-| `context/themeContextObject.ts`   | The context object and its type.                                                                         |
-| `context/useTheme.ts`             | `useTheme`, `useThemeParts`, `useSideNames`.                                                             |
-| `context/useSound.ts`             | `useSound`: play a cue in the current theme's voice, and the on/off setting.                             |
-| `context/AccountContext.tsx`      | `AccountProvider`: who is signed in; signs in, up and out; starts the sync.                              |
-| `context/accountContextObject.ts` | The account context object and its type.                                                                 |
-| `context/useAccount.ts`           | `useAccount`.                                                                                            |
-| `lib/describe.ts`                 | Every sentence the game says about itself: outcomes, notices, spoken moves, why a piece was called.      |
-| `lib/boardDebug.ts`               | The board check's logic: is `?debug=board` on, and which engine pieces have nothing visible drawn.       |
-| `lib/usePageTitle.ts`             | Sets the browser tab title.                                                                              |
-| `services/storage.ts`             | Safe wrapper around localStorage; key list; announces each change and where it came from.                |
-| `services/preferences.ts`         | The Settings page's preferences (motion, move hints, premoves, result banner) as a store.                |
-| `pwa/policy.ts`                   | What the service worker does with each request, and which built files it saves.                          |
-| `pwa/serviceWorker.ts`            | The service worker: saves the app, serves it offline, waits to be told to update.                        |
-| `pwa/pwa.ts`                      | Registers the worker; tracks updates, the install prompt and being online.                               |
-| `styles/base.css`                 | Reset, document defaults, focus ring, utilities, reduced motion.                                         |
-| `styles/app.css`                  | Structure for every component, using theme tokens only.                                                  |
-| `test/setup.ts`                   | Test environment setup (jest-dom, cleanup, browser API stubs).                                           |
-| `test/ui.test.tsx`                | UI tests through the real routes.                                                                        |
-| `test/seo.test.tsx`               | The Not Found page asks not to be indexed.                                                               |
-| `test/legal.test.tsx`             | The privacy and terms pages, their footer links, and the agreement line on sign-up.                      |
-| `test/errors.test.tsx`            | The crash screen, and what a crash report sends.                                                         |
-| `test/a11y.test.tsx`              | axe-core on the main pages (colour contrast is in `themes/contrast.test.ts`).                            |
-| `test/calls.test.tsx`             | The computer calls a piece: the explanation appears and the piece is ringed for 600 ms; the board check. |
-| `test/accounts.test.tsx`          | The account pages through the real routes, against a pretend server.                                     |
+| File                              | Purpose                                                                                                                                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `context/ThemeContext.tsx`        | Applies the theme's tokens to `<html>` and provides it.                                                                                                                                  |
+| `context/themeContextObject.ts`   | The context object and its type.                                                                                                                                                         |
+| `context/useTheme.ts`             | `useTheme`, `useThemeParts`, `useSideNames`.                                                                                                                                             |
+| `context/useSound.ts`             | `useSound`: play a cue in the current theme's voice, and the on/off setting.                                                                                                             |
+| `context/AccountContext.tsx`      | `AccountProvider`: who is signed in; signs in, up and out; starts the sync.                                                                                                              |
+| `context/accountContextObject.ts` | The account context object and its type.                                                                                                                                                 |
+| `context/useAccount.ts`           | `useAccount`.                                                                                                                                                                            |
+| `lib/describe.ts`                 | Every sentence the game says about itself: outcomes, notices, spoken moves, why a piece was called.                                                                                      |
+| `lib/boardDebug.ts`               | The board check's logic: is `?debug=board` on, and which engine pieces have nothing visible drawn.                                                                                       |
+| `lib/usePageTitle.ts`             | Sets the browser tab title.                                                                                                                                                              |
+| `services/storage.ts`             | Safe wrapper around localStorage; key list; announces each change and where it came from.                                                                                                |
+| `services/preferences.ts`         | The Settings page's preferences (motion, move hints, premoves, result banner) as a store.                                                                                                |
+| `pwa/policy.ts`                   | What the service worker does with each request, and which built files it saves.                                                                                                          |
+| `pwa/serviceWorker.ts`            | The service worker: saves the app, serves it offline, waits to be told to update.                                                                                                        |
+| `pwa/pwa.ts`                      | Registers the worker; tracks updates, the install prompt and being online.                                                                                                               |
+| `styles/base.css`                 | Reset, document defaults, focus ring, utilities, reduced motion.                                                                                                                         |
+| `styles/app.css`                  | Structure for every component, using theme tokens only.                                                                                                                                  |
+| `test/setup.ts`                   | Test environment setup (jest-dom, cleanup, browser API stubs).                                                                                                                           |
+| `test/ui.test.tsx`                | UI tests through the real routes.                                                                                                                                                        |
+| `test/seo.test.tsx`               | The Not Found page asks not to be indexed.                                                                                                                                               |
+| `test/legal.test.tsx`             | The privacy and terms pages, their footer links, and the agreement line on sign-up.                                                                                                      |
+| `test/engine-properties.test.ts`  | Seeded random games on every board size and rule: legal moves accepted, others refused, no side gains pieces, records replay exactly, games end; every AI tier plays only legal actions. |
+| `test/errors.test.tsx`            | The crash screen, and what a crash report sends.                                                                                                                                         |
+| `test/a11y.test.tsx`              | axe-core on the main pages (colour contrast is in `themes/contrast.test.ts`).                                                                                                            |
+| `test/calls.test.tsx`             | The computer calls a piece: the explanation appears and the piece is ringed for 600 ms; the board check.                                                                                 |
+| `test/accounts.test.tsx`          | The account pages through the real routes, against a pretend server.                                                                                                                     |
