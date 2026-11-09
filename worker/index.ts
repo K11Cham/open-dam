@@ -4,6 +4,7 @@ import { FEATURED_POOLS, isPool } from '../src/net/account'
 import { MATCH_ID_PATTERN } from '../src/net/protocol'
 import type { Identity } from '../src/net/server'
 import { Accounts } from './accounts'
+import { handleAdmin } from './admin'
 import type { RequestContext } from './accountStore'
 import { LobbyRoom } from './lobbyRoom'
 import { checkLimit } from './rateLimit'
@@ -20,6 +21,8 @@ export interface Env {
   ASSETS: Fetcher
   /** Cloudflare's rate limiting binding (wrangler.jsonc `ratelimits`). Optional: without it the store's counts still apply. */
   RATE_LIMITER?: BurstLimiter
+  /** The owner's maintenance token (`wrangler secret put ADMIN_TOKEN`). Unset: /api/admin does not exist. */
+  ADMIN_TOKEN?: string
 }
 
 /**
@@ -445,6 +448,11 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
 
 async function handleApi(request: Request, env: Env, path: string): Promise<Response> {
   if (path === '/api/health') return new Response('ok', { headers: CORS })
+  if (path.startsWith('/api/admin/')) {
+    const refused = await limited(request, env, 'admin')
+    if (refused) return refused
+    return handleAdmin(request, path, { token: env.ADMIN_TOKEN, accounts: accountsOf(env) })
+  }
   if (path === '/api/matches') {
     return request.method === 'POST' ? createMatch(request, env) : publicJson({ error: 'Use POST.' }, 405)
   }

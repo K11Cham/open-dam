@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers'
 import { AccountStore } from './accountStore'
+import { Backups } from './admin'
 import type { Env } from './index'
 
 /**
@@ -11,6 +12,7 @@ import type { Env } from './index'
  */
 export class Accounts extends DurableObject<Env> {
   readonly store: AccountStore
+  private readonly backups: Backups
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
@@ -18,6 +20,17 @@ export class Accounts extends DurableObject<Env> {
     this.store = new AccountStore({
       exec: (query, ...bindings) => sql.exec(query, ...bindings).toArray() as never,
     })
+    // A restore happens when the object next starts. The restart waits a moment so the admin's answer gets out first.
+    this.backups = new Backups(ctx.storage, () => setTimeout(() => ctx.abort('Restoring a backup'), 100))
+  }
+
+  /** A restore point for the accounts database (admin only; worker/admin.ts). */
+  bookmarkFor(at: number) {
+    return this.backups.bookmarkFor(at)
+  }
+  /** Roll the accounts database back to a bookmark (admin only). */
+  restoreTo(bookmark: string) {
+    return this.backups.restoreTo(bookmark)
   }
 
   // Each public method below is one call the Worker or a match room makes.

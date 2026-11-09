@@ -24,7 +24,7 @@ export interface Throttle {
   throttle(group: string, ip: string, limit: number, windowMs: number): Promise<{ ok: true } | { ok: false; retryAfter: number }>
 }
 
-export type LimitGroup = 'matches' | 'signin' | 'username' | 'reports' | 'client-errors'
+export type LimitGroup = 'matches' | 'signin' | 'username' | 'reports' | 'client-errors' | 'admin'
 
 /** How many requests one network may make in each group per window. Sign-up keeps its own limit (5 an hour) in the store. */
 export const LIMITS: Record<LimitGroup, { limit: number; windowMs: number }> = {
@@ -36,6 +36,8 @@ export const LIMITS: Record<LimitGroup, { limit: number; windowMs: number }> = {
   username: { limit: 120, windowMs: 60 * 1000 },
   reports: { limit: 10, windowMs: 60 * 60 * 1000 },
   'client-errors': { limit: 20, windowMs: 60 * 60 * 1000 },
+  // Guessing the admin token.
+  admin: { limit: 30, windowMs: 15 * 60 * 1000 },
 }
 
 const minutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60))

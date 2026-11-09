@@ -1,0 +1,103 @@
+# Operations
+
+How to look after the live site: the owner's secrets, and backups and
+restores. Every command here is run by the owner,
+from this repository, signed in with `npx wrangler login`.
+
+The live site is https://play.open-dam.workers.dev. Below, `$SITE` is that
+address and `$ADMIN_TOKEN` the admin token:
+
+```bash
+export SITE=https://play.open-dam.workers.dev
+export ADMIN_TOKEN=...   # the value you gave `wrangler secret put ADMIN_TOKEN`
+```
+
+## Secrets
+
+| Secret        | What it is for                                                                                 | Without it                           |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `ADMIN_TOKEN` | Opens the maintenance routes under `/api/admin` (backups, moderation). At least 32 characters. | Every `/api/admin` path answers 404. |
+
+Make a long random value and set it (the command asks for the value):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+npx wrangler secret put ADMIN_TOKEN
+```
+
+A secret takes effect at once, with no deploy. Keep the token somewhere safe;
+anyone who has it can roll the database back.
+To change it, run `wrangler secret put` again.
+
+The admin routes answer 404 to a missing or wrong token, exactly as if they
+did not exist, and one network may try 30 times per 15 minutes.
+
+## Backups and restoring the accounts database
+
+Every account, session, rating, online game, synced setting and archived
+game lives in one Durable Object, `Accounts`, in its SQLite database.
+Cloudflare keeps the history of every SQLite-backed Durable Object for **30
+days** (point-in-time recovery), so a bad deploy or a bug that damages rows
+can be undone to any moment in that window. Nothing needs to be set up for
+this; it is always on.
+
+Point-in-time recovery does not exist under `wrangler dev`; practise against
+the live site only when you mean it.
+
+### Restore, step by step
+
+1. **Decide the moment.** Find when things went wrong: the deploy time
+   (`npx wrangler deployments list`), or the first error in Workers Logs
+   (Cloudflare dashboard → Workers & Pages → play → Logs). Pick a moment just
+   before it, in UTC.
+
+2. **Get a bookmark for it.** The answer also has the current bookmark; write
+   it down, since it is how you come back to now.
+
+   ```bash
+   curl -s -H "Authorization: Bearer $ADMIN_TOKEN" \
+     "$SITE/api/admin/backup/bookmark?at=2026-11-08T09:30:00Z"
+   # {"bookmark":"0000…","current":"0000…","at":"2026-11-08T09:30:00.000Z"}
+   ```
+
+3. **If the damage came from code, deploy the fix (or roll back the code)
+   first** (`npx wrangler rollback` to the previous version, or deploy a
+   fixed one), so the restored database is not damaged again.
+
+4. **Restore.** The object restarts at once with its database as it was at
+   the bookmark. Requests in flight for a moment fail and are retried by the
+   pages.
+
+   ```bash
+   curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"bookmark":"<bookmark from step 2>"}' \
+     "$SITE/api/admin/backup/restore"
+   # {"undo":"0000…"}
+   ```
+
+   Keep the `undo` bookmark: restoring it puts everything back as it was just
+   before this restore.
+
+5. **Check.** Sign in, open a profile and a leaderboard, and run
+   `ONLINE_URL=$SITE npm run check:online`.
+
+### What a restore does and does not touch
+
+- Everything in the Accounts database goes back to the bookmark: accounts
+  made since are gone (their owners sign up again), passwords and recovery
+  codes changed since are back to the old ones, sessions started since are
+  signed out, and online games finished since are no longer in histories or
+  ratings.
+- Games still being played live in their own match rooms and are not
+  touched. A game that finished after the bookmark was already reported; its
+  room does not report it again, so it stays missing from histories.
+- The lobby holds nothing worth keeping.
+
+### Copies outside Cloudflare (not set up)
+
+Point-in-time recovery covers mistakes, not the loss of the Cloudflare
+account. A weekly export of the whole database to an R2 bucket would cover
+that too; it is not built, because it needs a bucket the owner creates
+(`npx wrangler r2 bucket create open-dam-backups`) and a binding. Until then,
+each player can download everything kept for them (Settings → Your data).

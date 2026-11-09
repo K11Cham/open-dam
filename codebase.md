@@ -34,13 +34,15 @@ every visual decision. Lower layers never import higher ones.
 
 ## `docs/`
 
-| File                                      | Purpose                                                                              |
-| ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| `docs/WALKTHROUGH.md`                     | The guided tour: how everything connects, with traces and exercises.                 |
-| `docs/HANDOVER.md`                        | How to pick up work: the board, the rules of the branch, the shift log.              |
-| `docs/MULTIPLAYER.md`                     | The match log, the wire protocol, and how to add a real server.                      |
-| `docs/SOUNDS.md`                          | How the sound effects work, how to tune them, and which recorded sounds may be used. |
-| `docs/audit/2026-10-27-codebase-audit.md` | The audit that started the overhaul (describes the old code).                        |
+| File                                      | Purpose                                                                                  |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `docs/WALKTHROUGH.md`                     | The guided tour: how everything connects, with traces and exercises.                     |
+| `docs/HANDOVER.md`                        | How to pick up work: the board, the rules of the branch, the shift log.                  |
+| `docs/MULTIPLAYER.md`                     | The match log, the wire protocol, and how to add a real server.                          |
+| `docs/OPERATIONS.md`                      | Looking after the live site: secrets, backups and the restore runbook, moderation, logs. |
+| `docs/PRODUCTION-AUDIT.md`                | The production audit and the hardening brief it set.                                     |
+| `docs/SOUNDS.md`                          | How the sound effects work, how to tune them, and which recorded sounds may be used.     |
+| `docs/audit/2026-10-27-codebase-audit.md` | The audit that started the overhaul (describes the old code).                            |
 
 ## `scripts/`
 
@@ -66,6 +68,8 @@ every visual decision. Lower layers never import higher ones.
 | `index.ts`                | The Worker: every `/api` route (games, accounts, profiles, leaderboards), sockets to rooms and the lobby, the app for other paths.                                  |
 | `securityHeaders.ts`      | The security headers, and `secured`, which adds them to the Worker's own `/api` responses.                                                                          |
 | `securityHeaders.test.ts` | Checks `public/_headers` forbids framing, matches the Worker's headers, and keeps `/sw.js` uncached.                                                                |
+| `admin.ts`                | Owner-only `/api/admin` routes behind the `ADMIN_TOKEN` secret (404 without it); `Backups`, point-in-time restore of the accounts database.                         |
+| `admin.test.ts`           | Admin routes: 404 without the secret or token; bookmarks and restores against a fake storage that records the calls.                                                |
 | `rateLimit.ts`            | Per-network limits on match creation, sign-in and recovery, username checks: the binding as a flood filter, exact counts in the store.                              |
 | `rateLimit.test.ts`       | Limiter tests: allowed, refused with 429 and Retry-After, the window resetting, the store used when the binding is missing or failing.                              |
 | `room.ts`                 | `MatchRoom`, one Durable Object per match: connects `RoomCore` to Cloudflare (hibernatable sockets, keepalive auto-response, the alarm).                            |

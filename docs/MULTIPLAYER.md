@@ -183,6 +183,10 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   database has not had when the Accounts object starts (the count is kept in a
   `schema_version` table). Add a new entry for a new column or table, never
   edit a deployed one.
+- **Backups.** Cloudflare keeps 30 days of the accounts database's history.
+  The owner-only `/api/admin/backup/*` routes (`worker/admin.ts`, behind the
+  `ADMIN_TOKEN` secret) turn a time into a bookmark and roll the database
+  back to it; `docs/OPERATIONS.md` has the runbook.
 - **Your data.** Settings can download everything the server keeps for an
   account as JSON, clear the game history, and delete the account (password
   needed). A deleted player's online games stay in their opponents' histories,
