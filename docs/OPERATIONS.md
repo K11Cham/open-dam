@@ -155,7 +155,8 @@ curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$SITE/api/admin/users/t
 **Rename a username** (for an offensive or impersonating one). The player is
 signed out everywhere, and because a password's key is made with the
 username, their old password stops working: they set a new one with their
-recovery code under the new name (Sign in → Forgot your password?).
+recovery code under the new name (Sign in → Forgot your password?). The
+old name is then held for 30 days for nobody, not even them.
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \

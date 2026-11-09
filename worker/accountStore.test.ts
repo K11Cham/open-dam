@@ -540,3 +540,33 @@ describe('moderation', () => {
     expect(store.leaderboard('5x5:untimed').total).toBe(2)
   })
 })
+
+describe('usernames given up', () => {
+  it('are held for 30 days for the person who had them, and nobody else', async () => {
+    const { store, clock } = makeStore()
+    const { user } = await signUp(store, 'Kylar')
+    expect(await store.changeUsername(user.id, KEY, 'kylar_c', OTHER_KEY)).toMatchObject({ ok: true })
+    expect(store.usernameProblem('Kylar')).toMatch(/in use until recently/)
+    expect(await store.signUp({ username: 'kylar', key: KEY }, { ...here, ip: '1.2.3.4' })).toMatchObject({
+      ok: false,
+      status: 409,
+    })
+    // The person who gave it up may take it back.
+    expect(await store.changeUsername(user.id, OTHER_KEY, 'Kylar', KEY)).toMatchObject({ ok: true })
+
+    // Given up again, and 30 days on, it is free for anyone.
+    await store.changeUsername(user.id, KEY, 'kylar_c', OTHER_KEY)
+    clock.t += 30 * 24 * 60 * 60 * 1000 + 1
+    expect(store.usernameProblem('Kylar')).toBeNull()
+    store.housekeeping()
+    expect(await store.signUp({ username: 'Kylar', key: KEY }, { ...here, ip: '1.2.3.5' })).toMatchObject({ ok: true })
+  })
+
+  it('are held for nobody when the site’s owner renamed the account', async () => {
+    const { store } = makeStore()
+    const { user } = await signUp(store, 'Troll')
+    expect(store.renameUser('Troll', 'player_7')).toEqual({ ok: true })
+    expect(store.renameUser('player_7', 'Troll')).toMatchObject({ ok: false })
+    expect(store.me(user.id)?.username).toBe('player_7')
+  })
+})

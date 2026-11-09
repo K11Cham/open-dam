@@ -193,6 +193,11 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   device (newest change wins; solved puzzles are combined), and finished local
   games combined by id (the account keeps 200, a device 50). Signing out
   removes the account's games and puzzle progress from the device.
+- **Changing a username.** The old name is held for 30 days
+  (`released_names`, migration 6): only its previous owner may take it back
+  meanwhile, so old profile links do not suddenly show someone else. A name
+  the site's owner took away is held for nobody. A deleted account's name is
+  free at once.
 - **Moderation.** Display names may not look like a reserved name
   (`displayNameProblem` in `src/net/account.ts`: accents, case and
   punctuation ignored). Signed-in players report others from a profile

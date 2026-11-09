@@ -64,6 +64,16 @@ export interface Report {
 
 const MAX_REPORT_CHARS = 500
 
+/**
+ * A username given up by renaming stays
+ * reserved this long for everyone but the person who had it, so old profile
+ * links do not suddenly show someone else and nobody can step into a name
+ * the moment it is dropped.
+ */
+export const RELEASED_NAME_DAYS = 30
+const RELEASED_NAME_MS = RELEASED_NAME_DAYS * 24 * 60 * 60 * 1000
+const RECENTLY_USED = 'That username was in use until recently. It is held for its owner for 30 days; choose another.'
+
 /** For calls with no request behind them (tests, maintenance): one shared, unnamed network. */
 const NO_CONTEXT = { ip: '', userAgent: '' }
 
@@ -313,6 +323,14 @@ export const MIGRATIONS: string[][] = [
     )`,
     `CREATE INDEX reports_recent ON reports (created_at DESC)`,
   ],
+  // 6: usernames given up, held back for a while so links keep pointing at their owner (P2-6).
+  [
+    `CREATE TABLE released_names (
+      username_key TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      released_at INTEGER NOT NULL
+    )`,
+  ],
 ]
 
 // -- Helpers -------------------------------------------------------------------------
@@ -479,11 +497,32 @@ export class AccountStore {
     return this.sql.exec<UserRow>('SELECT * FROM users WHERE username_key = ?', usernameKey(username))[0]
   }
 
+  /** Whether a username was given up recently by someone other than `userId`, and so is held for them. */
+  private heldForSomeoneElse(username: string, userId: string | null): boolean {
+    const row = this.sql.exec<{ user_id: string; released_at: number }>(
+      'SELECT user_id, released_at FROM released_names WHERE username_key = ?',
+      usernameKey(username),
+    )[0]
+    return !!row && row.released_at > this.now() - RELEASED_NAME_MS && row.user_id !== userId
+  }
+
+  /** Hold a name someone gave up. `userId` may take it back; '' means nobody may (a name the site's owner took away). */
+  private release(username: string, userId: string) {
+    this.sql.exec(
+      `INSERT INTO released_names (username_key, user_id, released_at) VALUES (?, ?, ?)
+       ON CONFLICT (username_key) DO UPDATE SET user_id = excluded.user_id, released_at = excluded.released_at`,
+      usernameKey(username),
+      userId,
+      this.now(),
+    )
+  }
+
   /** Why a username cannot be taken, or null if it is free. */
   usernameProblem(username: unknown): string | null {
     const problem = checkUsername(username)
     if (problem) return problem
-    return this.userByName(username as string) ? 'That username is taken.' : null
+    if (this.userByName(username as string)) return 'That username is taken.'
+    return this.heldForSomeoneElse(username as string, null) ? RECENTLY_USED : null
   }
 
   me(userId: string): PrivateUser | null {
@@ -653,6 +692,7 @@ export class AccountStore {
       t - SIGNUP_IP_KEEP_MS,
     )
     this.sql.exec("UPDATE users SET signup_ip = '' WHERE signup_ip != '' AND created_at <= ?", t - SIGNUP_IP_KEEP_MS)
+    this.sql.exec('DELETE FROM released_names WHERE released_at <= ?', t - RELEASED_NAME_MS)
     return { sessions, failures, rateLimits, signupAddresses }
   }
 
@@ -714,6 +754,7 @@ export class AccountStore {
 
     // From here to the insert nothing is awaited, so the name cannot be taken in between.
     if (this.userByName(username)) return refuse(409, 'That username is taken.')
+    if (this.heldForSomeoneElse(username, null)) return refuse(409, RECENTLY_USED)
     const hourAgo = this.now() - 60 * 60 * 1000
     const recent = this.sql.exec<{ n: number }>(
       'SELECT COUNT(*) AS n FROM users WHERE signup_ip = ? AND created_at > ?',
@@ -822,6 +863,9 @@ export class AccountStore {
     const hash = await this.keyHash(salt, newKey)
     const holder = this.userByName(name)
     if (holder && holder.id !== userId) return refuse(409, 'That username is taken.')
+    if (this.heldForSomeoneElse(name, userId)) return refuse(409, RECENTLY_USED)
+    // The old name is held for this person for a while; changing only its case keeps it theirs anyway.
+    if (usernameKey(name) !== usernameKey(row.username)) this.release(row.username, userId)
     // Keeping the old display name only if the person had customised it; otherwise it follows the username.
     const displayName = row.display_name === row.username ? name : row.display_name
     this.sql.exec(
@@ -1326,6 +1370,9 @@ export class AccountStore {
     const name = (newUsername as string).trim()
     const holder = this.userByName(name)
     if (holder && holder.id !== row.id) return { ok: false, error: 'That username is taken.' }
+    if (this.heldForSomeoneElse(name, row.id)) return { ok: false, error: RECENTLY_USED }
+    // A name the owner took away is held for nobody, not even its old holder.
+    if (usernameKey(name) !== usernameKey(row.username)) this.release(row.username, '')
     const displayName = row.display_name === row.username ? name : row.display_name
     this.sql.exec(
       'UPDATE users SET username = ?, username_key = ?, display_name = ? WHERE id = ?',
