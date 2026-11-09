@@ -2,6 +2,7 @@ import { MotionConfig } from 'framer-motion'
 import { Suspense, lazy, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import ErrorBoundary from './components/layout/ErrorBoundary'
 import { ToastProvider } from './components/ui/Toasts'
 import { AccountProvider } from './context/AccountContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -127,7 +128,9 @@ export default function App() {
   return (
     <AppProviders>
       <Router>
-        <AppRoutes />
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
       </Router>
     </AppProviders>
   )

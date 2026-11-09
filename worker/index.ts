@@ -5,6 +5,7 @@ import { MATCH_ID_PATTERN } from '../src/net/protocol'
 import type { Identity } from '../src/net/server'
 import { Accounts } from './accounts'
 import { handleAdmin } from './admin'
+import { clientErrorReport, internalError } from './errors'
 import type { RequestContext } from './accountStore'
 import { LobbyRoom } from './lobbyRoom'
 import { checkLimit } from './rateLimit'
@@ -54,6 +55,9 @@ export interface Env {
  *   GET    /api/leaderboards               the pools
  *   GET    /api/leaderboards/:pool?offset= one pool's standings
  *   GET    /api/health                     "ok"
+ *   POST   /api/client-errors              { route, message } a crash in the app, for the logs (errors.ts)
+ * Owner only (admin.ts, behind the ADMIN_TOKEN secret)
+ *   /api/admin/...
  */
 
 // Starting a game and reading public pages hold nothing private, so any
@@ -448,6 +452,13 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
 
 async function handleApi(request: Request, env: Env, path: string): Promise<Response> {
   if (path === '/api/health') return new Response('ok', { headers: CORS })
+  if (path === '/api/client-errors') {
+    if (request.method !== 'POST') return fail(405, 'Use POST.')
+    if (!fromThisSite(request)) return fail(403, 'Not from this site.')
+    const refused = await limited(request, env, 'client-errors')
+    if (refused) return refused
+    return clientErrorReport(request)
+  }
   if (path.startsWith('/api/admin/')) {
     const refused = await limited(request, env, 'admin')
     if (refused) return refused
@@ -490,7 +501,8 @@ export default {
       return secured(await handleApi(request, env, path))
     } catch (error) {
       if (error instanceof BadRequest) return secured(publicJson({ error: error.message }, error.status))
-      throw error
+      // Anything else is a bug or an outage: logged with a request id, answered as JSON.
+      return secured(internalError(error, request))
     }
   },
 } satisfies ExportedHandler<Env>

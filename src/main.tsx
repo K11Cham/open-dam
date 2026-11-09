@@ -14,8 +14,10 @@ import './styles/base.css'
 import './styles/app.css'
 import App from './App'
 import { boardDebugEnabled } from './lib/boardDebug'
+import { startErrorReporting } from './net/errorReport'
 import { startPwa } from './pwa/pwa'
 
+startErrorReporting()
 startPwa()
 // Read `?debug=board` before any redirect drops it; it then stays on for this tab.
 boardDebugEnabled()

@@ -17,6 +17,9 @@ export const onlineAvailable = (): boolean => configured !== '' || import.meta.e
 
 const base = (): string => (configured || window.location.origin).replace(/\/$/, '')
 
+/** The server's address: this site, or the one a static copy was built to use. */
+export const serverBase = base
+
 export const matchSocketUrl = (matchId: string): string =>
   `${base().replace(/^http/, 'ws')}/api/matches/${encodeURIComponent(matchId)}/socket`
 

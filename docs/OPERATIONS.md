@@ -1,7 +1,7 @@
 # Operations
 
-How to look after the live site: the owner's secrets, and backups and
-restores. Every command here is run by the owner,
+How to look after the live site: the owner's secrets, backups and restores,
+and where errors show up. Every command here is run by the owner,
 from this repository, signed in with `npx wrangler login`.
 
 The live site is https://play.open-dam.workers.dev. Below, `$SITE` is that
@@ -101,3 +101,23 @@ account. A weekly export of the whole database to an R2 bucket would cover
 that too; it is not built, because it needs a bucket the owner creates
 (`npx wrangler r2 bucket create open-dam-backups`) and a binding. Until then,
 each player can download everything kept for them (Settings → Your data).
+
+## When something breaks
+
+Nothing is sent to any third-party service. Everything goes to **Workers
+Logs** (Cloudflare dashboard → Workers & Pages → play → Logs, kept a few
+days on the free plan), one JSON line per event:
+
+| `event`            | Meaning                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `worker-error`     | An unexpected error in the Worker. The visitor got JSON `{ error, requestId }` with status 500; `requestId` is Cloudflare's Ray id for that request.    |
+| `client-error`     | The app crashed in someone's browser (`kind`: `render`, `error` or `unhandledrejection`), with the page's path and the message, and nothing about them. |
+| `report-failed`    | A finished game could not reach the Accounts object; the match room retries it (1, 5, 30 minutes, then hourly).                                         |
+| `report-abandoned` | A game's report was still failing when its room was cleaned up after 30 days; that game is not in anyone's history.                                     |
+
+Filter on `level = "error"` to see all of them. A person who saw an error
+message with a request id can send it to you; search the logs for it.
+
+In the app, a page that crashes shows "Something went wrong" with Reload and
+Home instead of a blank page; a game in progress is saved after every move,
+so reloading continues it.

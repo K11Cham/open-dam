@@ -70,6 +70,8 @@ every visual decision. Lower layers never import higher ones.
 | `securityHeaders.test.ts` | Checks `public/_headers` forbids framing, matches the Worker's headers, and keeps `/sw.js` uncached.                                                                |
 | `admin.ts`                | Owner-only `/api/admin` routes behind the `ADMIN_TOKEN` secret (404 without it); `Backups`, point-in-time restore of the accounts database.                         |
 | `admin.test.ts`           | Admin routes: 404 without the secret or token; bookmarks and restores against a fake storage that records the calls.                                                |
+| `errors.ts`               | Unexpected errors logged as one JSON line with a request id and answered `{ error, requestId }`; `POST /api/client-errors`.                                         |
+| `errors.test.ts`          | The 500 shape and log line; client error reports cut, stripped of query strings, refused when malformed or too big.                                                 |
 | `rateLimit.ts`            | Per-network limits on match creation, sign-in and recovery, username checks: the binding as a flood filter, exact counts in the store.                              |
 | `rateLimit.test.ts`       | Limiter tests: allowed, refused with 429 and Retry-After, the window resetting, the store used when the binding is missing or failing.                              |
 | `room.ts`                 | `MatchRoom`, one Durable Object per match: connects `RoomCore` to Cloudflare (hibernatable sockets, keepalive auto-response, the alarm).                            |
@@ -154,6 +156,7 @@ every visual decision. Lower layers never import higher ones.
 
 | File             | Purpose                                                                                                                               |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `errorReport.ts` | Reports crashes (uncaught errors, failed promises, render errors) to `/api/client-errors`: the path and message only.                 |
 | `protocol.ts`    | Wire messages between guests and the host, and between seekers and the lobby; the `Transport` interface; match id format; heartbeats. |
 | `api.ts`         | Where the server is (`VITE_MATCH_SERVER` or the site itself), its socket URL, and creating a match.                                   |
 | `account.ts`     | Accounts as both sides see them: user, rating, game and leaderboard shapes; username and password checks; pools; `stretchPassword`.   |
@@ -190,6 +193,7 @@ every visual decision. Lower layers never import higher ones.
 
 | File                       | Purpose                                                                                                                    |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `layout/ErrorBoundary.tsx` | A page that throws shows "Something went wrong" with Reload and Home, and is reported.                                     |
 | `board/BoardDebug.tsx`     | The `?debug=board` check under the board: reports any engine piece that is not drawn, with the moves, and copies a report. |
 | `board/BoardView.tsx`      | The board: geometry, keyboard and pointer input, spoken labels, travelling pieces, the theme's parts.                      |
 | `board/BoardThumbnail.tsx` | A small static picture of a position (one SVG from theme tokens) for cards and lists.                                      |
@@ -284,5 +288,6 @@ every visual decision. Lower layers never import higher ones.
 | `styles/app.css`                  | Structure for every component, using theme tokens only.                                                  |
 | `test/setup.ts`                   | Test environment setup (jest-dom, cleanup, browser API stubs).                                           |
 | `test/ui.test.tsx`                | UI tests through the real routes.                                                                        |
+| `test/errors.test.tsx`            | The crash screen, and what a crash report sends.                                                         |
 | `test/calls.test.tsx`             | The computer calls a piece: the explanation appears and the piece is ringed for 600 ms; the board check. |
 | `test/accounts.test.tsx`          | The account pages through the real routes, against a pretend server.                                     |

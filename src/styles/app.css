@@ -3506,3 +3506,8 @@
   font-family: var(--dam-font-mono);
   font-size: 0.8rem;
 }
+
+/* The crash screen (ErrorBoundary.tsx) has no top bar, so it keeps its distance from the top on its own. */
+.crash {
+  padding-top: 48px;
+}
