@@ -28,6 +28,8 @@ export default function AppShell({ children, wide = false }: AppShellProps) {
         <span>Open Dam · a Gambian board game, open source</span>
         <nav aria-label="Footer" className="app__footer-links">
           <Link to="/learn">Rules</Link>
+          <Link to="/privacy">Privacy</Link>
+          <Link to="/terms">Terms</Link>
           <a href="https://github.com/k11cham/open-dam" rel="noreferrer">
             Source
           </a>

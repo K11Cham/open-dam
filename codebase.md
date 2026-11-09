@@ -230,28 +230,29 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/pages/`
 
-| File                        | Purpose                                                                          |
-| --------------------------- | -------------------------------------------------------------------------------- |
-| `HomePage.tsx`              | Hero, continue card, quick play, recent games, about.                            |
-| `NewGamePage.tsx`           | Mode first, then opponent or side, then rules; starts a game.                    |
-| `MatchPage.tsx`             | `/match/:id` (a saved local game) and `/match/new` (start from a link).          |
-| `OnlinePage.tsx`            | `/online/:id`: join a game on the server; invite bar and connection status.      |
-| `ReviewPage.tsx`            | `/review/:id`: a finished game on this device; `/game/:id`: one from the server. |
-| `AnalysisPage.tsx`          | Free board with set-up tools and position codes.                                 |
-| `TutorialPage.tsx`          | `/learn` overview and `/learn/:chapterId`.                                       |
-| `LeaderboardsPage.tsx`      | `/leaderboards`: rated players by board size and clock.                          |
-| `ProfilePage.tsx`           | `/u/:username`: a player's totals, ratings and online games.                     |
-| `SettingsPage.tsx`          | `/settings`: preferences; profile, sign-in, devices and data when signed in.     |
-| `AuthPage.tsx`              | `/signin`, `/signup`, `/recover`; the recovery code shown once.                  |
-| `NotFoundPage.tsx`          | Unknown addresses.                                                               |
-| `tutorial/chapters.ts`      | The eleven chapters as data: text, example boards and puzzles.                   |
-| `tutorial/script.ts`        | Example-board scripts and their step notation.                                   |
-| `tutorial/ExampleBoard.tsx` | Plays a script through the engine, step by step.                                 |
-| `tutorial/puzzle.ts`        | Puzzle data types and `judge`, which decides if the reader's move is right.      |
-| `tutorial/PuzzleBoard.tsx`  | A board the reader plays: feedback, scripted replies, punished mistakes.         |
-| `tutorial/progress.ts`      | Which puzzles this browser has solved (local storage).                           |
-| `tutorial/openings.ts`      | The opening puzzle's answers, read from the AI's opening book.                   |
-| `tutorial/tutorial.test.ts` | Replays every example and every puzzle's answers, mistakes and punishments.      |
+| File                        | Purpose                                                                                                    |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `HomePage.tsx`              | Hero, continue card, quick play, recent games, about.                                                      |
+| `NewGamePage.tsx`           | Mode first, then opponent or side, then rules; starts a game.                                              |
+| `MatchPage.tsx`             | `/match/:id` (a saved local game) and `/match/new` (start from a link).                                    |
+| `OnlinePage.tsx`            | `/online/:id`: join a game on the server; invite bar and connection status.                                |
+| `ReviewPage.tsx`            | `/review/:id`: a finished game on this device; `/game/:id`: one from the server.                           |
+| `AnalysisPage.tsx`          | Free board with set-up tools and position codes.                                                           |
+| `TutorialPage.tsx`          | `/learn` overview and `/learn/:chapterId`.                                                                 |
+| `LeaderboardsPage.tsx`      | `/leaderboards`: rated players by board size and clock.                                                    |
+| `ProfilePage.tsx`           | `/u/:username`: a player's totals, ratings and online games.                                               |
+| `SettingsPage.tsx`          | `/settings`: preferences; profile, sign-in, devices and data when signed in.                               |
+| `AuthPage.tsx`              | `/signin`, `/signup`, `/recover`; the recovery code shown once.                                            |
+| `NotFoundPage.tsx`          | Unknown addresses.                                                                                         |
+| `LegalPage.tsx`             | `/privacy` (what is kept, why, how long, choices) and `/terms`; `OWNER_CONTACT` is the owner's to fill in. |
+| `tutorial/chapters.ts`      | The eleven chapters as data: text, example boards and puzzles.                                             |
+| `tutorial/script.ts`        | Example-board scripts and their step notation.                                                             |
+| `tutorial/ExampleBoard.tsx` | Plays a script through the engine, step by step.                                                           |
+| `tutorial/puzzle.ts`        | Puzzle data types and `judge`, which decides if the reader's move is right.                                |
+| `tutorial/PuzzleBoard.tsx`  | A board the reader plays: feedback, scripted replies, punished mistakes.                                   |
+| `tutorial/progress.ts`      | Which puzzles this browser has solved (local storage).                                                     |
+| `tutorial/openings.ts`      | The opening puzzle's answers, read from the AI's opening book.                                             |
+| `tutorial/tutorial.test.ts` | Replays every example and every puzzle's answers, mistakes and punishments.                                |
 
 ## `src/themes/`
 
@@ -288,6 +289,7 @@ every visual decision. Lower layers never import higher ones.
 | `styles/app.css`                  | Structure for every component, using theme tokens only.                                                  |
 | `test/setup.ts`                   | Test environment setup (jest-dom, cleanup, browser API stubs).                                           |
 | `test/ui.test.tsx`                | UI tests through the real routes.                                                                        |
+| `test/legal.test.tsx`             | The privacy and terms pages, their footer links, and the agreement line on sign-up.                      |
 | `test/errors.test.tsx`            | The crash screen, and what a crash report sends.                                                         |
 | `test/calls.test.tsx`             | The computer calls a piece: the explanation appears and the piece is ringed for 600 ms; the board check. |
 | `test/accounts.test.tsx`          | The account pages through the real routes, against a pretend server.                                     |

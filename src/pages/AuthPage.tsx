@@ -307,6 +307,13 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
               </Field>
             )}
 
+            {mode === 'signup' && (
+              <p className="field__help auth__agree">
+                By creating an account you agree to the <Link to="/terms">terms</Link> and how we handle your data, set out in the{' '}
+                <Link to="/privacy">privacy notice</Link>.
+              </p>
+            )}
+
             {error && (
               <p className="field__error" role="alert">
                 {error}

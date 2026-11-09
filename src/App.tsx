@@ -22,6 +22,8 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const ReviewPage = lazy(() => import('./pages/ReviewPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const TutorialPage = lazy(() => import('./pages/TutorialPage'))
+const PrivacyPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.PrivacyPage })))
+const TermsPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.TermsPage })))
 
 /** Shown for the moment a lazily loaded page takes to arrive. */
 function PageLoading() {
@@ -63,6 +65,7 @@ function ScrollToTop() {
  *   /u/:username      a player's profile
  *   /settings         preferences, and the account
  *   /signin, /signup, /recover   accounts
+ *   /privacy, /terms  what is kept about people, and the rules
  */
 export function AppRoutes() {
   return (
@@ -87,6 +90,8 @@ export function AppRoutes() {
           <Route path="/signin" element={<AuthPage mode="signin" />} />
           <Route path="/signup" element={<AuthPage mode="signup" />} />
           <Route path="/recover" element={<AuthPage mode="recover" />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
