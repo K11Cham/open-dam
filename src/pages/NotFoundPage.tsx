@@ -8,6 +8,8 @@ export default function NotFoundPage() {
   return (
     <AppShell>
       <div className="page page--narrow">
+        {/* React puts this in <head>: an address that is not a page should not be indexed as one. */}
+        <meta name="robots" content="noindex" />
         <Panel>
           <h1 className="panel__title">Page not found</h1>
           <p className="panel__text">That address does not match anything in Open Dam.</p>

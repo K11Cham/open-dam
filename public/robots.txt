@@ -1,0 +1,9 @@
+# Open Dam. Everything a visitor sees may be indexed; the API and private pages may not.
+User-agent: *
+Disallow: /api/
+Disallow: /settings
+Disallow: /match/
+Disallow: /online/
+Disallow: /review/
+
+Sitemap: https://play.open-dam.workers.dev/sitemap.xml

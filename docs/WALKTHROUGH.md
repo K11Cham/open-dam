@@ -679,6 +679,13 @@ leaderboards.
   connection returns; the sign-in, sign-up and recovery forms say they need a
   connection and keep their button off until then. All of them read
   `usePwa().online`.
+- A shared link (an invite on WhatsApp, say) shows a picture and a line
+  about the game: Open Graph and Twitter tags in `index.html`, and
+  `public/og-image.png`, drawn by `npm run icons` from the mark
+  (`shareImageSvg` in `src/themes/brand.ts`). The service worker does not
+  save that picture, nor `robots.txt` and `sitemap.xml`. Unknown addresses
+  still open the app (it decides what is a page), but the Not Found page
+  asks crawlers not to index it.
 - Installing is offered in three places: a button in the top bar, a card
   that appears as soon as Home opens ("Not now" puts it away for three days),
   and Settings → App. All three go through `useInstall`: Chrome, Edge and

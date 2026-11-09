@@ -59,6 +59,8 @@ export function strategyFor({ method, mode, url }: RequestFacts, origin: string)
  */
 export function shouldPrecache(fileName: string): boolean {
   if (fileName.endsWith('.woff')) return false
+  // The link-preview picture is for other sites' crawlers, never shown in the app.
+  if (fileName === 'og-image.png') return false
   if (fileName.endsWith('.woff2')) return /-latin-(?!ext)/.test(fileName)
   return /\.(js|css|html|svg|png|ico|webmanifest)$/.test(fileName)
 }

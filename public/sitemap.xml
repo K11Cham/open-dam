@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The public pages of Open Dam. Players' profiles and games are reached by links, not listed here. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://play.open-dam.workers.dev/</loc></url>
+  <url><loc>https://play.open-dam.workers.dev/play</loc></url>
+  <url><loc>https://play.open-dam.workers.dev/learn</loc></url>
+  <url><loc>https://play.open-dam.workers.dev/analysis</loc></url>
+  <url><loc>https://play.open-dam.workers.dev/leaderboards</loc></url>
+  <url><loc>https://play.open-dam.workers.dev/privacy</loc></url>
+  <url><loc>https://play.open-dam.workers.dev/terms</loc></url>
+</urlset>

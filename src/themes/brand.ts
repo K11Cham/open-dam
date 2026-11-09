@@ -74,3 +74,32 @@ export function brandSvg({ tile, scale = 1, size = MARK_SIZE }: BrandSvgOptions)
     '</g></svg>',
   ].join('')
 }
+
+/** The size link previews ask for (Open Graph, WhatsApp, X): 1200 by 630. */
+export const SHARE_IMAGE = { width: 1200, height: 630 } as const
+
+/**
+ * The picture a shared link shows: the mark, large, on sand, beside the name
+ * and what the game is. The words use a system serif, since the picture is
+ * drawn once by `npm run icons` and committed.
+ */
+export function shareImageSvg(): string {
+  const { width, height } = SHARE_IMAGE
+  const { sand, groove, stone } = BRAND_COLOURS
+  const mark = 420
+  const markX = 110
+  const markY = (height - mark) / 2
+  const inner = brandSvg({ tile: 'rounded', size: mark })
+    .replace(/^<svg[^>]*>/, '')
+    .replace(/<\/svg>$/, '')
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<rect width="${width}" height="${height}" fill="${sand}"/>`,
+    `<rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="28" fill="none" stroke="${groove}" stroke-width="4"/>`,
+    `<svg x="${markX}" y="${markY}" width="${mark}" height="${mark}" viewBox="0 0 ${MARK_SIZE} ${MARK_SIZE}">${inner}</svg>`,
+    `<text x="610" y="300" font-family="Georgia, 'DejaVu Serif', serif" font-size="96" font-weight="700" fill="${stone}">Open Dam</text>`,
+    `<text x="614" y="372" font-family="Georgia, 'DejaVu Serif', serif" font-size="38" fill="${stone}">The Gambian board game.</text>`,
+    `<text x="614" y="424" font-family="Georgia, 'DejaVu Serif', serif" font-size="38" fill="${stone}">Play online, free.</text>`,
+    '</svg>',
+  ].join('')
+}

@@ -50,5 +50,9 @@ describe('what is saved when the app installs', () => {
     expect(shouldPrecache('assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2')).toBe(false)
     expect(shouldPrecache('assets/inter-cyrillic-wght-normal-DqGufNeO.woff2')).toBe(false)
     expect(shouldPrecache('assets/inter-latin-wght-normal-abc.woff')).toBe(false)
+    // The link-preview picture is for crawlers, and robots.txt and the sitemap are not the app.
+    expect(shouldPrecache('og-image.png')).toBe(false)
+    expect(shouldPrecache('robots.txt')).toBe(false)
+    expect(shouldPrecache('sitemap.xml')).toBe(false)
   })
 })
