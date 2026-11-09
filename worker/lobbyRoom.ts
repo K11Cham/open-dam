@@ -17,6 +17,8 @@ interface LobbyAttachment {
   ratings: Record<string, number>
   /** Their waiting seek, if any. */
   seek: Seek | null
+  /** A keyed hash of their network, from the Worker, so two accounts on one network are not paired. */
+  network: string | null
 }
 
 /**
@@ -111,14 +113,15 @@ export class LobbyRoom extends DurableObject<Env> {
 
   async fetch(request: Request): Promise<Response> {
     const identity = identityFrom(request)
+    const network = request.headers.get('X-Open-Dam-Network')
     // Read fresh each time someone connects, so a rating just earned counts in the next search.
     const ratings = identity ? await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('accounts')).ratingMap(identity.id) : {}
     const pair = new WebSocketPair()
     const [client, server] = [pair[0], pair[1]]
     this.ctx.acceptWebSocket(server)
-    const attachment: LobbyAttachment = { identity, ratings, seek: null }
+    const attachment: LobbyAttachment = { identity, ratings, seek: null, network }
     server.serializeAttachment(attachment)
-    this.connections.set(server, this.lobby.accept(this.wrap(server), identity?.id ?? null))
+    this.connections.set(server, this.lobby.accept(this.wrap(server), identity?.id ?? null, network))
     return new Response(null, { status: 101, webSocket: client })
   }
 

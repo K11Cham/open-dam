@@ -208,6 +208,35 @@ describe('lobby', () => {
     lobby.close()
   })
 
+  test('two accounts on one network are never paired with each other; on different networks they are', async () => {
+    const lobby = lobbyWith({ requireAccount: true })
+    const seekFrom = (account: string, network: string) => {
+      const inbox: LobbyReply[] = []
+      const connection = lobby.accept(
+        { send: (text) => inbox.push(JSON.parse(text) as LobbyReply), close: () => {} },
+        account,
+        network,
+      )
+      connection.receive(
+        JSON.stringify({ v: PROTOCOL_VERSION, channel: 'lobby', from: 'tab', type: 'seek', settings: { boardSize: 7 } }),
+      )
+      return inbox
+    }
+    seekFrom('acct-a', 'home')
+    seekFrom('acct-b', 'home')
+    await flush()
+    clock += 60_000
+    lobby.sweep()
+    await flush()
+    expect(made).toEqual([])
+    expect(lobby.waiting).toBe(2)
+    const c = seekFrom('acct-c', 'elsewhere')
+    await flush()
+    expect(made).toEqual(['m1'])
+    expect(c.at(-1)).toMatchObject({ type: 'paired' })
+    lobby.close()
+  })
+
   test('with a clock required, an untimed seek is refused with a reason and a timed one waits', () => {
     const lobby = lobbyWith({ requireAccount: true, requireClock: true })
     const a = connect(lobby, 'acct-a')

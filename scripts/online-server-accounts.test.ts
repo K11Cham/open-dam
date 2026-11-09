@@ -17,11 +17,18 @@ import type { SocketLike } from '../src/net/websocket'
  *
  * Node's WebSocket accepts headers, which a browser's does not, so the
  * session cookie is passed by hand here; a browser sends it by itself.
+ *
+ * The lobby never pairs two accounts on one network (rating farming), and
+ * this check runs both from one machine. Under `wrangler dev` it says each
+ * comes from a different address (the CF-Connecting-IP header passes through
+ * locally); Cloudflare's edge replaces that header, so against a deployed
+ * server the check sees the two left unpaired instead, and plays no game.
  */
 
 const BASE = (process.env.ONLINE_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '')
 const WS_BASE = BASE.replace(/^http/, 'ws')
 const run = Math.random().toString(36).slice(2, 8)
+const LOCAL = /^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(BASE)
 
 async function until(what: string, check: () => boolean, timeoutMs = 10_000) {
   const start = Date.now()
@@ -47,6 +54,7 @@ interface Person {
 const people: Person[] = []
 /** The first test's account plays the rated game too, so a run makes only two accounts (one network may make five an hour). */
 let first: Person | null = null
+let second: Person | null = null
 
 function client(cookie: string) {
   return async (path: string, init: { method?: string; body?: unknown; origin?: string } = {}) => {
@@ -80,12 +88,14 @@ async function signUp(name: string): Promise<Person> {
   return person
 }
 
-const socketWith = (cookie: string) => (url: string) =>
-  new (WebSocket as unknown as new (url: string, init: object) => SocketLike)(url, { headers: { Cookie: cookie } })
+const socketWith = (cookie: string, ip?: string) => (url: string) =>
+  new (WebSocket as unknown as new (url: string, init: object) => SocketLike)(url, {
+    headers: { Cookie: cookie, ...(ip ? { 'CF-Connecting-IP': ip } : {}) },
+  })
 
-function lobby(cookie: string) {
+function lobby(cookie: string, ip?: string) {
   const replies: LobbyReply[] = []
-  const socket = socketWith(cookie)(`${WS_BASE}/api/lobby/socket`) as unknown as WebSocket
+  const socket = socketWith(cookie, ip)(`${WS_BASE}/api/lobby/socket`) as unknown as WebSocket
   socket.onmessage = (event) => replies.push(JSON.parse(String(event.data)) as LobbyReply)
   const opened = new Promise<void>((resolve) => (socket.onopen = () => resolve()))
   const seek = async (settings: object) => {
@@ -143,13 +153,30 @@ describe(`accounts at ${BASE}`, () => {
     guest.close()
   })
 
-  test('two accounts are paired, play a rated game, and reach the leaderboard', async () => {
+  test('two accounts on one network are not paired with each other', async () => {
     const a = first ?? (await signUp(`check-${run}-a`))
     const b = await signUp(`check-${run}-b`)
+    first = a
+    second = b
+    const settings = { boardSize: 8, timeControl: { label: '30+10' } }
+    const lobbyA = lobby(a.cookie, LOCAL ? '198.51.100.10' : undefined)
+    const lobbyB = lobby(b.cookie, LOCAL ? '198.51.100.10' : undefined)
+    await lobbyA.seek(settings)
+    await lobbyB.seek(settings)
+    await until('both to be seeking', () => [lobbyA, lobbyB].every((l) => l.replies.some((r) => r.type === 'seeking')))
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+    expect([lobbyA, lobbyB].some((l) => l.replies.some((r) => r.type === 'paired'))).toBe(false)
+    lobbyA.close()
+    lobbyB.close()
+  })
+
+  test.runIf(LOCAL)('two accounts are paired, play a rated game, and reach the leaderboard', async () => {
+    const a = first ?? (await signUp(`check-${run}-a`))
+    const b = second ?? (await signUp(`check-${run}-b`))
     // An unusual pool, so a real player seeking at the same moment is not paired with a check.
     const settings = { boardSize: 8, timeControl: { label: '30+10' } }
-    const lobbyA = lobby(a.cookie)
-    const lobbyB = lobby(b.cookie)
+    const lobbyA = lobby(a.cookie, '198.51.100.11')
+    const lobbyB = lobby(b.cookie, '198.51.100.12')
     await lobbyA.seek(settings)
     await until('A to be seeking', () => lobbyA.replies.some((r) => r.type === 'seeking'))
     await lobbyB.seek(settings)

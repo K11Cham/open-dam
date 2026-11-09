@@ -17,6 +17,13 @@ export interface Seek {
   rating: number
   /** Epoch ms when the seek was posted. */
   since: number
+  /**
+   * A keyed hash of the network the seeker is on, when the server knows it.
+   * Two seeks from one network are never paired, so one person cannot farm
+   * rating by playing their own second account (they can still play it by an
+   * invite link, unrated).
+   */
+  network?: string
 }
 
 export interface Pairing {
@@ -102,6 +109,7 @@ export class SeekQueue {
     let best: Seek | null = null
     for (const other of this.seeks) {
       if (other.id === seek.id || other.playerId === seek.playerId) continue
+      if (seek.network && seek.network === other.network) continue
       if (!settingsAreCompatible(seek.settings, other.settings)) continue
       const gap = Math.abs(seek.rating - other.rating)
       if (gap > ratingWindow(now - seek.since) || gap > ratingWindow(now - other.since)) continue

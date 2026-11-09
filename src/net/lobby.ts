@@ -99,8 +99,8 @@ export class Lobby {
    * caller checked; when given, it is the player's identity in place of the
    * client id the browser sends, so one person in two tabs is one seeker.
    */
-  accept(socket: LobbySocket, accountId: string | null = null): ServerConnection {
-    return this.connect(socket, accountId, accountId)
+  accept(socket: LobbySocket, accountId: string | null = null, network: string | null = null): ServerConnection {
+    return this.connect(socket, accountId, accountId, network)
   }
 
   /**
@@ -114,13 +114,13 @@ export class Lobby {
         this.queue.restore(seek)
         this.sockets.set(seek.playerId, socket)
       }
-      return this.connect(socket, accountId, accountId ?? seek?.playerId ?? null)
+      return this.connect(socket, accountId, accountId ?? seek?.playerId ?? null, seek?.network ?? null)
     })
     this.scheduleSweep()
     return connections
   }
 
-  private connect(socket: LobbySocket, accountId: string | null, known: string | null): ServerConnection {
+  private connect(socket: LobbySocket, accountId: string | null, known: string | null, network: string | null): ServerConnection {
     let clientId: string | null = known
 
     const receive = (text: string) => {
@@ -146,7 +146,7 @@ export class Lobby {
         if (this.sockets.get(clientId) === socket) this.cancel(clientId, 'Search cancelled.')
         return
       }
-      this.seek(socket, clientId, message.settings)
+      this.seek(socket, clientId, message.settings, network)
     }
 
     // A player who leaves stops seeking, unless they are already back on another connection.
@@ -169,7 +169,7 @@ export class Lobby {
     this.sweepTimer = undefined
   }
 
-  private seek(socket: LobbySocket, playerId: string, untrusted: unknown) {
+  private seek(socket: LobbySocket, playerId: string, untrusted: unknown, network: string | null = null) {
     const settings = sanitizeSettings(untrusted)
     if (this.requireClock && settings.timeControl === null) {
       this.reply(socket, playerId, { type: 'seek-ended', reason: NEEDS_CLOCK })
@@ -184,7 +184,14 @@ export class Lobby {
     if (previous && previous !== socket) previous.rememberSeek?.(null)
     this.sockets.set(playerId, socket)
     this.reply(socket, playerId, { type: 'seeking', pool, rating })
-    const seek: Seek = { id: `${playerId}#${this.nextSeek++}`, playerId, settings, rating, since: this.now() }
+    const seek: Seek = {
+      id: `${playerId}#${this.nextSeek++}`,
+      playerId,
+      settings,
+      rating,
+      since: this.now(),
+      ...(network ? { network } : {}),
+    }
     const pairing = this.queue.add(seek, this.now())
     if (pairing) void this.start(pairing)
     else socket.rememberSeek?.(seek)

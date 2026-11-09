@@ -177,12 +177,39 @@ const fromThisSite = (request: Request): boolean => {
 }
 
 /** The socket request a room or the lobby receives, carrying who the Worker checked the person is. */
-const withIdentity = (request: Request, identity: Identity | null): Request => {
+const withIdentity = (request: Request, identity: Identity | null, network: string | null = null): Request => {
   const headers = new Headers(request.headers)
-  // Whatever a browser put here is discarded; only the Worker vouches for an identity.
+  // Whatever a browser put here is discarded; only the Worker vouches for an identity or a network.
   headers.delete('X-Open-Dam-Identity')
+  headers.delete('X-Open-Dam-Network')
   if (identity) headers.set('X-Open-Dam-Identity', encodeURIComponent(JSON.stringify(identity)))
+  if (network) headers.set('X-Open-Dam-Network', network)
   return new Request(request, { headers })
+}
+
+/**
+ * The caller's network as a keyed hash (the IP_HASH_SECRET secret; unkeyed
+ * without it), for the lobby to tell two accounts on one network apart. Null
+ * with no address (local development).
+ */
+async function networkOf(request: Request, env: Env): Promise<string | null> {
+  const ip = request.headers.get('CF-Connecting-IP')
+  if (!ip) return null
+  const data = new TextEncoder().encode(`lobby:${ip}`)
+  const digest = env.IP_HASH_SECRET
+    ? await crypto.subtle.sign(
+        'HMAC',
+        await crypto.subtle.importKey(
+          'raw',
+          new TextEncoder().encode(env.IP_HASH_SECRET),
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['sign'],
+        ),
+        data,
+      )
+    : await crypto.subtle.digest('SHA-256', data)
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 // -- Games ----------------------------------------------------------------------------
@@ -491,8 +518,8 @@ async function handleApi(request: Request, env: Env, path: string): Promise<Resp
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return publicJson({ error: 'Expected a WebSocket.' }, 426)
     // A socket from another site's page would carry this person's cookie into a game; it is answered as a guest instead.
     const viewer = fromThisSite(request) ? await viewerOf(request, env) : null
-    const forwarded = withIdentity(request, identityOf(viewer))
-    return socket ? roomFor(env, socket[1]).fetch(forwarded) : lobbyOf(env).fetch(forwarded)
+    if (socket) return roomFor(env, socket[1]).fetch(withIdentity(request, identityOf(viewer)))
+    return lobbyOf(env).fetch(withIdentity(request, identityOf(viewer), await networkOf(request, env)))
   }
 
   for (const route of routes) {

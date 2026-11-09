@@ -181,7 +181,13 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
 - **Matchmaking.** `LobbyRoom` (`worker/lobbyRoom.ts`) runs the `Lobby` for
   signed-in players only. It reads each player's ratings from `Accounts` when
   they connect, so the browser never says how strong it is, and makes each
-  pairing a match room whose seats already belong to the two accounts.
+  pairing a match room whose seats already belong to the two accounts. Two
+  accounts on one network (the Worker passes a keyed hash of the address as
+  `X-Open-Dam-Network`) are never paired, so nobody can farm rating against
+  their own second account; they can still play by an invite link, unrated.
+  `check:online` therefore pairs its two accounts only under `wrangler dev`
+  (where it can say they come from different addresses), and against a
+  deployed server checks instead that they are left unpaired.
 - **Settings across devices.** `src/net/accountSync.ts` keeps theme, sound,
   preferences, the last New Game form and solved puzzles the same on every
   device (newest change wins; solved puzzles are combined), and finished local
