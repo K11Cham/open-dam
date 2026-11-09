@@ -168,7 +168,11 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   Requests that change an account must come from this site (the Worker checks
   `Origin`), and account routes send no CORS headers.
 - **A forgotten password.** Sign-up shows a recovery code once. It resets the
-  password, signs out every device, and is replaced by a new code.
+  password, signs out every device, and is replaced by a new code. There is
+  no email, so the sign-up form and the code screen say plainly that without
+  the code a forgotten password loses the account; the code can be copied or
+  downloaded as a text file. Settings → Sign-in shows when the current code
+  was made (`recovery_issued_at`, migration 4) and makes a new one.
 - **Ratings.** Elo per pool (board size and clock), from rated games only.
   The match room reports a finished game to `Accounts.recordGame`, which
   stores it once (a second report changes nothing), rates it if both seats are

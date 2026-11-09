@@ -180,6 +180,15 @@ describe('changing what proves who you are', () => {
     expect(await store.changeUsername(user.id, OTHER_KEY, 'k12', KEY)).toMatchObject({ user: { displayName: 'Kylar C' } })
   })
 
+  it('remembers when the current recovery code was made', async () => {
+    const { store, clock } = makeStore()
+    const { user } = await signUp(store, 'Kylar')
+    expect(user.recoveryIssuedAt).toBe(clock.t)
+    clock.t += 60_000
+    await store.replaceRecoveryCode(user.id, KEY)
+    expect(store.me(user.id)?.recoveryIssuedAt).toBe(clock.t)
+  })
+
   it('resets a forgotten password with the recovery code, which then stops working', async () => {
     const { store } = makeStore()
     const { recoveryCode, token } = await signUp(store, 'Kylar')

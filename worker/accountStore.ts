@@ -122,6 +122,7 @@ interface UserRow {
   key_salt: string
   key_hash: string
   recovery_hash: string
+  recovery_issued_at: number
 }
 
 interface GameRow {
@@ -263,6 +264,8 @@ export const MIGRATIONS: string[][] = [
     )`,
     `CREATE INDEX failures_age ON failures (first_at)`,
   ],
+  // 4: when the current recovery code was made, so Settings can say (P1-5). 0 for codes made before: the account's start.
+  [`ALTER TABLE users ADD COLUMN recovery_issued_at INTEGER NOT NULL DEFAULT 0`],
 ]
 
 // -- Helpers -------------------------------------------------------------------------
@@ -320,7 +323,11 @@ const publicUser = (row: UserRow): PublicUser => ({
   createdAt: row.created_at,
 })
 
-const privateUser = (row: UserRow): PrivateUser => ({ ...publicUser(row), showGames: row.show_games === 1 })
+const privateUser = (row: UserRow): PrivateUser => ({
+  ...publicUser(row),
+  showGames: row.show_games === 1,
+  recoveryIssuedAt: row.recovery_issued_at || row.created_at,
+})
 
 const gamePlayer = (row: UserRow | undefined): GamePlayer | null =>
   row ? { id: row.id, username: row.username, displayName: row.display_name, avatar: publicUser(row).avatar } : null
@@ -624,8 +631,8 @@ export class AccountStore {
     const id = this.randomText(12)
     const avatars: AvatarColour[] = ['p1', 'p2', 'accent', 'highlight']
     this.sql.exec(
-      `INSERT INTO users (id, username, username_key, display_name, avatar, bio, show_games, created_at, key_salt, key_hash, recovery_hash, signup_ip)
-       VALUES (?, ?, ?, ?, ?, '', 1, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (id, username, username_key, display_name, avatar, bio, show_games, created_at, key_salt, key_hash, recovery_hash, signup_ip, recovery_issued_at)
+       VALUES (?, ?, ?, ?, ?, '', 1, ?, ?, ?, ?, ?, ?)`,
       id,
       username,
       usernameKey(username),
@@ -636,6 +643,7 @@ export class AccountStore {
       keyHash,
       recoveryHash,
       ipHash,
+      this.now(),
     )
     const token = await this.startSession(id, context)
     return { ok: true, user: privateUser(this.userById(id)!), token, recoveryCode }
@@ -742,7 +750,12 @@ export class AccountStore {
     const wrong = await this.confirmKey(row, key, context)
     if (wrong) return wrong
     const recoveryCode = this.newRecoveryCode()
-    this.sql.exec('UPDATE users SET recovery_hash = ? WHERE id = ?', await sha256(normaliseRecoveryCode(recoveryCode)), userId)
+    this.sql.exec(
+      'UPDATE users SET recovery_hash = ?, recovery_issued_at = ? WHERE id = ?',
+      await sha256(normaliseRecoveryCode(recoveryCode)),
+      this.now(),
+      userId,
+    )
     return { ok: true, recoveryCode }
   }
 
@@ -766,7 +779,14 @@ export class AccountStore {
     const salt = this.randomText(24)
     const recoveryCode = this.newRecoveryCode()
     const [hash, nextCodeHash] = await Promise.all([this.keyHash(salt, input.key), sha256(normaliseRecoveryCode(recoveryCode))])
-    this.sql.exec('UPDATE users SET key_salt = ?, key_hash = ?, recovery_hash = ? WHERE id = ?', salt, hash, nextCodeHash, row.id)
+    this.sql.exec(
+      'UPDATE users SET key_salt = ?, key_hash = ?, recovery_hash = ?, recovery_issued_at = ? WHERE id = ?',
+      salt,
+      hash,
+      nextCodeHash,
+      this.now(),
+      row.id,
+    )
     this.sql.exec('DELETE FROM sessions WHERE user_id = ?', row.id)
     this.sql.exec('DELETE FROM failures WHERE username_key = ?', usernameKey(input.username))
     const token = await this.startSession(row.id, context)

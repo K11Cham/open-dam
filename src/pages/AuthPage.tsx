@@ -1,4 +1,4 @@
-import { Check, Copy, KeyRound, LogIn, UserPlus } from 'lucide-react'
+import { Check, Copy, Download, KeyRound, LogIn, UserPlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
@@ -18,12 +18,34 @@ export type AuthMode = 'signin' | 'signup' | 'recover'
 const safeNext = (next: string | null): string => (next && next.startsWith('/') && !next.startsWith('//') ? next : '/')
 
 /** The recovery code, shown once, with a way to copy it. Nothing continues until the person says it is kept. */
+/** A text file holding the code, for people who keep such things in files rather than a password manager. */
+function downloadCode(code: string, username: string) {
+  const text = [
+    'Open Dam recovery code',
+    '',
+    `Username: ${username}`,
+    `Recovery code: ${code}`,
+    '',
+    'If you forget your password, this code is the only way to set a new one.',
+    'Use it at the "Forgot your password?" link on the sign-in page.',
+    '',
+  ].join('\n')
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `open-dam-recovery-code-${username}.txt`
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export function RecoveryCode({
   code,
+  username,
   onDone,
   doneLabel = 'I have saved it',
 }: {
   code: string
+  username: string
   onDone: () => void
   doneLabel?: string
 }) {
@@ -42,12 +64,19 @@ export function RecoveryCode({
         If you forget your password, this code lets you set a new one. It is shown only now. Keep it somewhere safe, such as a
         password manager. Each code works once, and you get a new one when you use it.
       </p>
+      <p className="notice recovery__warning">
+        <strong>There is no email to fall back on.</strong> Without this code, a forgotten password cannot be reset and the
+        account is lost.
+      </p>
       <output className="recovery__code" aria-label="Recovery code">
         {code}
       </output>
       <div className="panel__actions">
         <Button icon={copied ? <Check size={16} /> : <Copy size={16} />} onClick={() => void copy()}>
           {copied ? 'Copied' : 'Copy code'}
+        </Button>
+        <Button icon={<Download size={16} />} onClick={() => downloadCode(code, username)}>
+          Download as a file
         </Button>
         <Button variant="primary" onClick={onDone} data-autofocus>
           {doneLabel}
@@ -162,7 +191,11 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             <h1 id="code-h" className="panel__title">
               {mode === 'signup' ? `Welcome, ${account.user?.displayName ?? username}` : 'Your password is reset'}
             </h1>
-            <RecoveryCode code={newCode} onDone={() => navigate(next, { replace: true })} />
+            <RecoveryCode
+              code={newCode}
+              username={account.user?.username ?? username}
+              onDone={() => navigate(next, { replace: true })}
+            />
           </Panel>
         </div>
       </AppShell>
@@ -305,6 +338,13 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
                   />
                 )}
               </Field>
+            )}
+
+            {mode === 'signup' && (
+              <p className="field__help">
+                There is no email. If you forget your password, only the recovery code you are given next can reset it, so keep
+                that code safe.
+              </p>
             )}
 
             {mode === 'signup' && (

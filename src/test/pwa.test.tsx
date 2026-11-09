@@ -30,6 +30,7 @@ const kylar: PrivateUser = {
   avatar: 'p2',
   bio: '',
   createdAt: 0,
+  recoveryIssuedAt: 0,
   showGames: true,
 }
 

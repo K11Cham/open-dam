@@ -324,7 +324,15 @@ function SecuritySection({ user }: { user: PrivateUser }) {
           <dt>Member since</dt>
           <dd>{new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</dd>
         </div>
+        <div>
+          <dt>Recovery code</dt>
+          <dd>Made {relativeTime(user.recoveryIssuedAt)}</dd>
+        </div>
       </dl>
+      <p className="panel__text">
+        Your recovery code is the only way back in if you forget your password; there is no email. If you cannot find it, make a
+        new one now while you can still sign in.
+      </p>
       <div className="panel__actions">
         <Button size="sm" onClick={() => open('password')}>
           Change password
@@ -440,6 +448,7 @@ function SecuritySection({ user }: { user: PrivateUser }) {
         {code ? (
           <RecoveryCode
             code={code}
+            username={user.username}
             doneLabel="Done"
             onDone={() => {
               setForm(null)
@@ -452,6 +461,7 @@ function SecuritySection({ user }: { user: PrivateUser }) {
             onSubmit={(event) =>
               run(event, async () => {
                 setCode(await api.newRecoveryCode(user.username, current))
+                account.replaceUser({ ...user, recoveryIssuedAt: Date.now() })
               })
             }
           >

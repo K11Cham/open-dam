@@ -108,6 +108,8 @@ export interface PublicUser {
 export interface PrivateUser extends PublicUser {
   /** Whether other people can see this player's list of games. */
   showGames: boolean
+  /** When the current recovery code was made (epoch ms). */
+  recoveryIssuedAt: number
 }
 
 /** One player's standing in one rating pool. */

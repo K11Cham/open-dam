@@ -30,6 +30,7 @@ const kylar: PrivateUser = {
   avatar: 'p2',
   bio: 'Plays 5×5 after lunch.',
   createdAt: Date.UTC(2026, 9, 1),
+  recoveryIssuedAt: Date.UTC(2026, 9, 1),
   showGames: true,
 }
 
@@ -146,6 +147,35 @@ describe('signing up and in', () => {
     expect(await screen.findByRole('button', { name: 'Account: Amadou B' })).toBeInTheDocument()
   })
 
+  test('sign-up and the code screen say plainly that a lost code means a lost account, and the code downloads as a file', async () => {
+    const user = userEvent.setup()
+    renderAt('/signup')
+    expect(await screen.findByText(/There is no email\. If you forget your password, only the recovery code/)).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Username'), 'amadou')
+    await user.type(screen.getByLabelText('Password'), 'sticks and stones')
+    await user.type(screen.getByLabelText('Repeat the password'), 'sticks and stones')
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+    expect(
+      await screen.findByText(/Without this code, a forgotten password cannot be reset and the account is lost\./),
+    ).toBeInTheDocument()
+
+    const made: Blob[] = []
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, { createObjectURL: (blob: Blob) => (made.push(blob), 'blob:code'), revokeObjectURL: () => {} }),
+    )
+    const clicked: HTMLAnchorElement[] = []
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this)
+    })
+    await user.click(screen.getByRole('button', { name: 'Download as a file' }))
+    expect(clicked[0].download).toBe('open-dam-recovery-code-amadou.txt')
+    const text = await made[0].text()
+    expect(text).toContain('Recovery code: ABCDE-FGHJK-LMNPQ-RSTUV')
+    expect(text).toContain('Username: amadou')
+    click.mockRestore()
+  })
+
   test('the sign-up form says what is wrong before sending anything', async () => {
     const user = userEvent.setup()
     renderAt('/signup')
@@ -222,6 +252,18 @@ describe('settings follow the account', () => {
     await user.click(screen.getByRole('button', { name: 'Save profile' }))
     await waitFor(() => expect(server.me?.displayName).toBe('K. Cham'))
     expect(await screen.findByRole('button', { name: 'Account: K. Cham' })).toBeInTheDocument()
+  })
+
+  test('Settings says when the recovery code was made, why it matters, and offers a new one', async () => {
+    const user = userEvent.setup()
+    server.me = { ...kylar, recoveryIssuedAt: Date.UTC(2025, 2, 3) }
+    renderAt('/settings')
+    // The date is in the reader's own format.
+    const made = await screen.findByText(/^Made on .*2025$/)
+    expect(made.closest('div')).toHaveTextContent('Recovery code')
+    expect(screen.getByText(/only way back in if you forget your password; there is no email/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'New recovery code' }))
+    expect(await screen.findByRole('dialog', { name: 'Make a new recovery code' })).toBeInTheDocument()
   })
 
   test('signed out, settings offers an account and keeps preferences on the device', async () => {
