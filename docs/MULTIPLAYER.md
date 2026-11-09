@@ -147,8 +147,13 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   key with PBKDF2 (210,000 rounds, salted with the username), and the server
   stores a salted SHA-256 of that key. The slow part runs in the browser
   because a free Worker has only milliseconds of CPU; a stolen database still
-  costs an attacker the full PBKDF2 work per guess. Eight wrong passwords lock
-  a username for 15 minutes; one network can make five accounts an hour.
+  costs an attacker the full PBKDF2 work per guess. Eight wrong passwords
+  from one network lock that network out of that username for 15 minutes,
+  so nobody can lock a player out from elsewhere; 50 from all networks
+  together lock the username for everyone (the backstop against guessing
+  spread over many addresses). The same counts apply to recovery codes and to
+  confirming the current password. One network can make five accounts an
+  hour.
 - **Rate limits.** `worker/rateLimit.ts` limits each network (by
   `CF-Connecting-IP`, stored only as a hash): 30 new matches an hour, 30
   sign-ins and recoveries together per 15 minutes, 120 username checks a

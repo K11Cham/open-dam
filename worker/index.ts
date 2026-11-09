@@ -297,7 +297,7 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     pattern: /^\/api\/me$/,
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
-      const result = await accountsOf(env).deleteAccount(viewer.user.id, body.key)
+      const result = await accountsOf(env).deleteAccount(viewer.user.id, body.key, contextOf(request))
       return answer(result, result.ok ? { 'Set-Cookie': sessionCookie(request, null) } : {})
     }),
   },
@@ -306,7 +306,9 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     pattern: /^\/api\/me\/password$/,
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
-      return answer(await accountsOf(env).changePassword(viewer.user.id, viewer.sessionId, body.key, body.newKey))
+      return answer(
+        await accountsOf(env).changePassword(viewer.user.id, viewer.sessionId, body.key, body.newKey, contextOf(request)),
+      )
     }),
   },
   {
@@ -314,7 +316,9 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     pattern: /^\/api\/me\/username$/,
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
-      return answer(await accountsOf(env).changeUsername(viewer.user.id, body.key, body.newUsername, body.newKey))
+      return answer(
+        await accountsOf(env).changeUsername(viewer.user.id, body.key, body.newUsername, body.newKey, contextOf(request)),
+      )
     }),
   },
   {
@@ -322,7 +326,7 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     pattern: /^\/api\/me\/recovery-code$/,
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
-      return answer(await accountsOf(env).replaceRecoveryCode(viewer.user.id, body.key))
+      return answer(await accountsOf(env).replaceRecoveryCode(viewer.user.id, body.key, contextOf(request)))
     }),
   },
   {

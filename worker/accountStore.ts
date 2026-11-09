@@ -50,6 +50,9 @@ export type Result<T> = ({ ok: true } & T) | Refusal
 
 const refuse = (status: number, error: string): Refusal => ({ ok: false, status, error })
 
+/** For calls with no request behind them (tests, maintenance): one shared, unnamed network. */
+const NO_CONTEXT = { ip: '', userAgent: '' }
+
 /** Where a request came from, for throttling and the list of signed-in devices. */
 export interface RequestContext {
   ip: string
@@ -85,8 +88,15 @@ const SESSION_DAYS = 60
 const SESSION_MS = SESSION_DAYS * 24 * 60 * 60 * 1000
 /** A session's last-seen time is written at most this often, so reading a page is not a write. */
 const TOUCH_MS = 10 * 60 * 1000
-/** Sign-in attempts allowed per username in a window before it locks for the rest of the window. */
+/**
+ * Wrong passwords (or recovery codes) allowed per username from one network
+ * in a window, before that network is locked out of that username for the rest
+ * of the window. Counting per network means nobody can lock a player out by
+ * guessing wrong on purpose from somewhere else.
+ */
 const MAX_FAILURES = 8
+/** Wrong guesses allowed per username from all networks together: the backstop against guessing spread over many addresses. */
+const MAX_FAILURES_ALL = 50
 const FAILURE_WINDOW_MS = 15 * 60 * 1000
 /** New accounts allowed from one address per hour. */
 const MAX_SIGNUPS_PER_HOUR = 5
@@ -240,6 +250,18 @@ export const MIGRATIONS: string[][] = [
       window_start INTEGER NOT NULL,
       window_ms INTEGER NOT NULL
     )`,
+  ],
+  // 3: failed sign-ins counted per username and network (P1-4). Counts in flight are dropped; they last 15 minutes anyway.
+  [
+    `DROP TABLE IF EXISTS failures`,
+    `CREATE TABLE failures (
+      username_key TEXT NOT NULL,
+      ip_hash TEXT NOT NULL,
+      count INTEGER NOT NULL,
+      first_at INTEGER NOT NULL,
+      PRIMARY KEY (username_key, ip_hash)
+    )`,
+    `CREATE INDEX failures_age ON failures (first_at)`,
   ],
 ]
 
@@ -493,27 +515,35 @@ export class AccountStore {
 
   // -- Throttling ----------------------------------------------------------------
 
-  /** Minutes until this username may try again, or 0 if it may try now. */
-  private lockedFor(name: string): number {
-    const row = this.sql.exec<{ count: number; first_at: number }>(
-      'SELECT count, first_at FROM failures WHERE username_key = ?',
-      usernameKey(name),
-    )[0]
-    if (!row) return 0
-    const left = row.first_at + FAILURE_WINDOW_MS - this.now()
-    if (left <= 0) {
-      this.sql.exec('DELETE FROM failures WHERE username_key = ?', usernameKey(name))
-      return 0
-    }
-    return row.count >= MAX_FAILURES ? Math.ceil(left / 60_000) : 0
-  }
-
-  private noteFailure(name: string) {
+  /**
+   * Minutes until this network may try this username again, or 0 if it may
+   * try now: locked when this network has failed `MAX_FAILURES` times, or when
+   * every network together has failed `MAX_FAILURES_ALL` times.
+   */
+  private lockedFor(name: string, ipHash: string): number {
     const key = usernameKey(name)
     const t = this.now()
-    const row = this.sql.exec<{ count: number }>('SELECT count FROM failures WHERE username_key = ?', key)[0]
-    if (row) this.sql.exec('UPDATE failures SET count = count + 1 WHERE username_key = ?', key)
-    else this.sql.exec('INSERT INTO failures (username_key, count, first_at) VALUES (?, 1, ?)', key, t)
+    this.sql.exec('DELETE FROM failures WHERE username_key = ? AND first_at <= ?', key, t - FAILURE_WINDOW_MS)
+    const rows = this.sql.exec<{ ip_hash: string; count: number; first_at: number }>(
+      'SELECT ip_hash, count, first_at FROM failures WHERE username_key = ?',
+      key,
+    )
+    const minutesUntil = (firstAt: number) => Math.max(1, Math.ceil((firstAt + FAILURE_WINDOW_MS - t) / 60_000))
+    const mine = rows.find((row) => row.ip_hash === ipHash)
+    if (mine && mine.count >= MAX_FAILURES) return minutesUntil(mine.first_at)
+    const total = rows.reduce((sum, row) => sum + row.count, 0)
+    if (total >= MAX_FAILURES_ALL) return minutesUntil(Math.min(...rows.map((row) => row.first_at)))
+    return 0
+  }
+
+  private noteFailure(name: string, ipHash: string) {
+    this.sql.exec(
+      `INSERT INTO failures (username_key, ip_hash, count, first_at) VALUES (?, ?, 1, ?)
+       ON CONFLICT (username_key, ip_hash) DO UPDATE SET count = count + 1`,
+      usernameKey(name),
+      ipHash,
+      this.now(),
+    )
   }
 
   private lockedRefusal(minutes: number): Refusal {
@@ -616,36 +646,45 @@ export class AccountStore {
     context: RequestContext,
   ): Promise<Result<{ user: PrivateUser; token: string }>> {
     if (typeof input.username !== 'string' || !isKey(input.key)) return refuse(400, 'Enter your username and password.')
-    const locked = this.lockedFor(input.username)
+    const ipHash = await this.ipHash(context.ip)
+    const locked = this.lockedFor(input.username, ipHash)
     if (locked) return this.lockedRefusal(locked)
     const row = this.userByName(input.username)
     // Hash even for an unknown name, so the answer takes as long either way and does not reveal which names exist.
     const hash = await this.keyHash(row?.key_salt ?? 'no-such-user', input.key)
     if (!row || !sameText(hash, row.key_hash)) {
-      this.noteFailure(input.username)
+      this.noteFailure(input.username, ipHash)
       return refuse(401, 'That username and password do not match.')
     }
-    this.sql.exec('DELETE FROM failures WHERE username_key = ?', usernameKey(input.username))
+    // This network's failures are forgiven; others' still count toward the backstop.
+    this.sql.exec('DELETE FROM failures WHERE username_key = ? AND ip_hash = ?', usernameKey(input.username), ipHash)
     const token = await this.startSession(row.id, context)
     return { ok: true, user: privateUser(row), token }
   }
 
   /** Check a signed-in person's password again before something that cannot be undone. */
-  private async confirmKey(row: UserRow, key: unknown): Promise<Refusal | null> {
+  private async confirmKey(row: UserRow, key: unknown, context: RequestContext = NO_CONTEXT): Promise<Refusal | null> {
     if (!isKey(key)) return refuse(400, 'Enter your current password.')
-    const locked = this.lockedFor(row.username)
+    const ipHash = await this.ipHash(context.ip)
+    const locked = this.lockedFor(row.username, ipHash)
     if (locked) return this.lockedRefusal(locked)
     if (!sameText(await this.keyHash(row.key_salt, key), row.key_hash)) {
-      this.noteFailure(row.username)
+      this.noteFailure(row.username, ipHash)
       return refuse(403, 'Your current password is not right.')
     }
     return null
   }
 
-  async changePassword(userId: string, sessionId: string, key: unknown, newKey: unknown): Promise<Result<object>> {
+  async changePassword(
+    userId: string,
+    sessionId: string,
+    key: unknown,
+    newKey: unknown,
+    context: RequestContext = NO_CONTEXT,
+  ): Promise<Result<object>> {
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key)
+    const wrong = await this.confirmKey(row, key, context)
     if (wrong) return wrong
     if (!isKey(newKey)) return refuse(400, 'The new password could not be read.')
     const salt = this.randomText(24)
@@ -665,10 +704,11 @@ export class AccountStore {
     key: unknown,
     newUsername: unknown,
     newKey: unknown,
+    context: RequestContext = NO_CONTEXT,
   ): Promise<Result<{ user: PrivateUser }>> {
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key)
+    const wrong = await this.confirmKey(row, key, context)
     if (wrong) return wrong
     const problem = checkUsername(newUsername)
     if (problem) return refuse(400, problem)
@@ -692,10 +732,14 @@ export class AccountStore {
     return { ok: true, user: privateUser(this.userById(userId)!) }
   }
 
-  async replaceRecoveryCode(userId: string, key: unknown): Promise<Result<{ recoveryCode: string }>> {
+  async replaceRecoveryCode(
+    userId: string,
+    key: unknown,
+    context: RequestContext = NO_CONTEXT,
+  ): Promise<Result<{ recoveryCode: string }>> {
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key)
+    const wrong = await this.confirmKey(row, key, context)
     if (wrong) return wrong
     const recoveryCode = this.newRecoveryCode()
     this.sql.exec('UPDATE users SET recovery_hash = ? WHERE id = ?', await sha256(normaliseRecoveryCode(recoveryCode)), userId)
@@ -710,12 +754,13 @@ export class AccountStore {
     if (typeof input.username !== 'string' || typeof input.recoveryCode !== 'string')
       return refuse(400, 'Enter your username and recovery code.')
     if (!isKey(input.key)) return refuse(400, 'The new password could not be read.')
-    const locked = this.lockedFor(input.username)
+    const ipHash = await this.ipHash(context.ip)
+    const locked = this.lockedFor(input.username, ipHash)
     if (locked) return this.lockedRefusal(locked)
     const codeHash = await sha256(normaliseRecoveryCode(input.recoveryCode))
     const row = this.userByName(input.username)
     if (!row || !sameText(codeHash, row.recovery_hash)) {
-      this.noteFailure(input.username)
+      this.noteFailure(input.username, ipHash)
       return refuse(401, 'That username and recovery code do not match.')
     }
     const salt = this.randomText(24)
@@ -768,10 +813,10 @@ export class AccountStore {
    * Delete an account and everything kept for it. Finished games stay in the
    * opponent's history, with this side shown as a deleted player.
    */
-  async deleteAccount(userId: string, key: unknown): Promise<Result<object>> {
+  async deleteAccount(userId: string, key: unknown, context: RequestContext = NO_CONTEXT): Promise<Result<object>> {
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key)
+    const wrong = await this.confirmKey(row, key, context)
     if (wrong) return wrong
     for (const table of ['sessions', 'ratings', 'user_data', 'archive']) {
       this.sql.exec(`DELETE FROM ${table} WHERE user_id = ?`, userId)

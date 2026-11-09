@@ -76,6 +76,40 @@ describe('signing up and in', () => {
     expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
   })
 
+  it('locks only the network that guessed wrong: the player can still sign in from their own', async () => {
+    const { store } = makeStore()
+    await signUp(store, 'Kylar')
+    const attacker = { ...here, ip: '198.51.100.66' }
+    for (let i = 0; i < 8; i++) await store.signIn({ username: 'Kylar', key: OTHER_KEY }, attacker)
+    expect(await store.signIn({ username: 'Kylar', key: KEY }, attacker)).toMatchObject({ ok: false, status: 429 })
+    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    // The owner's success does not clear the attacker's lock.
+    expect(await store.signIn({ username: 'Kylar', key: KEY }, attacker)).toMatchObject({ ok: false, status: 429 })
+  })
+
+  it('still locks a username when guesses come from many networks', async () => {
+    const { store, clock } = makeStore()
+    await signUp(store, 'Kylar')
+    // 50 wrong guesses, 5 from each of 10 networks: no network reaches its own limit.
+    for (let n = 0; n < 10; n++) {
+      for (let i = 0; i < 5; i++) await store.signIn({ username: 'Kylar', key: OTHER_KEY }, { ...here, ip: `198.51.100.${n}` })
+    }
+    const locked = await store.signIn({ username: 'Kylar', key: KEY }, here)
+    expect(locked).toMatchObject({ ok: false, status: 429 })
+    expect(locked.ok ? '' : locked.error).toMatch(/Try again in 15 minutes/)
+    clock.t += 16 * 60 * 1000
+    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+  })
+
+  it('counts wrong current passwords the same way when a signed-in person confirms one', async () => {
+    const { store } = makeStore()
+    const { user } = await signUp(store, 'Kylar')
+    const thief = { ...here, ip: '198.51.100.77' }
+    for (let i = 0; i < 8; i++) await store.replaceRecoveryCode(user.id, OTHER_KEY, thief)
+    expect(await store.replaceRecoveryCode(user.id, KEY, thief)).toMatchObject({ ok: false, status: 429 })
+    expect(await store.replaceRecoveryCode(user.id, KEY, here)).toMatchObject({ ok: true })
+  })
+
   it('limits new accounts from one network', async () => {
     const { store } = makeStore()
     for (let i = 0; i < 5; i++) await signUp(store, `player${i}`)
