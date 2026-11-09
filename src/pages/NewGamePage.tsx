@@ -19,6 +19,7 @@ import { TIME_CONTROLS } from '../game/settings'
 import type { PlayerId } from '../game/types'
 import { useMatchmaking } from '../hooks/useMatchmaking'
 import { useNow } from '../hooks/useNow'
+import { usePwa } from '../hooks/usePwa'
 import { usePageTitle } from '../lib/usePageTitle'
 import { timeControlLabel } from '../lib/describe'
 import { loadLastSetup, opponentLabel, recordFromSetup, saveLastSetup } from '../match/setup'
@@ -85,6 +86,9 @@ export default function NewGamePage() {
   })
   const [onlineKind, setOnlineKindState] = useState<OnlineKind>(initialKind)
   const matchmaking = useMatchmaking()
+  // Online play needs the server; offline, its choices say so and come back by themselves.
+  const { online } = usePwa()
+  const offline = online ? undefined : 'Needs a connection'
   const searching = matchmaking.status.state === 'connecting' || matchmaking.status.state === 'seeking'
   const now = useNow(searching, 1000)
   const [confirmReplace, setConfirmReplace] = useState(false)
@@ -111,6 +115,7 @@ export default function NewGamePage() {
       title: 'Online',
       icon: <Globe size={18} aria-hidden />,
       description: 'A rated game against someone near your strength, or a friend you send a link to.',
+      unavailable: offline,
     },
   ]
 
@@ -246,15 +251,23 @@ export default function NewGamePage() {
                     title: 'Find a rated game',
                     icon: <Swords size={18} aria-hidden />,
                     description: 'Play someone close to your rating who wants the same rules. The result moves both ratings.',
+                    unavailable: offline,
                   },
                   {
                     value: 'invite',
                     title: 'Invite a friend',
                     icon: <Link2 size={18} aria-hidden />,
                     description: 'Get a link to send. Whoever opens it takes the other side. Not rated.',
+                    unavailable: offline,
                   },
                 ]}
               />
+            )}
+            {mode === 'online' && !online && (
+              <p className="notice" role="status">
+                You are offline. Online games need a connection; these choices come back as soon as you are online. Until then,
+                play the computer or pass and play.
+              </p>
             )}
             {mode === 'online' && onlineKind === 'find' && account.status === 'signed-out' && (
               <p className="notice">
@@ -302,7 +315,7 @@ export default function NewGamePage() {
             size="lg"
             icon={mode === 'online' && onlineKind === 'find' ? <Swords size={18} /> : <Play size={18} />}
             onClick={start}
-            disabled={creating || searching}
+            disabled={creating || searching || (mode === 'online' && !online)}
           >
             {creating ? 'Starting…' : mode === 'online' && onlineKind === 'find' ? 'Find a game' : 'Start game'}
           </Button>

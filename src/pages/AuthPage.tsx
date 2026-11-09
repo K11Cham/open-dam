@@ -8,6 +8,7 @@ import Field from '../components/ui/Field'
 import Panel from '../components/ui/Panel'
 import { useToast } from '../components/ui/Toasts'
 import { useAccount } from '../context/useAccount'
+import { usePwa } from '../hooks/usePwa'
 import { usePageTitle } from '../lib/usePageTitle'
 import { DISPLAY_NAME_MAX, PASSWORD_MIN, USERNAME_MAX, checkPassword, checkUsername } from '../net/account'
 import { usernameProblem } from '../net/accountApi'
@@ -108,6 +109,7 @@ function useUsernameCheck(name: string, enabled: boolean) {
  */
 export default function AuthPage({ mode }: { mode: AuthMode }) {
   const account = useAccount()
+  const { online } = usePwa()
   const navigate = useNavigate()
   const toast = useToast()
   const [params] = useSearchParams()
@@ -228,10 +230,18 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
             <p className="panel__text">{lede}</p>
           </header>
 
-          {account.offline && (
+          {!online ? (
             <p className="notice" role="status">
-              The server cannot be reached right now, so signing in may fail. Games on this device still work.
+              You are offline.{' '}
+              {mode === 'signin' ? 'Signing in' : mode === 'signup' ? 'Making an account' : 'Resetting a password'} needs a
+              connection; the button comes back as soon as you are online. Games on this device still work.
             </p>
+          ) : (
+            account.offline && (
+              <p className="notice" role="status">
+                The server cannot be reached right now, so signing in may fail. Games on this device still work.
+              </p>
+            )
           )}
 
           <form className="form-stack" onSubmit={(event) => void submit(event)} noValidate>
@@ -360,7 +370,7 @@ export default function AuthPage({ mode }: { mode: AuthMode }) {
               </p>
             )}
 
-            <Button type="submit" variant="primary" block disabled={busy}>
+            <Button type="submit" variant="primary" block disabled={busy || !online}>
               {busy
                 ? mode === 'signin'
                   ? 'Signing in…'

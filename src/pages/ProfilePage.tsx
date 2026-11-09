@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Avatar from '../components/account/Avatar'
 import GameList from '../components/account/GameList'
+import OfflinePanel from '../components/layout/OfflinePanel'
 import AppShell from '../components/layout/AppShell'
 import { Button, ButtonLink } from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
 import { useAccount } from '../context/useAccount'
+import { usePwa } from '../hooks/usePwa'
 import { usePageTitle } from '../lib/usePageTitle'
 import { PROVISIONAL_GAMES } from '../match/rating'
 import { poolLabel } from '../net/account'
@@ -194,9 +196,12 @@ export default function ProfilePage() {
 
 function ProfileLoader({ username }: { username: string }) {
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' })
+  const { online } = usePwa()
   usePageTitle(loaded.state === 'ready' ? loaded.profile.user.displayName : 'Player')
 
+  // Loaded when online, and again when the connection comes back.
   useEffect(() => {
+    if (!online) return
     let live = true
     fetchProfile(username)
       .then((profile) => live && setLoaded({ state: 'ready', profile }))
@@ -208,12 +213,16 @@ function ProfileLoader({ username }: { username: string }) {
     return () => {
       live = false
     }
-  }, [username])
+  }, [username, online])
 
   return (
     <AppShell>
       {loaded.state === 'ready' ? (
         <ProfileView key={loaded.profile.user.id} profile={loaded.profile} />
+      ) : !online ? (
+        <div className="page page--narrow">
+          <OfflinePanel what="A player's profile" level={1} />
+        </div>
       ) : (
         <div className="page page--narrow">
           {loaded.state === 'loading' ? (

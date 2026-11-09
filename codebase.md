@@ -193,6 +193,7 @@ every visual decision. Lower layers never import higher ones.
 
 | File                       | Purpose                                                                                                                    |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `layout/OfflinePanel.tsx`  | What a page that needs the server shows offline; the page loads by itself when the connection returns.                     |
 | `layout/ErrorBoundary.tsx` | A page that throws shows "Something went wrong" with Reload and Home, and is reported.                                     |
 | `board/BoardDebug.tsx`     | The `?debug=board` check under the board: reports any engine piece that is not drawn, with the moves, and copies a report. |
 | `board/BoardView.tsx`      | The board: geometry, keyboard and pointer input, spoken labels, travelling pieces, the theme's parts.                      |

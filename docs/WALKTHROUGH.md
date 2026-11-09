@@ -672,6 +672,13 @@ leaderboards.
   stays signed in as the account last heard from the server
   (`openDam.account`), and when the connection returns the account is asked
   again and caught up with what changed meanwhile.
+- What needs the server says so offline, and comes back by itself: on the
+  Play page the Online choices are dimmed with "Needs a connection"
+  (`unavailable` on a `ChoiceCards` choice) and Start is off; leaderboards
+  and profiles show `OfflinePanel` instead of an error and load when the
+  connection returns; the sign-in, sign-up and recovery forms say they need a
+  connection and keep their button off until then. All of them read
+  `usePwa().online`.
 - Installing is offered in three places: a button in the top bar, a card
   that appears as soon as Home opens ("Not now" puts it away for three days),
   and Settings → App. All three go through `useInstall`: Chrome, Edge and

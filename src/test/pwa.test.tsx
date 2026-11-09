@@ -89,6 +89,79 @@ describe('offline', () => {
     await vi.waitFor(() => expect(calls).toContain('/api/me/data'))
   })
 
+  const goOffline = () =>
+    act(() => {
+      window.dispatchEvent(new Event('offline'))
+    })
+  const goOnline = () =>
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+
+  test('the Play page turns online choices off with the reason, and back on when the connection returns', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ user: null }))),
+    )
+    renderAt('/play?online=invite')
+    const online = await screen.findByRole('radio', { name: /^Online/ })
+    goOffline()
+    expect(online).toHaveAttribute('aria-disabled', 'true')
+    expect(within(online).getByText('Needs a connection')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /^Invite a friend/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(/Online games need a connection/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start game' })).toBeDisabled()
+    // The computer is still there.
+    await userEvent.setup().click(screen.getByRole('radio', { name: /^Computer/ }))
+    expect(screen.getByRole('button', { name: 'Start game' })).toBeEnabled()
+    goOnline()
+    expect(screen.getByRole('radio', { name: /^Online/ })).not.toHaveAttribute('aria-disabled')
+  })
+
+  test('leaderboards and profiles say they need a connection, and load by themselves when it is back', async () => {
+    const asked: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = new URL(String(input), 'http://localhost').pathname
+        asked.push(path)
+        if (path === '/api/me') return new Response(JSON.stringify({ user: null }))
+        if (path === '/api/leaderboards') return new Response(JSON.stringify({ pools: [] }))
+        if (path.startsWith('/api/leaderboards/'))
+          return new Response(JSON.stringify({ pool: '5x5:10+1', entries: [], total: 0 }))
+        return new Response(JSON.stringify({ error: 'No such player.' }), { status: 404 })
+      }),
+    )
+    goOffline()
+    const { unmount } = renderAt('/leaderboards')
+    expect(await screen.findByRole('heading', { name: 'You are offline' })).toBeInTheDocument()
+    expect(screen.getByText(/The leaderboard needs a connection/)).toBeInTheDocument()
+    expect(asked.filter((path) => path.startsWith('/api/leaderboards'))).toEqual([])
+    goOnline()
+    expect(await screen.findByRole('heading', { name: /Nobody is rated in/ })).toBeInTheDocument()
+    unmount()
+
+    goOffline()
+    renderAt('/u/someone')
+    expect(await screen.findByRole('heading', { level: 1, name: 'You are offline' })).toBeInTheDocument()
+    goOnline()
+    expect(await screen.findByRole('heading', { name: 'No such player' })).toBeInTheDocument()
+  })
+
+  test('sign-in says it needs a connection and waits for one', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ user: null }))),
+    )
+    renderAt('/signin')
+    const submit = await screen.findByRole('button', { name: 'Sign in' })
+    goOffline()
+    expect(screen.getByText(/You are offline\. Signing in needs a connection/)).toBeInTheDocument()
+    expect(submit).toBeDisabled()
+    goOnline()
+    expect(submit).toBeEnabled()
+  })
+
   test('settings explains installing the app and what works offline', async () => {
     vi.stubGlobal(
       'fetch',

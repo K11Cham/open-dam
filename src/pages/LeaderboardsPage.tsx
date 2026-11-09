@@ -2,12 +2,14 @@ import { Swords } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import Avatar from '../components/account/Avatar'
+import OfflinePanel from '../components/layout/OfflinePanel'
 import AppShell from '../components/layout/AppShell'
 import { Button, ButtonLink } from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
 import Segmented from '../components/ui/Segmented'
 import { useAccount } from '../context/useAccount'
 import { TIME_CONTROLS } from '../game/settings'
+import { usePwa } from '../hooks/usePwa'
 import { usePageTitle } from '../lib/usePageTitle'
 import { PROVISIONAL_GAMES } from '../match/rating'
 import { isPool, poolLabel } from '../net/account'
@@ -29,10 +31,13 @@ type Board =
 /** One pool's standings. Keyed by the pool, so switching pools starts from "Loading" rather than showing the old list. */
 function Standings({ pool }: { pool: string }) {
   const { user } = useAccount()
+  const { online } = usePwa()
   const [board, setBoard] = useState<Board>({ state: 'loading' })
   const [loadingMore, setLoadingMore] = useState(false)
 
+  // Loaded when online, and again when the connection comes back.
   useEffect(() => {
+    if (!online) return
     let live = true
     fetchLeaderboard(pool)
       .then((result) => live && setBoard({ state: 'ready', entries: result.entries, total: result.total }))
@@ -42,7 +47,7 @@ function Standings({ pool }: { pool: string }) {
     return () => {
       live = false
     }
-  }, [pool])
+  }, [pool, online])
 
   const loadMore = async () => {
     if (board.state !== 'ready') return
@@ -54,6 +59,8 @@ function Standings({ pool }: { pool: string }) {
       setLoadingMore(false)
     }
   }
+
+  if (!online && board.state !== 'ready') return <OfflinePanel what="The leaderboard" />
 
   return (
     <>
@@ -160,13 +167,14 @@ export default function LeaderboardsPage() {
   const [size, clock] = splitPool(pool)
   const [counts, setCounts] = useState<Record<string, number>>({})
   const available = accountsAvailable()
+  const { online } = usePwa()
 
   useEffect(() => {
-    if (!available) return
+    if (!available || !online) return
     fetchPools()
       .then((pools) => setCounts(Object.fromEntries(pools.map((p) => [p.pool, p.players]))))
       .catch(() => setCounts({}))
-  }, [available])
+  }, [available, online])
 
   const choose = (nextSize: number, nextClock: string) =>
     setParams({ pool: `${nextSize}x${nextSize}:${nextClock}` }, { replace: true })

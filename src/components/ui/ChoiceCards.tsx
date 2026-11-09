@@ -10,6 +10,8 @@ export interface Choice<T extends string> {
   /** Small text in the corner, e.g. a rating. */
   badge?: ReactNode
   icon?: ReactNode
+  /** Why this choice cannot be made right now (e.g. "Needs a connection"); it is shown and the card cannot be chosen. */
+  unavailable?: string
 }
 
 interface ChoiceCardsProps<T extends string> {
@@ -42,19 +44,24 @@ export default function ChoiceCards<T extends string>({
     choices.findIndex((c) => c.value === value),
   )
 
-  const move = (index: number) => {
-    const next = (index + choices.length) % choices.length
-    onChange(choices[next].value)
-    refs.current[next]?.focus()
+  /** The next card in `step`'s direction that can be chosen, wrapping round, skipping unavailable ones. */
+  const move = (index: number, step: 1 | -1) => {
+    for (let i = 1; i <= choices.length; i++) {
+      const next = (index + step * i + choices.length * i) % choices.length
+      if (choices[next].unavailable) continue
+      onChange(choices[next].value)
+      refs.current[next]?.focus()
+      return
+    }
   }
 
   const onKeyDown = (event: KeyboardEvent, index: number) => {
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
       event.preventDefault()
-      move(index + 1)
+      move(index, 1)
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
       event.preventDefault()
-      move(index - 1)
+      move(index, -1)
     }
   }
 
@@ -76,8 +83,9 @@ export default function ChoiceCards<T extends string>({
               role="radio"
               aria-checked={checked}
               tabIndex={checked ? 0 : -1}
-              className={`choice ${checked ? 'is-active' : ''}`}
-              onClick={() => onChange(choice.value)}
+              className={`choice ${checked ? 'is-active' : ''} ${choice.unavailable ? 'is-unavailable' : ''}`}
+              aria-disabled={choice.unavailable ? true : undefined}
+              onClick={() => !choice.unavailable && onChange(choice.value)}
               onKeyDown={(event) => onKeyDown(event, index)}
             >
               <span className="choice__head">
@@ -87,6 +95,7 @@ export default function ChoiceCards<T extends string>({
                 {choice.badge && <span className="choice__badge">{choice.badge}</span>}
               </span>
               {choice.description && <span className="choice__description">{choice.description}</span>}
+              {choice.unavailable && <span className="choice__unavailable">{choice.unavailable}</span>}
             </button>
           )
         })}
