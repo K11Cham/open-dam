@@ -7,7 +7,7 @@ import { usePageTitle } from '../lib/usePageTitle'
  * Where people can write to the owner. Null until the owner adds one; the
  * pages then say an address is coming. (Owner: put an email address here.)
  */
-const OWNER_CONTACT: string | null = null
+const OWNER_CONTACT: string | null = 'kylar11cham@gmail.com'
 
 const UPDATED = '8 November 2026'
 
