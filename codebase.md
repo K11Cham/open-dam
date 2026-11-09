@@ -29,7 +29,7 @@ every visual decision. Lower layers never import higher ones.
 | `.env.static`                                              | Build mode for `npm run build:static`: hash routes, for static hosts.                                                                                                                   |
 | `.gitattributes`                                           | Normalises line endings to LF.                                                                                                                                                          |
 | `.gitignore`                                               | Ignore rules.                                                                                                                                                                           |
-| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format check, tests and build on push and pull request.                                                                                                            |
+| `.github/workflows/ci.yml`                                 | CI: typecheck, lint, format, tests and build; then wrangler dev with `check:online` and `check:browser` (headless Chrome).                                                              |
 | `.claude/launch.json`                                      | Dev-server definition for the Claude desktop app's preview browser.                                                                                                                     |
 
 ## `docs/`

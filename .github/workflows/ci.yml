@@ -1,6 +1,7 @@
 # Runs on every push and pull request: type-check, lint, formatting, tests
-# and a production build. The slow AI strength match runs only when started
-# by hand from the Actions tab.
+# and a production build; then the server under wrangler dev with real
+# games, accounts and browser checks against it. The slow AI strength match
+# runs only when started by hand from the Actions tab.
 name: CI
 
 on:
@@ -39,6 +40,38 @@ jobs:
           name: dist
           path: dist
           retention-days: 7
+
+  # The whole server under wrangler dev (no Cloudflare account needed), then
+  # real games and accounts against it, and the checks only a browser can
+  # make: no CSP violations, every page offline, the update flow. Chrome is
+  # preinstalled on GitHub's Ubuntu runners; playwright-core drives it.
+  online:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Start the server
+        run: |
+          npx wrangler dev --port 8787 --ip 127.0.0.1 > wrangler.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8787/api/health && exit 0
+            sleep 2
+          done
+          cat wrangler.log
+          exit 1
+      - run: npm run check:online
+      - run: npm run check:browser
+      - if: failure()
+        run: cat wrangler.log
 
   ai-strength:
     if: github.event_name == 'workflow_dispatch' && inputs.ai_strength
