@@ -38,7 +38,8 @@ const tokens: ThemeTokens = {
   '--dam-accent': '#2F4A7A',
   '--dam-accent-ink': '#F8EFDF',
   '--dam-accent-soft': '#D9DBDF',
-  '--dam-danger': '#A8442A',
+  // Dark enough for error text on the sand (4.5:1).
+  '--dam-danger': '#9B3C22',
   '--dam-danger-ink': '#FFF6EC',
   '--dam-success': '#4E6B3A',
   '--dam-warning': '#8F6218',

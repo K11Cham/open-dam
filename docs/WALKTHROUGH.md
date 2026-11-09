@@ -741,6 +741,15 @@ selection. Each square has a spoken label such as "c3, Red piece, selected,
 can be called". After each move, a hidden live region announces it, for
 example "Blue: c4 jumps to c2, capturing".
 
+**Checked automatically.** `src/test/a11y.test.tsx` runs axe-core on every
+main page (in the default theme, and the pages with a board in all four):
+names, roles, landmarks, one `h1` per page (the game page's is for screen
+readers only), labels and ARIA. Colour contrast cannot be measured in jsdom,
+so `src/themes/contrast.test.ts` computes it from the tokens instead: every
+text-on-background pair the stylesheets use must reach 4.5:1 (3:1 for large
+text), and the focus ring 3:1, in every theme. A new pairing in a stylesheet
+belongs in that list.
+
 **Dialogs** (`components/ui/Dialog.tsx`) move focus inside when they open, keep
 Tab inside, close on Escape or a backdrop click, and return focus to whatever
 opened them.

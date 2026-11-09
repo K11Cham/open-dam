@@ -34,7 +34,8 @@ const tokens: ThemeTokens = {
   '--dam-accent': '#C6F252',
   '--dam-accent-ink': '#111111',
   '--dam-accent-soft': '#EEF9CC',
-  '--dam-danger': '#E5243B',
+  // Dark enough for error text on the page background (4.5:1), and for white text on a danger button.
+  '--dam-danger': '#D61F36',
   '--dam-danger-ink': '#FFFFFF',
   '--dam-success': '#4E7A00',
   '--dam-warning': '#F2811F',

@@ -94,6 +94,10 @@ export default function MatchScreen({
 
   return (
     <div className="match">
+      {/* Every page has one main heading; here the board speaks for itself, so it is for screen readers only. */}
+      <h1 className="visually-hidden">
+        {names.player1} against {names.player2}
+      </h1>
       <div className="match__board-col">
         {card(top, 'top')}
 

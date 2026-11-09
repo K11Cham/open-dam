@@ -265,6 +265,7 @@ every visual decision. Lower layers never import higher ones.
 | ------------------- | -------------------------------------------------------------------------------------- |
 | `types.ts`          | The theme contract: tokens, parts, motion, side names.                                 |
 | `registry.ts`       | The four themes and the default.                                                       |
+| `contrast.test.ts`  | WCAG contrast of every text/background and focus-ring token pair, in every theme.      |
 | `<theme>/theme.ts`  | Tokens, motion, side names.                                                            |
 | `<theme>/parts.tsx` | Piece, square decoration, board frame, end-of-game sequence.                           |
 | `<theme>/sounds.ts` | The theme's sound for every cue, as synthesis recipes (plain data, no CSS or React).   |
@@ -297,5 +298,6 @@ every visual decision. Lower layers never import higher ones.
 | `test/seo.test.tsx`               | The Not Found page asks not to be indexed.                                                               |
 | `test/legal.test.tsx`             | The privacy and terms pages, their footer links, and the agreement line on sign-up.                      |
 | `test/errors.test.tsx`            | The crash screen, and what a crash report sends.                                                         |
+| `test/a11y.test.tsx`              | axe-core on the main pages (colour contrast is in `themes/contrast.test.ts`).                            |
 | `test/calls.test.tsx`             | The computer calls a piece: the explanation appears and the piece is ringed for 600 ms; the board check. |
 | `test/accounts.test.tsx`          | The account pages through the real routes, against a pretend server.                                     |
