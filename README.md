@@ -67,7 +67,7 @@ npm run verify
 
 ## Where to read next
 
-- `docs/WALKTHROUGH.md` — how the whole codebase fits together, with exercises.
+- `docs/WALKTHROUGH.md` — my attempt to really understand this codebase, because this project means a lot to me: how every part fits together and why, with exercises.
 - `docs/MULTIPLAYER.md` — the match log, the online protocol, and adding a server.
 - `docs/SOUNDS.md` — how the sound effects are made and which recordings may be added.
 

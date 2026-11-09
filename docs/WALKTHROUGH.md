@@ -1,9 +1,10 @@
 # Open Dam: a guided walkthrough
 
-This document is for the person orchestrating the project. By the end you
-should be able to explain what every part of the code does, why it is built
-that way, and where to make any change you want. Read it top to bottom once;
-afterwards use it as a reference.
+This is my attempt to really understand this codebase. Open Dam means a lot to
+me, so it was not enough for it to work: I wanted to know every part of it. By
+the end you should be able to explain what every part of the code does, why it
+is built that way, and where to make any change you want. Read it top to bottom
+once; afterwards use it as a reference.
 
 **How to read it.** Each part builds on the one before. Part 1 is the big
 picture, Part 2 follows one click through the whole system, Parts 3–9 go layer
