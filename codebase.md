@@ -34,15 +34,16 @@ every visual decision. Lower layers never import higher ones.
 
 ## `docs/`
 
-| File                                      | Purpose                                                                                  |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `docs/WALKTHROUGH.md`                     | The guided tour: how everything connects, with traces and exercises.                     |
-| `docs/HANDOVER.md`                        | How to pick up work: the board, the rules of the branch, the shift log.                  |
-| `docs/MULTIPLAYER.md`                     | The match log, the wire protocol, and how to add a real server.                          |
-| `docs/OPERATIONS.md`                      | Looking after the live site: secrets, backups and the restore runbook, moderation, logs. |
-| `docs/PRODUCTION-AUDIT.md`                | The production audit and the hardening brief it set.                                     |
-| `docs/SOUNDS.md`                          | How the sound effects work, how to tune them, and which recorded sounds may be used.     |
-| `docs/audit/2026-10-27-codebase-audit.md` | The audit that started the overhaul (describes the old code).                            |
+| File                                      | Purpose                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `docs/WALKTHROUGH.md`                     | The guided tour: how everything connects, with traces and exercises.                              |
+| `docs/HANDOVER.md`                        | How to pick up work: the board, the rules of the branch, the shift log.                           |
+| `docs/MULTIPLAYER.md`                     | The match log, the wire protocol, and how to add a real server.                                   |
+| `docs/OPERATIONS.md`                      | Looking after the live site: secrets, backups and the restore runbook, moderation, logs.          |
+| `docs/PRODUCTION-AUDIT.md`                | The production audit and the hardening brief it set.                                              |
+| `docs/PRODUCTION-HARDENING-REPORT.md`     | What the hardening changed per item, how it was checked, deploy notes, owner actions, known gaps. |
+| `docs/SOUNDS.md`                          | How the sound effects work, how to tune them, and which recorded sounds may be used.              |
+| `docs/audit/2026-10-27-codebase-audit.md` | The audit that started the overhaul (describes the old code).                                     |
 
 ## `scripts/`
 

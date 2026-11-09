@@ -2,8 +2,15 @@
 
 How to pick up work on Open Dam, whether you are a person or an agent.
 
-## Current state (2026-11-01)
+## Current state (2026-11-09)
 
+- **Production hardening** (the brief in `docs/PRODUCTION-AUDIT.md`) is
+  done on branch `claude/production-hardening-2e169e`, cut from
+  `feat/overhaul` at `52fb057`, waiting for review and the owner's merge and
+  deploy. What changed, how it was checked, and what the owner must do
+  (secrets, review the privacy wording, a real-phone pass, deploy) is in
+  `docs/PRODUCTION-HARDENING-REPORT.md`; looking after the live site is in
+  `docs/OPERATIONS.md`. On that branch `npm run verify` passes (432 tests).
 - `feat/overhaul` builds and `npm run verify` passes (308 tests). Every work
   row and every verification row is done.
 - **An installable, offline app with a real logo** (w48, 2026-11-01, the
@@ -157,6 +164,23 @@ the log below. Manage it from the "Scheduled" section of the Claude app.
 
 Newest first. Each entry: date and time, rows touched and their new status,
 commits, checks run, notes for the next shift.
+
+### 2026-11-08 to 2026-11-09 (production hardening, from the audit brief)
+
+- **Work:** every P0 and P1 item and the P2 items of
+  `docs/PRODUCTION-AUDIT.md`, one commit each on
+  `claude/production-hardening-2e169e` (P2-3, stronger password stretching,
+  is a written design only). The report is
+  `docs/PRODUCTION-HARDENING-REPORT.md`.
+- **Checks:** `npm run verify` (432 tests); `npm run check:online` and
+  `ONLINE_SLOW=1` against `wrangler dev`; `npm run check:browser` in real
+  Chrome (no CSP violations, offline, update flow); a scripted two-player
+  game kept going across a `wrangler dev` restart. `src/ai` was not changed,
+  so `check:ai` was not needed.
+- **Not done:** nothing deployed or pushed; the real-phone pass, the secrets
+  and the deploy are the owner's (report, "Owner actions").
+- **New since the last entry:** `npm run check:browser`; `docs/OPERATIONS.md`;
+  `?debug=board` on any page draws a check under the board.
 
 ### 2026-11-01 (owner's request: PWA, offline, a logo)
 
