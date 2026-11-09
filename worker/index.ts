@@ -5,6 +5,7 @@ import { MATCH_ID_PATTERN } from '../src/net/protocol'
 import type { Identity } from '../src/net/server'
 import { Accounts } from './accounts'
 import { handleAdmin } from './admin'
+import { BadRequest, readJson } from './http'
 import { clientErrorReport, internalError } from './errors'
 import type { RequestContext } from './accountStore'
 import { LobbyRoom } from './lobbyRoom'
@@ -72,8 +73,6 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-/** Requests are a few hundred bytes; a finished game a few tens of kilobytes. Anything far bigger is not real. */
-const MAX_BODY_BYTES = 4096
 const MAX_ARCHIVE_BODY_BYTES = 220_000
 
 const SESSION_COOKIE = 'od_session'
@@ -93,27 +92,6 @@ const lobbyOf = (env: Env) => env.LOBBY.get(env.LOBBY.idFromName('lobby'))
 /** Null if this network may make this request now, or the 429 to answer. */
 const limited = (request: Request, env: Env, group: LimitGroup, headers: Record<string, string> = {}) =>
   checkLimit(request, group, { burst: env.RATE_LIMITER, store: accountsOf(env) }, headers)
-
-class BadRequest extends Error {
-  readonly status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
-async function readJson(request: Request, limit = MAX_BODY_BYTES): Promise<Record<string, unknown>> {
-  const text = await request.text()
-  if (text.length > limit) throw new BadRequest(413, 'Request too large.')
-  if (text === '') return {}
-  try {
-    const body = JSON.parse(text) as unknown
-    if (typeof body !== 'object' || body === null || Array.isArray(body)) throw new Error('not an object')
-    return body as Record<string, unknown>
-  } catch {
-    throw new BadRequest(400, 'Request is not JSON.')
-  }
-}
 
 // -- Sessions ---------------------------------------------------------------------
 

@@ -73,6 +73,8 @@ every visual decision. Lower layers never import higher ones.
 | `errors.ts`               | Unexpected errors logged as one JSON line with a request id and answered `{ error, requestId }`; `POST /api/client-errors`.                                         |
 | `errors.test.ts`          | The 500 shape and log line; client error reports cut, stripped of query strings, refused when malformed or too big.                                                 |
 | `staticSite.test.ts`      | Checks the static files: Open Graph tags in `index.html`, the 1200×630 picture, `robots.txt` and the sitemap.                                                       |
+| `http.ts`                 | `readJson`: request bodies, refused by declared length before reading, then by bytes read; `BadRequest`.                                                            |
+| `http.test.ts`            | Body limits: declared length refused unread, bytes not characters, only JSON objects.                                                                               |
 | `rateLimit.ts`            | Per-network limits on match creation, sign-in and recovery, username checks: the binding as a flood filter, exact counts in the store.                              |
 | `rateLimit.test.ts`       | Limiter tests: allowed, refused with 429 and Retry-After, the window resetting, the store used when the binding is missing or failing.                              |
 | `room.ts`                 | `MatchRoom`, one Durable Object per match: connects `RoomCore` to Cloudflare (hibernatable sockets, keepalive auto-response, the alarm).                            |
