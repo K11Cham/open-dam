@@ -1,4 +1,6 @@
+import { flagTime } from '../src/match/clock'
 import { ratedScore, ratingPool } from '../src/match/rating'
+import { isOver, replay } from '../src/match/reducer'
 import type { MatchRecord, MatchState, SeatAccounts } from '../src/match/types'
 import { MatchServer, emptyMeta } from '../src/net/server'
 import type { ConnectionMemo, Identity, RoomMeta, SeatHolders, ServerConnection, ServerSocket } from '../src/net/server'
@@ -34,6 +36,8 @@ export interface RoomStorage {
   deleteAll(): Promise<void>
   setAlarm(at: number): Promise<void>
   deleteAlarm(): Promise<void>
+  /** When the alarm is set for, or null. */
+  getAlarm(): Promise<number | null>
 }
 
 /** What each socket keeps with itself across hibernation. */
@@ -186,7 +190,9 @@ export class RoomCore {
     core.record = (await storage.get<MatchRecord>(RECORD_KEY)) ?? null
     core.meta = (await storage.get<RoomMeta>(META_KEY)) ?? null
     core.seats = (await storage.get<SeatHolders>(SEATS_KEY)) ?? null
-    core.deadlines = (await storage.get<Deadlines>(DEADLINES_KEY)) ?? core.deadlines
+    const saved = await storage.get<Deadlines>(DEADLINES_KEY)
+    if (saved) core.deadlines = saved
+    else if (core.record) await core.adoptOlderRoom()
     const entries = sockets.flatMap((raw) => {
       const attachment = raw.attachment()
       if (!attachment) return []
@@ -197,6 +203,25 @@ export class RoomCore {
     )
     entries.forEach(({ attachment, socket }, i) => core.connections.set(attachment.sid, { socket, connection: connections[i] }))
     return core
+  }
+
+  /**
+   * A room saved before rooms kept their deadlines (before the 2026-11
+   * hardening) has only its clean-up alarm. Keep that alarm's time as the
+   * clean-up, and work out from the saved game when its running clock's flag
+   * falls, so a game abandoned before the update still ends on time.
+   */
+  private async adoptOlderRoom() {
+    const cleanupAt = (await this.storage.getAlarm()) ?? this.now() + KEEP_IDLE_MS
+    let flagAt: number | null = null
+    try {
+      const state = replay(this.record!)
+      if (state.clock?.running && !isOver(state)) flagAt = flagTime(state.clock)
+    } catch {
+      // A record that no longer replays has no clock to watch; the clean-up still comes.
+    }
+    this.deadlines = { flagAt, reportAt: null, cleanupAt }
+    await this.arm()
   }
 
   /** The match this room serves, once it has one. */

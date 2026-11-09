@@ -39,6 +39,9 @@ class FakeStorage implements RoomStorage {
   async deleteAlarm() {
     this.alarm = null
   }
+  async getAlarm() {
+    return this.alarm
+  }
 }
 
 /** A hibernatable socket: its attachment outlives the room's memory, as Cloudflare's does. */
@@ -382,3 +385,33 @@ setup.reopenStorage = async (storage: FakeStorage, clock: { t: number }) => {
       sockets,
     )
 }
+
+describe('a room saved before rooms kept their deadlines', () => {
+  it('keeps its clean-up time and works out its flag, so an abandoned game still ends', async () => {
+    const { clock, storage, accounts, people, reports, core, matchId } = await setup()
+    const sockets = {
+      player1: await seat(core, matchId, 'player1', people.player1, clients.player1),
+      player2: await seat(core, matchId, 'player2', people.player2, clients.player2),
+    }
+    await move(core, storage, matchId, sockets, clients)
+    await move(core, storage, matchId, sockets, clients)
+    const flagAt = clock.t + 60_000
+    await core.closed(sockets.player1)
+    await core.closed(sockets.player2)
+    // As the old code left it: the record, the seats' accounts, and one alarm for the clean-up.
+    storage.data.delete('deadlines')
+    storage.data.delete('seats')
+    const cleanupAt = clock.t + KEEP_IDLE_MS
+    storage.alarm = cleanupAt
+
+    const woken = await (await setup.reopen(storage, accounts, reports, clock))()
+    expect(storage.data.get('deadlines')).toEqual({ flagAt, reportAt: null, cleanupAt })
+    expect(storage.alarm).toBe(flagAt)
+    clock.t = flagAt
+    await woken.alarm()
+    await flush()
+    expect(reports).toHaveLength(1)
+    expect(reports[0]).toMatchObject({ reason: 'timeout', winner: 'player2' })
+    expect(storage.alarm).toBe(cleanupAt)
+  })
+})

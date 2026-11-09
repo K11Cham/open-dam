@@ -317,7 +317,10 @@ so the server learns who they are and gives them their seats back.
    logged as `report-abandoned`.
 
 The deadlines are stored under `deadlines` so a woken object knows which one
-rang.
+rang. A room saved before deadlines were kept (anything live before the
+2026-11 hardening deploy) is adopted when it next wakes: its existing alarm
+becomes the clean-up time, and its running clock's flag is worked out from
+the saved game.
 
 **Rated play is timed only**, so every rated game has a clock that ends it.
 The lobby refuses an untimed seek (`requireClock`, with the reason "Rated

@@ -53,6 +53,7 @@ export class MatchRoom extends DurableObject<Env> {
             deleteAll: () => storage.deleteAll(),
             setAlarm: (at) => storage.setAlarm(at),
             deleteAlarm: () => storage.deleteAlarm(),
+            getAlarm: () => storage.getAlarm(),
           },
           recordGame: (game) => this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('accounts')).recordGame(game),
         },
