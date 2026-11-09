@@ -401,7 +401,9 @@ player } }` as `system` at `flagTime(state.clock)`, retrying shortly if a
 7. **Identity — done.** The Worker reads the session cookie and passes the
    account to the room (`MatchServer.accept(socket, identity)`). The room
    binds a seat to the first signed-in account welcomed into it and refuses
-   that seat to anyone else; client ids still tell one tab from another.
+   that seat to anyone else; client ids still tell one tab from another. The
+   account is kept per connection, never looked up by the client id a browser
+   sends, so a connection that borrows someone's client id is still a guest.
 8. **Matchmaking — queue done.** `SeekQueue` in `src/net/matchmaking.ts`
    pairs two seeks whose rules agree (`settingsAreCompatible`) and whose
    ratings are within a window that starts at 100 points and widens by 50

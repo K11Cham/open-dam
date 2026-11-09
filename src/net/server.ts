@@ -152,8 +152,14 @@ export const SILENT_CONNECTION_MS = 20_000
 class Room implements Transport {
   readonly host: MatchHost
   private members = new Map<ServerSocket, string>()
-  /** Who each client id is signed in as, for the clients that are. */
-  private identities = new Map<string, Identity>()
+  /**
+   * Who each connection is signed in as, as the server checked it (a session
+   * cookie). Kept per connection, not per client id: a client id is whatever
+   * the browser says, so another connection could claim one.
+   */
+  private identities = new Map<ServerSocket, Identity | null>()
+  /** The account of the connection whose message is being handled, for `claim`. */
+  private acting: Identity | null = null
   /** Which client holds each seat, as the link last welcomed them; saved so a sleeping server can restore it. */
   private seated: SeatHolders
   private meta: RoomMeta
@@ -250,15 +256,15 @@ class Room implements Transport {
    * starts with both seats taken this way; in a casual game the first
    * signed-in person welcomed into a seat claims it.
    */
-  private mayUse(seat: PlayerId, clientId: string): boolean {
+  private mayUse(seat: PlayerId, identity: Identity | null): boolean {
     const owner = this.meta.accounts[seat]
-    return !owner || this.identities.get(clientId)?.id === owner.id
+    return !owner || identity?.id === owner.id
   }
 
   /** The link welcomed a client into a seat: if it is signed in and the seat is free, the seat becomes theirs. */
   private claim(seat: PlayerId, clientId: string) {
     if (this.seated[seat] !== clientId) this.setSeated(seat, clientId)
-    const identity = this.identities.get(clientId)
+    const identity = this.acting
     if (!identity || this.meta.accounts[seat]) return
     // One account at both seats is someone playing themselves: the second seat stays anonymous.
     const other = this.meta.accounts[seat === 'player1' ? 'player2' : 'player1']
@@ -308,7 +314,7 @@ class Room implements Transport {
   restore(socket: ServerSocket, clientId: string | null, identity: Identity | null) {
     if (clientId === null) return
     this.members.set(socket, clientId)
-    if (identity) this.identities.set(clientId, identity)
+    this.identities.set(socket, identity)
   }
 
   /** A keepalive on a connection: an answer, and a ping for each seat its client holds. */
@@ -319,14 +325,23 @@ class Room implements Transport {
     for (const seat of SEATS) {
       if (this.seated[seat] !== clientId) continue
       const ping: GuestMessage = { v: PROTOCOL_VERSION, matchId: this.matchId, from: clientId, type: 'ping', seat }
-      for (const handler of [...this.handlers]) handler(ping)
+      this.handleAs(this.identities.get(socket) ?? null, ping)
+    }
+  }
+
+  /** Hand a guest message to the link, with the sending connection's account known to `claim`. */
+  private handleAs(identity: Identity | null, message: GuestMessage) {
+    this.acting = identity
+    try {
+      for (const handler of [...this.handlers]) handler(message)
+    } finally {
+      this.acting = null
     }
   }
 
   /** A guest message from one of the room's connections (or one about to join). */
   deliver(socket: ServerSocket, clientId: string, message: GuestMessage, identity: Identity | null = null) {
-    if (identity) this.identities.set(clientId, identity)
-    if (!this.mayUse(message.seat, clientId)) {
+    if (!this.mayUse(message.seat, identity)) {
       if (message.type === 'join') {
         const taken: NetMessage = {
           v: PROTOCOL_VERSION,
@@ -342,6 +357,7 @@ class Room implements Transport {
     }
     if (!this.members.has(socket)) {
       this.members.set(socket, clientId)
+      this.identities.set(socket, identity)
       // A connection that just arrived may have missed actions while it was
       // away. A guest that still counts itself seated adopts this snapshot; one
       // that does not answers it with a join.
@@ -360,7 +376,7 @@ class Room implements Transport {
     if (message.type === 'ping' && this.options.presence === 'connection') {
       socket.send(keepaliveResponse(this.matchId, this.options.serverId))
     }
-    for (const handler of [...this.handlers]) handler(message)
+    this.handleAs(identity, message)
     if (message.type === 'leave' && this.seated[message.seat] === clientId) this.setSeated(message.seat, null)
   }
 
@@ -369,6 +385,7 @@ class Room implements Transport {
     const clientId = this.members.get(socket)
     if (clientId === undefined) return
     this.members.delete(socket)
+    this.identities.delete(socket)
     // The same client may already be back on a new connection; its seat stays.
     if ([...this.members.values()].includes(clientId)) return
     for (const seat of SEATS) {

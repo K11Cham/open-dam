@@ -581,6 +581,27 @@ describe('seats and accounts', () => {
     server.close()
   })
 
+  test('a guest connection using a signed-in player’s client id cannot act for their seat', async () => {
+    const { store, metas } = memoryStore()
+    const server = new MatchServer({ store })
+    const matchId = server.createMatch({ boardSize: 5 })
+    metas.set(matchId, { ...emptyMeta(), rated: true, accounts: { player1: { ...alice, rating: 1500 }, player2: null } })
+    const sent: NetMessage[] = []
+    const send = (connection: ServerConnection, body: Record<string, unknown>) =>
+      connection.receive(JSON.stringify({ v: PROTOCOL_VERSION, matchId, from: 'alice-tab', seat: 'player1', ...body }))
+    // Alice, signed in, takes her seat.
+    const real = server.accept({ send: () => {}, close: () => {} }, alice)
+    send(real, { type: 'join' })
+    // Someone else learns her client id and connects as a guest with it.
+    const impostor = server.accept({ send: (text) => sent.push(JSON.parse(text) as NetMessage), close: () => {} }, null)
+    send(impostor, { type: 'join' })
+    const [move] = legalActions(server.hostOf(matchId)!.getSnapshot().state.position)
+    send(impostor, { type: 'intent', nonce: 'x', intent: { type: 'engine', action: move } })
+    expect(sent.map((m) => m.type)).toEqual(['seat-taken'])
+    expect(server.hostOf(matchId)!.getSnapshot().state.lastSeq).toBe(0)
+    server.close()
+  })
+
   test('a rated game is only for its two accounts, and shows their new ratings at the end', async () => {
     const { store, metas } = memoryStore()
     const reported: RoomMeta[] = []
