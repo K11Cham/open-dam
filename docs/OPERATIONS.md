@@ -14,16 +14,21 @@ export ADMIN_TOKEN=...   # the value you gave `wrangler secret put ADMIN_TOKEN`
 
 ## Secrets
 
-| Secret        | What it is for                                                                                 | Without it                           |
-| ------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `ADMIN_TOKEN` | Opens the maintenance routes under `/api/admin` (backups, moderation). At least 32 characters. | Every `/api/admin` path answers 404. |
+| Secret           | What it is for                                                                                                                                          | Without it                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_TOKEN`    | Opens the maintenance routes under `/api/admin` (backups, moderation). At least 32 characters.                                                          | Every `/api/admin` path answers 404.                                                                                       |
+| `IP_HASH_SECRET` | The key network addresses are hashed with (sign-up limits, failed sign-ins, rate limits), so a stored hash cannot be reversed by hashing every address. | Addresses are hashed without a key, and a `no-ip-hash-secret` warning is logged once each time the Accounts object starts. |
 
 Make a long random value and set it (the command asks for the value):
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 npx wrangler secret put ADMIN_TOKEN
+npx wrangler secret put IP_HASH_SECRET
 ```
+
+Setting `IP_HASH_SECRET` (or changing it) resets the counts kept by hashed
+address: limits start again from zero, which is harmless.
 
 A secret takes effect at once, with no deploy. Keep the token somewhere safe;
 anyone who has it can roll the database back.
@@ -108,12 +113,13 @@ Nothing is sent to any third-party service. Everything goes to **Workers
 Logs** (Cloudflare dashboard → Workers & Pages → play → Logs, kept a few
 days on the free plan), one JSON line per event:
 
-| `event`            | Meaning                                                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `worker-error`     | An unexpected error in the Worker. The visitor got JSON `{ error, requestId }` with status 500; `requestId` is Cloudflare's Ray id for that request.    |
-| `client-error`     | The app crashed in someone's browser (`kind`: `render`, `error` or `unhandledrejection`), with the page's path and the message, and nothing about them. |
-| `report-failed`    | A finished game could not reach the Accounts object; the match room retries it (1, 5, 30 minutes, then hourly).                                         |
-| `report-abandoned` | A game's report was still failing when its room was cleaned up after 30 days; that game is not in anyone's history.                                     |
+| `event`            | Meaning                                                                                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `worker-error`     | An unexpected error in the Worker. The visitor got JSON `{ error, requestId }` with status 500; `requestId` is Cloudflare's Ray id for that request.             |
+| `client-error`     | The app crashed in someone's browser (`kind`: `render`, `error` or `unhandledrejection`), with the page's path and the message, and nothing about them.          |
+| `report-failed`    | A finished game could not reach the Accounts object; the match room retries it (1, 5, 30 minutes, then hourly).                                                  |
+| `housekeeping`     | (level `info`) The daily clean-up of the accounts database: how many expired sessions, old failure and request counts, and day-old sign-up addresses it removed. |
+| `report-abandoned` | A game's report was still failing when its room was cleaned up after 30 days; that game is not in anyone's history.                                              |
 
 Filter on `level = "error"` to see all of them. A person who saw an error
 message with a request id can send it to you; search the logs for it.

@@ -24,6 +24,8 @@ export interface Env {
   RATE_LIMITER?: BurstLimiter
   /** The owner's maintenance token (`wrangler secret put ADMIN_TOKEN`). Unset: /api/admin does not exist. */
   ADMIN_TOKEN?: string
+  /** The key network addresses are hashed with (`wrangler secret put IP_HASH_SECRET`). Unset: unkeyed, with a warning. */
+  IP_HASH_SECRET?: string
 }
 
 /**

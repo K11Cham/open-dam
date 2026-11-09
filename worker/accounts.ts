@@ -1,6 +1,9 @@
 import { DurableObject } from 'cloudflare:workers'
 import { AccountStore } from './accountStore'
 import { Backups } from './admin'
+
+/** How often the accounts database is tidied. */
+const HOUSEKEEPING_MS = 24 * 60 * 60 * 1000
 import type { Env } from './index'
 
 /**
@@ -17,11 +20,23 @@ export class Accounts extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
     const sql = ctx.storage.sql
-    this.store = new AccountStore({
-      exec: (query, ...bindings) => sql.exec(query, ...bindings).toArray() as never,
+    this.store = new AccountStore(
+      { exec: (query, ...bindings) => sql.exec(query, ...bindings).toArray() as never },
+      { ipSecret: env.IP_HASH_SECRET },
+    )
+    // The daily clean-up keeps itself scheduled; the first start sets it going.
+    void ctx.blockConcurrencyWhile(async () => {
+      if ((await ctx.storage.getAlarm()) === null) await ctx.storage.setAlarm(Date.now() + HOUSEKEEPING_MS)
     })
     // A restore happens when the object next starts. The restart waits a moment so the admin's answer gets out first.
     this.backups = new Backups(ctx.storage, () => setTimeout(() => ctx.abort('Restoring a backup'), 100))
+  }
+
+  /** Once a day: clear expired sessions, old failure and request counts, and day-old sign-up addresses. */
+  async alarm() {
+    const removed = this.store.housekeeping()
+    console.log(JSON.stringify({ level: 'info', event: 'housekeeping', ...removed }))
+    await this.ctx.storage.setAlarm(Date.now() + HOUSEKEEPING_MS)
   }
 
   /** A restore point for the accounts database (admin only; worker/admin.ts). */

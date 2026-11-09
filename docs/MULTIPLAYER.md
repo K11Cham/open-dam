@@ -187,6 +187,13 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   device (newest change wins; solved puzzles are combined), and finished local
   games combined by id (the account keeps 200, a device 50). Signing out
   removes the account's games and puzzle progress from the device.
+- **Housekeeping.** Once a day the Accounts object's alarm deletes expired
+  sessions, failed sign-ins and request counts whose window has ended, and
+  clears a new account's hashed network address once it is a day old (it is
+  only needed for the five-a-day sign-up limit). Addresses are hashed with
+  HMAC-SHA-256 keyed by the `IP_HASH_SECRET` secret, so a stored hash cannot
+  be reversed by hashing all four billion IPv4 addresses; without the secret
+  they are hashed unkeyed and a warning is logged.
 - **Changing the tables.** `MIGRATIONS` in `worker/accountStore.ts` lists
   every change to the database, oldest first; the store runs the ones a
   database has not had when the Accounts object starts (the count is kept in a

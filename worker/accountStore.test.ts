@@ -419,3 +419,52 @@ describe('schema migrations', () => {
     expect(seen.length - firstRun).toBe(2)
   })
 })
+
+describe('housekeeping', () => {
+  it('clears expired sessions, old failures and request counts, and day-old sign-up addresses', async () => {
+    const { store, clock, db } = makeStore()
+    const { token } = await signUp(store, 'Kylar')
+    await store.signIn({ username: 'Kylar', key: OTHER_KEY }, here)
+    await store.throttle('matches', here.ip, 30, 60 * 60 * 1000)
+    const rows = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n
+    const signupIp = () => (db.prepare('SELECT signup_ip FROM users').get() as { signup_ip: string }).signup_ip
+
+    // Nothing is old yet.
+    expect(store.housekeeping()).toEqual({ sessions: 0, failures: 0, rateLimits: 0, signupAddresses: 0 })
+    expect(signupIp()).not.toBe('')
+
+    // A day on: the failure (15 minutes) and the hour's count are over, and the address is a day old.
+    clock.t += 24 * 60 * 60 * 1000
+    expect(store.housekeeping()).toEqual({ sessions: 0, failures: 1, rateLimits: 1, signupAddresses: 1 })
+    expect(rows('failures')).toBe(0)
+    expect(rows('rate_limits')).toBe(0)
+    expect(signupIp()).toBe('')
+    expect(await store.authenticate(token)).not.toBeNull()
+
+    // Sixty-one days without a visit: the session has expired.
+    clock.t += 61 * 24 * 60 * 60 * 1000
+    expect(store.housekeeping()).toMatchObject({ sessions: 1 })
+    expect(rows('sessions')).toBe(0)
+  })
+
+  it('hashes addresses with the secret key when there is one, and warns once when there is not', async () => {
+    const keyed = new DatabaseSync(':memory:')
+    const keyedStore = new AccountStore({ exec: (q, ...b) => keyed.prepare(q).all(...b) as never }, { ipSecret: 's'.repeat(32) })
+    await keyedStore.signUp({ username: 'Kylar', key: KEY }, here)
+    const keyedHash = (keyed.prepare('SELECT signup_ip FROM users').get() as { signup_ip: string }).signup_ip
+    expect(keyedHash).toMatch(/^k:[0-9a-f]{64}$/)
+
+    const warnings: Record<string, unknown>[] = []
+    const plain = new DatabaseSync(':memory:')
+    const plainStore = new AccountStore(
+      { exec: (q, ...b) => plain.prepare(q).all(...b) as never },
+      { log: (line) => warnings.push(line) },
+    )
+    await plainStore.signUp({ username: 'Kylar', key: KEY }, here)
+    await plainStore.signUp({ username: 'Other', key: KEY }, here)
+    const plainHash = (plain.prepare('SELECT signup_ip FROM users LIMIT 1').get() as { signup_ip: string }).signup_ip
+    expect(plainHash).toMatch(/^[0-9a-f]{64}$/)
+    expect(plainHash).not.toBe(keyedHash.slice(2))
+    expect(warnings).toEqual([expect.objectContaining({ level: 'warn', event: 'no-ip-hash-secret' })])
+  })
+})

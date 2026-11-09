@@ -63,7 +63,27 @@ export interface StoreOptions {
   now?: () => number
   /** Fills a byte array with random bytes; injectable for tests. */
   randomBytes?: (bytes: Uint8Array) => Uint8Array
+  /**
+   * The key for hashing network addresses (the IP_HASH_SECRET secret). With
+   * it, a stored hash cannot be reversed by hashing every address (there are
+   * only four billion IPv4 ones); without it, addresses are hashed unkeyed and
+   * a warning is logged once.
+   */
+  ipSecret?: string
+  /** Where warnings go; Workers Logs keeps `console.warn`. */
+  log?: (line: Record<string, unknown>) => void
 }
+
+/** What the daily clean-up removed. */
+export interface Housekeeping {
+  sessions: number
+  failures: number
+  rateLimits: number
+  signupAddresses: number
+}
+
+/** A new account's hashed address is kept this long, for the sign-up limit, and then cleared. */
+export const SIGNUP_IP_KEEP_MS = 24 * 60 * 60 * 1000
 
 /** A finished online game, as the match room reports it. */
 export interface FinishedGame {
@@ -362,11 +382,17 @@ export class AccountStore {
   private readonly sql: Sql
   private readonly now: () => number
   private readonly randomBytes: (bytes: Uint8Array) => Uint8Array
+  private readonly ipSecret: string
+  private readonly log: (line: Record<string, unknown>) => void
+  private ipKey: ReturnType<typeof crypto.subtle.importKey> | undefined
+  private warnedNoSecret = false
 
   constructor(sql: Sql, options: StoreOptions = {}) {
     this.sql = sql
     this.now = options.now ?? Date.now
     this.randomBytes = options.randomBytes ?? ((bytes) => crypto.getRandomValues(bytes))
+    this.ipSecret = options.ipSecret ?? ''
+    this.log = options.log ?? ((line) => console.warn(JSON.stringify(line)))
     this.migrate()
   }
 
@@ -559,7 +585,48 @@ export class AccountStore {
 
   /** A network address, hashed, for counting requests from it without keeping it. */
   private async ipHash(ip: string): Promise<string> {
-    return sha256(`ip:${ip}`)
+    if (!this.ipSecret) {
+      if (!this.warnedNoSecret) {
+        this.warnedNoSecret = true
+        this.log({
+          level: 'warn',
+          event: 'no-ip-hash-secret',
+          message: 'IP_HASH_SECRET is not set; network addresses are hashed without a key.',
+        })
+      }
+      return sha256(`ip:${ip}`)
+    }
+    this.ipKey ??= crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(this.ipSecret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    )
+    return `k:${toHex(await crypto.subtle.sign('HMAC', await this.ipKey, new TextEncoder().encode(ip)))}`
+  }
+
+  /**
+   * The daily clean-up (the Accounts object's alarm): sessions past their
+   * expiry, failed sign-ins and request counts whose window has ended, and new
+   * accounts' hashed addresses once a day old. Rows are otherwise only cleared
+   * when someone touches them, so without this they would pile up.
+   */
+  housekeeping(): Housekeeping {
+    const t = this.now()
+    const count = (query: string, ...bindings: SqlValue[]) => this.sql.exec<{ n: number }>(query, ...bindings)[0].n
+    const sessions = count('SELECT COUNT(*) AS n FROM sessions WHERE expires_at <= ?', t)
+    this.sql.exec('DELETE FROM sessions WHERE expires_at <= ?', t)
+    const failures = count('SELECT COUNT(*) AS n FROM failures WHERE first_at <= ?', t - FAILURE_WINDOW_MS)
+    this.sql.exec('DELETE FROM failures WHERE first_at <= ?', t - FAILURE_WINDOW_MS)
+    const rateLimits = count('SELECT COUNT(*) AS n FROM rate_limits WHERE window_start + window_ms <= ?', t)
+    this.sql.exec('DELETE FROM rate_limits WHERE window_start + window_ms <= ?', t)
+    const signupAddresses = count(
+      "SELECT COUNT(*) AS n FROM users WHERE signup_ip != '' AND created_at <= ?",
+      t - SIGNUP_IP_KEEP_MS,
+    )
+    this.sql.exec("UPDATE users SET signup_ip = '' WHERE signup_ip != '' AND created_at <= ?", t - SIGNUP_IP_KEEP_MS)
+    return { sessions, failures, rateLimits, signupAddresses }
   }
 
   /**
