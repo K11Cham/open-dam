@@ -468,3 +468,75 @@ describe('housekeeping', () => {
     expect(warnings).toEqual([expect.objectContaining({ level: 'warn', event: 'no-ip-hash-secret' })])
   })
 })
+
+describe('moderation', () => {
+  it('refuses display names that look like the computer players or the site, whatever their accents or case', async () => {
+    const { store } = makeStore()
+    const { user } = await signUp(store, 'Kylar')
+    for (const name of ['Seriñ', 'SERIN', 'S.e.r.i.n', 'Döff', 'Màam', 'admin', 'Open Dam', 'Ｍｏｄｅｒａｔｏｒ']) {
+      expect(store.updateProfile(user.id, { displayName: name }), name).toMatchObject({
+        ok: false,
+        error: 'That display name is reserved.',
+      })
+    }
+    expect(await store.signUp({ username: 'amadou', key: KEY, displayName: 'Serin' }, { ...here, ip: '1.2.3.4' })).toMatchObject({
+      ok: false,
+      status: 400,
+    })
+    expect(store.updateProfile(user.id, { displayName: 'Serina' })).toMatchObject({ ok: true })
+  })
+
+  it('records a report from one player about another, and lists it for the owner', async () => {
+    const { store, clock } = makeStore()
+    const a = await signUp(store, 'Kylar')
+    await signUp(store, 'Troll', KEY, '198.51.100.2')
+    expect(store.report(a.user.id, 'troll', 'Rude bio.')).toEqual({ ok: true })
+    expect(store.report(a.user.id, 'Kylar', 'me')).toMatchObject({ ok: false, status: 400 })
+    expect(store.report(a.user.id, 'nobody', 'x')).toMatchObject({ ok: false, status: 404 })
+    expect(store.report(a.user.id, 'Troll', '   ')).toMatchObject({ ok: false, status: 400 })
+    expect(store.reports()).toEqual([
+      {
+        id: expect.any(String),
+        at: clock.t,
+        reason: 'Rude bio.',
+        reporter: { id: a.user.id, username: 'Kylar' },
+        target: expect.objectContaining({ username: 'Troll', suspended: false }),
+      },
+    ])
+  })
+
+  it('lets the owner reset a profile and rename an account', async () => {
+    const { store } = makeStore()
+    const { user, token } = await signUp(store, 'Troll')
+    store.updateProfile(user.id, { displayName: 'Nasty', bio: 'nasty bio' })
+    expect(store.resetProfile('troll')).toBe(true)
+    expect(store.me(user.id)).toMatchObject({ displayName: 'Troll', bio: '' })
+    expect(store.resetProfile('nobody')).toBe(false)
+
+    expect(store.renameUser('Troll', 'player_7')).toEqual({ ok: true })
+    expect(store.me(user.id)).toMatchObject({ username: 'player_7', displayName: 'player_7' })
+    // Signed out everywhere: the old password's key no longer matches the new name.
+    expect(await store.authenticate(token)).toBeNull()
+    expect(store.renameUser('player_7', 'admin')).toMatchObject({ ok: false })
+  })
+
+  it('suspends an account: signed out, cannot sign in, gone from profiles and leaderboards; and lifts it', async () => {
+    const { store } = makeStore()
+    const a = await signUp(store, 'Kylar')
+    const b = await signUp(store, 'Troll', KEY, '198.51.100.2')
+    store.recordGame(finished({ id: 'g1', players: { player1: a.user.id, player2: b.user.id }, winner: 'player2' }))
+    expect(store.leaderboard('5x5:untimed').total).toBe(2)
+
+    expect(store.suspendUser('troll', true)).toBe(true)
+    expect(await store.authenticate(b.token)).toBeNull()
+    expect(await store.signIn({ username: 'Troll', key: KEY }, here)).toMatchObject({ ok: false, status: 403 })
+    expect(store.profile('Troll', null)).toBeNull()
+    expect(store.leaderboard('5x5:untimed')).toMatchObject({ total: 1, entries: [expect.objectContaining({ rank: 1 })] })
+    expect(store.pools([])).toEqual([{ pool: '5x5:untimed', players: 1 }])
+    expect(store.reports()).toEqual([])
+
+    expect(store.suspendUser('troll', false)).toBe(true)
+    expect(await store.signIn({ username: 'Troll', key: KEY }, here)).toMatchObject({ ok: true })
+    expect(store.leaderboard('5x5:untimed').total).toBe(2)
+  })
+})

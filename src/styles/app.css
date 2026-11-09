@@ -3378,7 +3378,8 @@
   white-space: pre-line;
 }
 
-.profile__edit {
+.profile__edit,
+.profile__report {
   grid-area: edit;
   align-self: start;
 }
@@ -3425,7 +3426,8 @@
       'stats stats';
   }
 
-  .profile__edit {
+  .profile__edit,
+  .profile__report {
     justify-self: start;
   }
 

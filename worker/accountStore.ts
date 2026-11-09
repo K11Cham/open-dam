@@ -2,6 +2,7 @@ import {
   checkUsername,
   cleanBio,
   cleanDisplayName,
+  displayNameProblem,
   isAvatarColour,
   isKey,
   normaliseRecoveryCode,
@@ -49,6 +50,19 @@ export interface Refusal {
 export type Result<T> = ({ ok: true } & T) | Refusal
 
 const refuse = (status: number, error: string): Refusal => ({ ok: false, status, error })
+
+const SUSPENDED = 'This account is suspended. If you think that is a mistake, write to the address on the privacy page.'
+
+/** A report of a player, as the owner reads it. */
+export interface Report {
+  id: string
+  at: number
+  reason: string
+  reporter: { id: string; username: string } | null
+  target: { id: string; username: string; displayName: string; bio: string; suspended: boolean } | null
+}
+
+const MAX_REPORT_CHARS = 500
 
 /** For calls with no request behind them (tests, maintenance): one shared, unnamed network. */
 const NO_CONTEXT = { ip: '', userAgent: '' }
@@ -143,6 +157,7 @@ interface UserRow {
   key_hash: string
   recovery_hash: string
   recovery_issued_at: number
+  suspended_at: number | null
 }
 
 interface GameRow {
@@ -286,6 +301,18 @@ export const MIGRATIONS: string[][] = [
   ],
   // 4: when the current recovery code was made, so Settings can say (P1-5). 0 for codes made before: the account's start.
   [`ALTER TABLE users ADD COLUMN recovery_issued_at INTEGER NOT NULL DEFAULT 0`],
+  // 5: moderation (P1-8): suspended accounts, and players' reports of abuse.
+  [
+    `ALTER TABLE users ADD COLUMN suspended_at INTEGER`,
+    `CREATE TABLE reports (
+      id TEXT PRIMARY KEY,
+      reporter_id TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    )`,
+    `CREATE INDEX reports_recent ON reports (created_at DESC)`,
+  ],
 ]
 
 // -- Helpers -------------------------------------------------------------------------
@@ -507,7 +534,7 @@ export class AccountStore {
       return null
     }
     const user = this.userById(session.user_id)
-    if (!user) return null
+    if (!user || user.suspended_at) return null
     if (t - session.last_seen_at > TOUCH_MS) {
       this.sql.exec('UPDATE sessions SET last_seen_at = ?, expires_at = ? WHERE id = ?', t, t + SESSION_MS, session.id)
     }
@@ -672,9 +699,10 @@ export class AccountStore {
     if (nameProblem) return refuse(400, nameProblem)
     if (!isKey(input.key)) return refuse(400, 'The password could not be read. Reload the page and try again.')
     const username = (input.username as string).trim()
-    const displayName =
-      input.displayName === undefined || input.displayName === '' ? username : cleanDisplayName(input.displayName)
-    if (displayName === null) return refuse(400, 'A display name needs between 1 and 30 characters.')
+    const named = input.displayName !== undefined && input.displayName !== ''
+    const nameProblemShown = named ? displayNameProblem(input.displayName) : null
+    if (nameProblemShown) return refuse(400, nameProblemShown)
+    const displayName = named ? cleanDisplayName(input.displayName)! : username
 
     const salt = this.randomText(24)
     const recoveryCode = this.newRecoveryCode()
@@ -731,6 +759,7 @@ export class AccountStore {
       this.noteFailure(input.username, ipHash)
       return refuse(401, 'That username and password do not match.')
     }
+    if (row.suspended_at) return refuse(403, SUSPENDED)
     // This network's failures are forgiven; others' still count toward the backstop.
     this.sql.exec('DELETE FROM failures WHERE username_key = ? AND ip_hash = ?', usernameKey(input.username), ipHash)
     const token = await this.startSession(row.id, context)
@@ -843,6 +872,7 @@ export class AccountStore {
       this.noteFailure(input.username, ipHash)
       return refuse(401, 'That username and recovery code do not match.')
     }
+    if (row.suspended_at) return refuse(403, SUSPENDED)
     const salt = this.randomText(24)
     const recoveryCode = this.newRecoveryCode()
     const [hash, nextCodeHash] = await Promise.all([this.keyHash(salt, input.key), sha256(normaliseRecoveryCode(recoveryCode))])
@@ -868,9 +898,9 @@ export class AccountStore {
     let avatar = row.avatar
     let showGames = row.show_games
     if (patch.displayName !== undefined) {
-      const clean = cleanDisplayName(patch.displayName)
-      if (clean === null) return refuse(400, 'A display name needs between 1 and 30 characters.')
-      displayName = clean
+      const problem = displayNameProblem(patch.displayName)
+      if (problem) return refuse(400, problem)
+      displayName = cleanDisplayName(patch.displayName)!
     }
     if (patch.bio !== undefined) {
       const clean = cleanBio(patch.bio)
@@ -1150,7 +1180,8 @@ export class AccountStore {
 
   profile(username: string, viewerId: string | null): Profile | null {
     const row = this.userByName(username)
-    if (!row) return null
+    // A suspended account is not shown to anyone.
+    if (!row || row.suspended_at) return null
     const totals = this.sql.exec<{ games: number; wins: number; losses: number; draws: number }>(
       `SELECT COUNT(*) AS games,
         COALESCE(SUM(CASE WHEN (winner = 'player1' AND player1_id = ?1) OR (winner = 'player2' AND player2_id = ?1) THEN 1 ELSE 0 END), 0) AS wins,
@@ -1171,7 +1202,7 @@ export class AccountStore {
   /** Whether a player's game list may be shown to this viewer. */
   gamesVisible(username: string, viewerId: string | null): { userId: string } | null {
     const row = this.userByName(username)
-    if (!row || (row.show_games !== 1 && viewerId !== row.id)) return null
+    if (!row || row.suspended_at || (row.show_games !== 1 && viewerId !== row.id)) return null
     return { userId: row.id }
   }
 
@@ -1179,7 +1210,10 @@ export class AccountStore {
   pools(featured: string[]): Array<{ pool: string; players: number }> {
     const counts = new Map(
       this.sql
-        .exec<{ pool: string; n: number }>('SELECT pool, COUNT(*) AS n FROM ratings GROUP BY pool')
+        .exec<{ pool: string; n: number }>(
+          `SELECT pool, COUNT(*) AS n FROM ratings JOIN users ON users.id = ratings.user_id
+           WHERE users.suspended_at IS NULL GROUP BY pool`,
+        )
         .map((row) => [row.pool, row.n]),
     )
     const extra = [...counts.keys()].filter((pool) => !featured.includes(pool)).sort()
@@ -1189,9 +1223,16 @@ export class AccountStore {
   leaderboard(pool: string, options: { offset?: number; limit?: number } = {}): { entries: LeaderboardEntry[]; total: number } {
     const limit = Math.min(Math.max(options.limit ?? 50, 1), 100)
     const offset = Math.max(options.offset ?? 0, 0)
-    const total = this.sql.exec<{ n: number }>('SELECT COUNT(*) AS n FROM ratings WHERE pool = ?', pool)[0].n
+    // Suspended accounts are left off the board.
+    const total = this.sql.exec<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM ratings JOIN users ON users.id = ratings.user_id
+       WHERE ratings.pool = ? AND users.suspended_at IS NULL`,
+      pool,
+    )[0].n
     const rows = this.sql.exec<RatingRow & { user_id: string }>(
-      'SELECT * FROM ratings WHERE pool = ? ORDER BY rating DESC, games DESC, user_id LIMIT ? OFFSET ?',
+      `SELECT ratings.* FROM ratings JOIN users ON users.id = ratings.user_id
+       WHERE ratings.pool = ? AND users.suspended_at IS NULL
+       ORDER BY ratings.rating DESC, ratings.games DESC, ratings.user_id LIMIT ? OFFSET ?`,
       pool,
       limit,
       offset,
@@ -1214,6 +1255,96 @@ export class AccountStore {
       ]
     })
     return { entries, total }
+  }
+
+  // -- Moderation --------------------------------------------------------------------
+
+  /** A signed-in player reports another one (rate-limited by the Worker). */
+  report(reporterId: string, targetUsername: string, reason: unknown): Result<object> {
+    const target = this.userByName(targetUsername)
+    if (!target || target.suspended_at) return refuse(404, 'No such player.')
+    if (target.id === reporterId) return refuse(400, 'You cannot report yourself.')
+    const text = typeof reason === 'string' ? cleanBio(reason) : null
+    if (!text) return refuse(400, 'Say briefly what is wrong.')
+    if (text.length > MAX_REPORT_CHARS) return refuse(400, `A report can have at most ${MAX_REPORT_CHARS} characters.`)
+    this.sql.exec(
+      'INSERT INTO reports (id, reporter_id, target_id, reason, created_at) VALUES (?, ?, ?, ?, ?)',
+      this.randomText(12),
+      reporterId,
+      target.id,
+      text,
+      this.now(),
+    )
+    return { ok: true }
+  }
+
+  /** Reports for the owner, newest first, 50 at a time before `before` (epoch ms). */
+  reports(options: { before?: number } = {}): Report[] {
+    const rows = this.sql.exec<{ id: string; reporter_id: string; target_id: string; reason: string; created_at: number }>(
+      'SELECT * FROM reports WHERE created_at < ? ORDER BY created_at DESC LIMIT 50',
+      options.before ?? Number.MAX_SAFE_INTEGER,
+    )
+    return rows.map((row) => {
+      const reporter = this.userById(row.reporter_id)
+      const target = this.userById(row.target_id)
+      return {
+        id: row.id,
+        at: row.created_at,
+        reason: row.reason,
+        reporter: reporter ? { id: reporter.id, username: reporter.username } : null,
+        target: target
+          ? {
+              id: target.id,
+              username: target.username,
+              displayName: target.display_name,
+              bio: target.bio,
+              suspended: target.suspended_at !== null,
+            }
+          : null,
+      }
+    })
+  }
+
+  /** The owner resets a player's display name to their username and clears their bio. False if there is no such player. */
+  resetProfile(username: string): boolean {
+    const row = this.userByName(username)
+    if (!row) return false
+    this.sql.exec("UPDATE users SET display_name = username, bio = '' WHERE id = ?", row.id)
+    return true
+  }
+
+  /**
+   * The owner gives a player a new username. Their password's key is salted
+   * with the old name, so it stops working: they sign in again by resetting
+   * the password with their recovery code, under the new name.
+   */
+  renameUser(username: string, newUsername: unknown): { ok: boolean; error?: string } {
+    const row = this.userByName(username)
+    if (!row) return { ok: false, error: 'No such player.' }
+    const problem = checkUsername(newUsername)
+    if (problem) return { ok: false, error: problem }
+    const name = (newUsername as string).trim()
+    const holder = this.userByName(name)
+    if (holder && holder.id !== row.id) return { ok: false, error: 'That username is taken.' }
+    const displayName = row.display_name === row.username ? name : row.display_name
+    this.sql.exec(
+      'UPDATE users SET username = ?, username_key = ?, display_name = ? WHERE id = ?',
+      name,
+      usernameKey(name),
+      displayName,
+      row.id,
+    )
+    this.sql.exec('DELETE FROM sessions WHERE user_id = ?', row.id)
+    return { ok: true }
+  }
+
+  /** The owner suspends an account (signed out everywhere, off the leaderboards, cannot sign in or seek) or lifts it. */
+  suspendUser(username: string, suspended: boolean): boolean {
+    const row = this.userByName(username)
+    if (!row) return false
+    this.sql.exec('UPDATE users SET suspended_at = ? WHERE id = ?', suspended ? this.now() : null, row.id)
+    if (suspended) this.sql.exec('DELETE FROM sessions WHERE user_id = ?', row.id)
+    return true
   }
 
   /** Everything kept for one account, for the "download my data" button. */

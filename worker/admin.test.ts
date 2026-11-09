@@ -88,3 +88,71 @@ describe('admin routes', () => {
     expect(restarts()).toBe(1)
   })
 })
+
+describe('moderation routes', () => {
+  function moderation() {
+    const done: string[] = []
+    const accounts: AdminAccounts = {
+      bookmarkFor: async () => ({ bookmark: '', current: '', at: '' }),
+      restoreTo: async () => ({ undo: '' }),
+      reports: ({ before }) => (done.push(`reports ${before ?? '-'}`), [{ id: 'r1' }]),
+      resetProfile: (name) => (done.push(`reset ${name}`), name === 'troll'),
+      renameUser: (name, next) => (
+        done.push(`rename ${name} ${String(next)}`),
+        next === 'taken' ? { ok: false, error: 'That username is taken.' } : { ok: true }
+      ),
+      suspendUser: (name, suspended) => (done.push(`suspend ${name} ${suspended}`), name === 'troll'),
+    }
+    const call = (path: string, init: RequestInit = {}, token: string | null = TOKEN) =>
+      handleAdmin(
+        new Request(`https://play.example${path}`, {
+          ...init,
+          headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+        }),
+        new URL(`https://x${path}`).pathname,
+        { token: token ?? undefined, accounts },
+      )
+    return { done, call }
+  }
+
+  it('list reports, reset a profile, rename and suspend, each only with the token', async () => {
+    const { done, call } = moderation()
+    expect(await (await call('/api/admin/reports?before=99')).json()).toEqual({ reports: [{ id: 'r1' }] })
+    expect((await call('/api/admin/users/troll/reset-profile', { method: 'POST' })).status).toBe(200)
+    expect((await call('/api/admin/users/nobody/reset-profile', { method: 'POST' })).status).toBe(404)
+    const rename = (newUsername: string) =>
+      call('/api/admin/users/troll/rename', { method: 'POST', body: JSON.stringify({ newUsername }) })
+    expect((await rename('player_7')).status).toBe(200)
+    expect(await (await rename('taken')).json()).toEqual({ error: 'That username is taken.' })
+    const suspend = (body: unknown) => call('/api/admin/users/troll/suspend', { method: 'POST', body: JSON.stringify(body) })
+    expect(await (await suspend({ suspended: true })).json()).toEqual({ ok: true, suspended: true })
+    expect((await suspend({ suspended: 'yes' })).status).toBe(400)
+    expect(done).toEqual([
+      'reports 99',
+      'reset troll',
+      'reset nobody',
+      'rename troll player_7',
+      'rename troll taken',
+      'suspend troll true',
+    ])
+  })
+
+  it('are 404 when the secret is unset, and nothing is done', async () => {
+    const { done, call } = moderation()
+    for (const path of ['/api/admin/reports', '/api/admin/users/troll/reset-profile', '/api/admin/users/troll/suspend']) {
+      expect(
+        (
+          await call(
+            path,
+            {
+              method: path.endsWith('reports') ? 'GET' : 'POST',
+              body: path.endsWith('reports') ? undefined : '{"suspended":true}',
+            },
+            null,
+          )
+        ).status,
+      ).toBe(404)
+    }
+    expect(done).toEqual([])
+  })
+})

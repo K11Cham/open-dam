@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import Avatar from '../components/account/Avatar'
 import GameList from '../components/account/GameList'
+import ReportPlayer from '../components/account/ReportPlayer'
 import OfflinePanel from '../components/layout/OfflinePanel'
 import AppShell from '../components/layout/AppShell'
 import { Button, ButtonLink } from '../components/ui/Button'
@@ -68,6 +69,7 @@ function ProfileView({ profile }: { profile: Profile }) {
             Edit profile
           </ButtonLink>
         )}
+        {me && !mine && <ReportPlayer username={user.username} displayName={user.displayName} />}
         <dl className="profile__stats">
           <Stat label="Online games" value={totals.games} />
           <Stat label="Won" value={totals.wins} />

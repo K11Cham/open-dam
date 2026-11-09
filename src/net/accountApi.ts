@@ -97,6 +97,10 @@ export async function newRecoveryCode(username: string, password: string) {
   return call<{ recoveryCode: string }>('POST', '/api/me/recovery-code', { key }).then((r) => r.recoveryCode)
 }
 
+/** Report another player to the site's owner. */
+export const reportPlayer = (username: string, reason: string) =>
+  call<object>('POST', `/api/users/${encodeURIComponent(username)}/report`, { reason })
+
 export async function deleteAccount(username: string, password: string) {
   const key = await stretchPassword(username, password)
   await call<object>('DELETE', '/api/me', { key })

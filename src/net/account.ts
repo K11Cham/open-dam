@@ -81,6 +81,32 @@ export function cleanDisplayName(value: unknown): string | null {
   return name
 }
 
+/**
+ * A name reduced to what it looks like: accents and case dropped (NFKD, then
+ * combining marks removed), and anything but letters and digits removed. So
+ * "Seriñ", "SERIN" and "S.e.r.i.n" are all "serin".
+ */
+export const nameSkeleton = (value: string): string =>
+  value
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, '')
+
+const RESERVED_SKELETONS = new Set([...RESERVED].map(nameSkeleton))
+
+/**
+ * Why a display name cannot be used, or null if it can. Display names are
+ * free text, so beyond length the one rule is that nobody may look like the
+ * computer players, the site or its staff.
+ */
+export function displayNameProblem(value: unknown): string | null {
+  const name = cleanDisplayName(value)
+  if (name === null) return `A display name needs between 1 and ${DISPLAY_NAME_MAX} characters.`
+  if (RESERVED_SKELETONS.has(nameSkeleton(name))) return 'That display name is reserved.'
+  return null
+}
+
 export function cleanBio(value: unknown): string | null {
   if (typeof value !== 'string') return null
   // eslint-disable-next-line no-control-regex

@@ -110,6 +110,7 @@ function fakeFetch(input: RequestInfo | URL, init: RequestInit = {}) {
     const entries = pool === '5x5:untimed' ? server.leaderboard : []
     return reply({ pool, entries, total: entries.length })
   }
+  if (method === 'POST' && url.pathname === '/api/users/kylar/report') return reply({})
   if (method === 'GET' && url.pathname.startsWith('/api/users/')) return reply({ error: 'No such player.' }, 404)
   return reply({ error: 'Not found.' }, 404)
 }
@@ -313,6 +314,27 @@ describe('leaderboards and profiles', () => {
     expect(game).toHaveTextContent('+12')
     expect(game).toHaveTextContent('by resignation')
     expect(screen.getByRole('link', { name: /Review the game/ })).toHaveAttribute('href', '/game/g1')
+  })
+
+  test('nobody signed out sees Report', async () => {
+    renderAt('/u/kylar')
+    expect(await screen.findByRole('heading', { name: 'Kylar' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull()
+  })
+
+  test('reporting sends the reason and thanks the reporter', async () => {
+    const user = userEvent.setup()
+    server.me = { ...kylar, id: 'u2', username: 'amadou', displayName: 'Amadou' }
+    renderAt('/u/kylar')
+    await user.click(await screen.findByRole('button', { name: 'Report' }))
+    const dialog = screen.getByRole('dialog', { name: 'Report Kylar' })
+    await user.click(within(dialog).getByRole('button', { name: 'Send report' }))
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Say briefly what is wrong.')
+    await user.type(within(dialog).getByLabelText('What is wrong?'), 'Insults in the bio.')
+    await user.click(within(dialog).getByRole('button', { name: 'Send report' }))
+    expect(await screen.findByText('Thank you. The report has been sent.')).toBeInTheDocument()
+    const sent = server.calls.find((c) => c.path === '/api/users/kylar/report')
+    expect(sent).toMatchObject({ method: 'POST', body: { reason: 'Insults in the bio.' } })
   })
 
   test('an unknown player says so', async () => {

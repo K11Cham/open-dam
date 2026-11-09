@@ -39,6 +39,23 @@ export class Accounts extends DurableObject<Env> {
     await this.ctx.storage.setAlarm(Date.now() + HOUSEKEEPING_MS)
   }
 
+  report(...args: Parameters<AccountStore['report']>) {
+    return this.store.report(...args)
+  }
+  // Moderation, for the admin routes only (worker/admin.ts).
+  reports(...args: Parameters<AccountStore['reports']>) {
+    return this.store.reports(...args)
+  }
+  resetProfile(...args: Parameters<AccountStore['resetProfile']>) {
+    return this.store.resetProfile(...args)
+  }
+  renameUser(...args: Parameters<AccountStore['renameUser']>) {
+    return this.store.renameUser(...args)
+  }
+  suspendUser(...args: Parameters<AccountStore['suspendUser']>) {
+    return this.store.suspendUser(...args)
+  }
+
   /** A restore point for the accounts database (admin only; worker/admin.ts). */
   bookmarkFor(at: number) {
     return this.backups.bookmarkFor(at)

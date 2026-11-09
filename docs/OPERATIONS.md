@@ -1,7 +1,7 @@
 # Operations
 
 How to look after the live site: the owner's secrets, backups and restores,
-and where errors show up. Every command here is run by the owner,
+where errors show up, and moderation. Every command here is run by the owner,
 from this repository, signed in with `npx wrangler login`.
 
 The live site is https://play.open-dam.workers.dev. Below, `$SITE` is that
@@ -31,7 +31,7 @@ Setting `IP_HASH_SECRET` (or changing it) resets the counts kept by hashed
 address: limits start again from zero, which is harmless.
 
 A secret takes effect at once, with no deploy. Keep the token somewhere safe;
-anyone who has it can roll the database back.
+anyone who has it can roll the database back and rename or suspend accounts.
 To change it, run `wrangler secret put` again.
 
 The admin routes answer 404 to a missing or wrong token, exactly as if they
@@ -127,3 +127,48 @@ message with a request id can send it to you; search the logs for it.
 In the app, a page that crashes shows "Something went wrong" with Reload and
 Home instead of a blank page; a game in progress is saved after every move,
 so reloading continues it.
+
+## Moderation
+
+Players report one another from a profile ("Report", signed in, ten an hour
+per network). Display names may not look like the computer players, the site
+or its staff ("Seriñ", "SERIN", "S.e.r.i.n" and "admin" are all refused;
+accents, case and punctuation are ignored), the same list usernames use.
+
+**Read the reports**, newest first, 50 at a time (`before` pages back by
+time):
+
+```bash
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$SITE/api/admin/reports"
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$SITE/api/admin/reports?before=1762600000000"
+```
+
+Each report has the reporter, the reported player (with their current
+display name and bio) and the reason.
+
+**Reset a display name and bio** (the name goes back to the username):
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$SITE/api/admin/users/troll/reset-profile"
+```
+
+**Rename a username** (for an offensive or impersonating one). The player is
+signed out everywhere, and because a password's key is made with the
+username, their old password stops working: they set a new one with their
+recovery code under the new name (Sign in → Forgot your password?).
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"newUsername":"player_7"}' "$SITE/api/admin/users/troll/rename"
+```
+
+**Suspend an account**, or lift a suspension. A suspended player is signed
+out everywhere, cannot sign in, seek rated games or report, and disappears
+from leaderboards and profiles; their games stay in opponents' histories.
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"suspended":true}' "$SITE/api/admin/users/troll/suspend"
+curl -s -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"suspended":false}' "$SITE/api/admin/users/troll/suspend"
+```

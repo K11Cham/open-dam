@@ -216,6 +216,7 @@ every visual decision. Lower layers never import higher ones.
 | `layout/AccountMenu.tsx`   | Sign-in link, or the player's avatar with a menu: profile, settings, sign out.                                             |
 | `account/Avatar.tsx`       | A player's initial on their chosen colour.                                                                                 |
 | `account/GameList.tsx`     | Finished online games as rows: result, opponent, pool, rating change, review link.                                         |
+| `account/ReportPlayer.tsx` | "Report" on someone else's profile: a reason, sent to the owner's list of reports.                                         |
 | `layout/ThemeMenu.tsx`     | Theme picker menu with swatches.                                                                                           |
 | `layout/SoundToggle.tsx`   | Sound effects on/off button in the top bar.                                                                                |
 | `layout/navItems.ts`       | Navigation destinations.                                                                                                   |

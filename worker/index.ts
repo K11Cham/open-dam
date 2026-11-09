@@ -54,6 +54,7 @@ export interface Env {
  * Public
  *   GET    /api/users/:name                profile, ratings, recent games
  *   GET    /api/users/:name/games?before=  more games
+ *   POST   /api/users/:name/report         { reason } report a player (signed in)
  *   GET    /api/leaderboards               the pools
  *   GET    /api/leaderboards/:pool?offset= one pool's standings
  *   GET    /api/health                     "ok"
@@ -426,6 +427,16 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
         games: await accounts.gamesOf(visible.userId, { before: Number.isFinite(before) && before > 0 ? before : undefined }),
       })
     },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/api\/users\/([A-Za-z0-9_-]{1,32})\/report$/,
+    handler: signedIn(async (request, env, viewer, [name]) => {
+      const refused = await limited(request, env, 'reports')
+      if (refused) return refused
+      const body = await readJson(request)
+      return answer(await accountsOf(env).report(viewer.user.id, name, body.reason))
+    }),
   },
   {
     method: 'GET',

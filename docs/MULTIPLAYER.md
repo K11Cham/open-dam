@@ -187,6 +187,14 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   device (newest change wins; solved puzzles are combined), and finished local
   games combined by id (the account keeps 200, a device 50). Signing out
   removes the account's games and puzzle progress from the device.
+- **Moderation.** Display names may not look like a reserved name
+  (`displayNameProblem` in `src/net/account.ts`: accents, case and
+  punctuation ignored). Signed-in players report others from a profile
+  (`POST /api/users/:name/report`, a `reports` table, migration 5). The owner
+  reads reports and resets profiles, renames and suspends accounts
+  (`suspended_at`) through `/api/admin` (`docs/OPERATIONS.md`). A suspended
+  account is signed out, cannot sign in, and is left off profiles and
+  leaderboards.
 - **Housekeeping.** Once a day the Accounts object's alarm deletes expired
   sessions, failed sign-ins and request counts whose window has ended, and
   clears a new account's hashed network address once it is a day old (it is
