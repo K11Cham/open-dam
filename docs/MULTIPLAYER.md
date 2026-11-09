@@ -167,6 +167,13 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
   out every other device. Settings lists the devices and signs any of them out.
   Requests that change an account must come from this site (the Worker checks
   `Origin`), and account routes send no CORS headers.
+  The cookie is called `od_session`, not `__Host-od_session` (decided in the
+  2026-11 production audit, P2-13). The `__Host-` prefix stops a sibling
+  subdomain from planting a session cookie, but `workers.dev` is on the
+  public suffix list, so no other `*.workers.dev` site can set cookies for
+  this one; `wrangler dev` serves plain http, where a `__Host-` cookie needs
+  care; and switching would mean honouring both names for 60 days. Revisit if
+  the site moves to its own domain with other subdomains on it.
 - **A forgotten password.** Sign-up shows a recovery code once. It resets the
   password, signs out every device, and is replaced by a new code. There is
   no email, so the sign-up form and the code screen say plainly that without
