@@ -378,7 +378,10 @@ All nine steps are done.
 1. **WebSocket transport — done.** `WebSocketTransport` in
    `src/net/websocket.ts` sends JSON, checks every frame with `isNetMessage`,
    queues messages while the socket is down (up to 32), and reconnects with
-   doubling delays (0.5 s up to 15 s) until closed.
+   doubling delays (0.5 s up to 15 s), each spread between half and all of
+   the backoff so a restarted server is not met by every client at the same
+   instant, until closed. It also tries again at once when the browser comes
+   back online or the page is shown again.
 2. **The server's match logic — done.** `MatchServer` in `src/net/server.ts`
    does everything except listen on a port. Give each new connection to
    `accept(socket)`, pass every text frame to `receive`, and call `drop` when

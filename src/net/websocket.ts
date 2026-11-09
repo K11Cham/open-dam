@@ -10,6 +10,41 @@ export interface WebSocketTransportOptions {
   /** Wait before the first reconnect; it doubles after each failed attempt. */
   minDelayMs?: number
   maxDelayMs?: number
+  /** Picks each delay's spread; injectable for tests. */
+  random?: () => number
+  /**
+   * Where to hear that trying again now is worth it: the browser coming back
+   * online, or the page becoming visible again. Defaults to `window` and
+   * `document`; tests pass their own.
+   */
+  wakeups?: { subscribe(retry: () => void): () => void }
+}
+
+/** The parts of `window` and `document` the wakeups use; this file also runs in Node (the online checks), which has neither. */
+interface BrowserScope {
+  addEventListener?(type: string, listener: () => void): void
+  removeEventListener?(type: string, listener: () => void): void
+  document?: {
+    visibilityState: string
+    addEventListener(type: string, listener: () => void): void
+    removeEventListener(type: string, listener: () => void): void
+  }
+}
+
+/** The browser's own signals that a connection may work again. */
+const browserWakeups = {
+  subscribe(retry: () => void) {
+    const scope = globalThis as unknown as BrowserScope
+    const page = scope.document
+    if (!scope.addEventListener || !page) return () => {}
+    const onVisible = () => page.visibilityState === 'visible' && retry()
+    scope.addEventListener('online', retry)
+    page.addEventListener('visibilitychange', onVisible)
+    return () => {
+      scope.removeEventListener?.('online', retry)
+      page.removeEventListener('visibilitychange', onVisible)
+    }
+  },
 }
 
 const OPEN = 1
@@ -24,7 +59,10 @@ const MAX_QUEUED = 32
 
 /**
  * Transport over a WebSocket to a match server. It reconnects by itself, with
- * exponential backoff, until `close` is called. It knows nothing about the
+ * exponential backoff and jitter (each wait is between half and all of the
+ * backoff, so a server restart is not met by every client at the same
+ * instant), and at once when the browser comes back online or the page is
+ * shown again, until `close` is called. It knows nothing about the
  * game: after a reconnect the guest's own heartbeat and the server's snapshot
  * bring the game back in step.
  */
@@ -41,12 +79,25 @@ export class WebSocketTransport implements Transport {
   private failures = 0
   private retry: ReturnType<typeof setTimeout> | undefined
   private closed = false
+  private readonly random: () => number
+  private readonly stopWakeups: () => void
 
   constructor(url: string, options: WebSocketTransportOptions = {}) {
     this.url = url
     this.createSocket = options.createSocket ?? ((target) => new WebSocket(target))
     this.minDelayMs = options.minDelayMs ?? 500
     this.maxDelayMs = options.maxDelayMs ?? 15_000
+    this.random = options.random ?? Math.random
+    this.stopWakeups = (options.wakeups ?? browserWakeups).subscribe(() => this.retryNow())
+    this.open()
+  }
+
+  /** A reason to think the network is back: if we are waiting to reconnect, do it now. */
+  private retryNow() {
+    if (this.closed || this.socket !== null || this.retry === undefined) return
+    clearTimeout(this.retry)
+    this.retry = undefined
+    this.failures = 0
     this.open()
   }
 
@@ -85,9 +136,13 @@ export class WebSocketTransport implements Transport {
   }
 
   private reconnectLater() {
-    const delay = Math.min(this.maxDelayMs, this.minDelayMs * 2 ** this.failures)
+    const backoff = Math.min(this.maxDelayMs, this.minDelayMs * 2 ** this.failures)
+    const delay = backoff / 2 + (backoff / 2) * this.random()
     this.failures++
-    this.retry = setTimeout(() => this.open(), delay)
+    this.retry = setTimeout(() => {
+      this.retry = undefined
+      this.open()
+    }, delay)
   }
 
   /** Whether the socket is open right now (for display; sending works either way). */
@@ -125,6 +180,7 @@ export class WebSocketTransport implements Transport {
 
   close() {
     this.closed = true
+    this.stopWakeups()
     clearTimeout(this.retry)
     this.handlers.clear()
     this.outbox = []

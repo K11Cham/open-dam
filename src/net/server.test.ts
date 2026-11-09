@@ -385,6 +385,7 @@ describe('WebSocketTransport', () => {
       },
       minDelayMs: 100,
       maxDelayMs: 1_000,
+      random: () => 1,
     })
     sockets[0].fail()
     vi.advanceTimersByTime(99)
@@ -401,6 +402,77 @@ describe('WebSocketTransport', () => {
     sockets[2].fail()
     vi.advanceTimersByTime(5_000)
     expect(sockets).toHaveLength(3)
+  })
+
+  test('spreads its waits between half and all of the backoff, so clients do not all return at once', () => {
+    const sockets: ScriptedSocket[] = []
+    const transport = new WebSocketTransport('wss://x', {
+      createSocket: () => {
+        const socket = new ScriptedSocket()
+        sockets.push(socket)
+        return socket
+      },
+      minDelayMs: 1000,
+      random: () => 0,
+    })
+    sockets[0].fail()
+    vi.advanceTimersByTime(499)
+    expect(sockets).toHaveLength(1)
+    vi.advanceTimersByTime(1)
+    expect(sockets).toHaveLength(2)
+    transport.close()
+  })
+
+  test('tries again at once when the browser is back online or the page is shown, not only on its timer', () => {
+    const sockets: ScriptedSocket[] = []
+    let wake = () => {}
+    let unsubscribed = false
+    const transport = new WebSocketTransport('wss://x', {
+      createSocket: () => {
+        const socket = new ScriptedSocket()
+        sockets.push(socket)
+        return socket
+      },
+      minDelayMs: 10_000,
+      random: () => 1,
+      wakeups: {
+        subscribe: (retry) => {
+          wake = retry
+          return () => {
+            unsubscribed = true
+          }
+        },
+      },
+    })
+    sockets[0].open()
+    // Connected: a wakeup changes nothing.
+    wake()
+    expect(sockets).toHaveLength(1)
+    sockets[0].fail()
+    expect(sockets).toHaveLength(1)
+    wake()
+    expect(sockets).toHaveLength(2)
+    // The timer that was waiting does not open a third.
+    vi.advanceTimersByTime(20_000)
+    expect(sockets).toHaveLength(2)
+    transport.close()
+    expect(unsubscribed).toBe(true)
+  })
+
+  test('listens to the real browser: the online event reconnects', () => {
+    const sockets: ScriptedSocket[] = []
+    const transport = new WebSocketTransport('wss://x', {
+      createSocket: () => {
+        const socket = new ScriptedSocket()
+        sockets.push(socket)
+        return socket
+      },
+      minDelayMs: 10_000,
+    })
+    sockets[0].fail()
+    window.dispatchEvent(new Event('online'))
+    expect(sockets).toHaveLength(2)
+    transport.close()
   })
 
   test('passes on well-formed messages and ignores anything else', () => {
