@@ -99,10 +99,10 @@ every visual decision. Lower layers never import higher ones.
 
 ## `src/` entry
 
-| File           | Purpose                                                                                                                            |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `src/main.tsx` | Imports fonts and global CSS, starts the installed-app support (`startPwa`), mounts `<App>` in StrictMode.                         |
-| `src/App.tsx`  | `AppProviders` (theme, motion, toasts), `AppRoutes` (all routes, lazy-loading the rarer pages), and `App` with the browser router. |
+| File           | Purpose                                                                                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.tsx` | Imports fonts and global CSS, starts the installed-app support (`startPwa`), mounts `<App>` in StrictMode.                                |
+| `src/App.tsx`  | `AppProviders` (theme, motion, toasts), `AppRoutes` (all routes; every page but Home loads on demand), and `App` with the browser router. |
 
 ## `src/game/` — the rules engine (pure: no React, no DOM, no storage, no clock)
 

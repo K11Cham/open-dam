@@ -679,6 +679,10 @@ leaderboards.
   connection returns; the sign-in, sign-up and recovery forms say they need a
   connection and keep their button off until then. All of them read
   `usePwa().online`.
+- Only Home is in the first download; every other page is its own chunk,
+  loaded when opened (`lazy` in `src/App.tsx`). Home's first load is about
+  174 kB of gzipped script and 16 kB of CSS. The service worker saves every
+  chunk on install, so the other pages open offline too.
 - Browsers may clear a site's storage when a device runs short of space,
   which would lose saved games and the offline copy. Once there is
   something to keep (a finished game is archived) or the app is installed,

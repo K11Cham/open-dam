@@ -7,12 +7,15 @@ import { ToastProvider } from './components/ui/Toasts'
 import { AccountProvider } from './context/AccountContext'
 import { ThemeProvider } from './context/ThemeContext'
 import HomePage from './pages/HomePage'
-import MatchPage, { NewMatchFromLink } from './pages/MatchPage'
-import NewGamePage from './pages/NewGamePage'
 import NotFoundPage from './pages/NotFoundPage'
 import { usePreferences } from './services/preferences'
 
-// Pages most visits never open are loaded on demand, in their own chunks.
+// Every page but Home is loaded on demand, in its own chunk, so the first
+// visit downloads only what Home draws. The service worker saves every chunk
+// on install, so they open offline all the same.
+const MatchPage = lazy(() => import('./pages/MatchPage'))
+const NewMatchFromLink = lazy(() => import('./pages/MatchPage').then((page) => ({ default: page.NewMatchFromLink })))
+const NewGamePage = lazy(() => import('./pages/NewGamePage'))
 const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
 const AuthPage = lazy(() => import('./pages/AuthPage'))
 const LeaderboardsPage = lazy(() => import('./pages/LeaderboardsPage'))
