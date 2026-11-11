@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../components/ui/Dialog'
 import Panel from '../components/ui/Panel'
 import { useSideNames } from '../context/useTheme'
 import { createInitialState } from '../game/engine'
+import { turnsPlayed } from '../game/notation'
 import { positionFromAscii } from '../game/position'
 import type { PlayerId } from '../game/types'
 import { countOf, outcomeTitle, seatLabel, timeControlLabel } from '../lib/describe'
@@ -168,7 +169,7 @@ export default function HomePage() {
               <p className="panel__text">
                 {opponentText(unfinished.record, sideNames)} · {unfinished.record.config.settings.boardSize}×
                 {unfinished.record.config.settings.boardSize} · {timeControlLabel(unfinished.record.config.settings)} ·{' '}
-                {countOf(unfinished.state.position.moves.length, 'move')} played
+                {countOf(turnsPlayed(unfinished.state.position.moves), 'move')} played
               </p>
             </div>
             <div className="panel__actions">

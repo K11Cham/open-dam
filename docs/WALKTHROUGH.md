@@ -216,6 +216,11 @@ Squares are named like chess: file letter + rank number, with a1 at Red's
 bottom-left. Moves: `c2-c3` (quiet), `c2xc4` (capture), `c2xc4xe4` (chain),
 `=K` (crowned), ` ?!` (a capture was passed up), `!c3` (a call).
 `toMoveRows` groups the flat move list into numbered pairs for display.
+Each chain leg is its own record in `moves` (the first `capture`, then one
+`chain` per further jump), so "how many moves" is not `moves.length`:
+`turnsPlayed` counts moves and first captures only. The result summary, Home's
+"Your game is waiting" card and the server's stored game all use it; Home used
+to count every chain leg and call as a move.
 
 ### Settings: `settings.ts`
 

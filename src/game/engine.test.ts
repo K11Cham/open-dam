@@ -19,7 +19,7 @@ import {
 import { countPieces } from './board'
 import { positionFromAscii, positionToAscii } from './position'
 import { getCaptures } from './moves'
-import { toMoveRows } from './notation'
+import { toMoveRows, turnsPlayed } from './notation'
 import { DEFAULT_SETTINGS, TIME_CONTROLS, makeSettings, sanitizeSettings, settingsAreCompatible } from './settings'
 
 let currentSection = ''
@@ -137,6 +137,7 @@ currentSection = 'Chain captures'
     firstRow.kind === 'pair' && !!firstRow.player1?.notation.startsWith('b1xb3xb5'),
     firstRow.kind === 'pair' ? firstRow.player1?.notation : '',
   )
+  check('a two-leg chain is one move played', turnsPlayed(second.state.moves) === 1, String(turnsPlayed(second.state.moves)))
 }
 
 // ---------------------------------------------------------------------------

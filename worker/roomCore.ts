@@ -1,3 +1,4 @@
+import { turnsPlayed } from '../src/game/notation'
 import { flagTime } from '../src/match/clock'
 import { ratedScore, ratingPool } from '../src/match/rating'
 import { isOver, replay } from '../src/match/reducer'
@@ -112,8 +113,8 @@ export function finishedGameOf(record: MatchRecord, state: MatchState, meta: Roo
     players: { player1: player1?.id ?? null, player2: player2?.id ?? null },
     winner: status.kind === 'win' ? status.winner : null,
     reason: status.reason,
-    // Counted as the result summary counts them: moves and captures, not calls or resignations.
-    plies: state.position.moves.filter((m) => m.kind === 'move' || m.kind === 'capture').length,
+    // Counted as the result summary counts them (turnsPlayed). The column is named for plies, but holds moves played.
+    plies: turnsPlayed(state.position.moves),
     record: JSON.stringify(record),
   }
 }

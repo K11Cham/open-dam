@@ -163,6 +163,7 @@ describe('saving', () => {
     renderAt('/')
     expect(await screen.findByRole('heading', { name: 'Your game is waiting' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Continue/ })).toBeInTheDocument()
+    expect(screen.getByText(/1 move played/)).toBeInTheDocument()
   })
 })
 
