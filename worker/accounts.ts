@@ -56,6 +56,11 @@ export class Accounts extends DurableObject<Env> {
     return this.store.suspendUser(...args)
   }
 
+  /** The whole database for the weekly backup (worker/backupExport.ts). */
+  exportAll() {
+    return this.store.exportAll()
+  }
+
   /** A restore point for the accounts database (admin only; worker/admin.ts). */
   bookmarkFor(at: number) {
     return this.backups.bookmarkFor(at)

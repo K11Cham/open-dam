@@ -33,4 +33,10 @@
   // so the site works the same if this binding is removed.
   "ratelimits": [{ "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 120, "period": 60 } }],
   "observability": { "enabled": true },
+  // The weekly accounts export to R2 (worker/backupExport.ts), off until the
+  // owner creates the bucket. To turn it on: `npx wrangler r2 bucket create
+  // open-dam-backups`, uncomment both blocks below, and deploy. Steps and
+  // checks are in docs/OPERATIONS.md, "Weekly export".
+  // "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "open-dam-backups" }],
+  // "triggers": { "crons": ["0 3 * * 1"] },
 }

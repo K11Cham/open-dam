@@ -519,6 +519,20 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
   lobby with each socket; a seat claimed by an account is that account's
   alone, and a finished game with accounts is reported back to `Accounts`,
   which stores and rates it.
+- **The weekly backup** (`worker/backupExport.ts`). Durable Objects keep 30
+  days of history, which the admin restore route rolls back to. For anything
+  older, or the loss of the account, `AccountStore.exportAll` dumps the
+  tables that matter (accounts, ratings, games, synced data, reports, held
+  names; not sessions or counters) as one JSON value, and the Worker's
+  `scheduled` handler writes it to an R2 bucket as
+  `accounts/<date>.json` every Monday at 03:00 UTC, keeping the newest 12.
+  It is off until the owner creates the bucket and uncomments two lines in
+  `wrangler.jsonc`: with no `BACKUPS` binding, `runBackupExport` returns
+  `{ ran: false }`. A failure is thrown on purpose, so Cloudflare marks the
+  run failed, which is what an alert can key on. _Why not the obvious way
+  (export every day, keep everything)?_ Each export holds every account, so
+  storage grows with players times days; twelve weekly copies cover three
+  months for a fixed cost. OPERATIONS.md has the runbook.
 - In React, `AccountProvider` (src/context/AccountContext.tsx) asks who is
   signed in when the app opens and starts or stops the sync; `useAccount`
   reads it anywhere.

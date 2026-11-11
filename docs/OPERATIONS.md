@@ -99,13 +99,52 @@ the live site only when you mean it.
   room does not report it again, so it stays missing from histories.
 - The lobby holds nothing worth keeping.
 
-### Copies outside Cloudflare (not set up)
+### Weekly export (off until you turn it on)
 
 Point-in-time recovery covers mistakes, not the loss of the Cloudflare
-account. A weekly export of the whole database to an R2 bucket would cover
-that too; it is not built, because it needs a bucket the owner creates
-(`npx wrangler r2 bucket create open-dam-backups`) and a binding. Until then,
-each player can download everything kept for them (Settings → Your data).
+account or more than 30 days. The weekly export writes the whole accounts
+database as one JSON file to an R2 bucket (`worker/backupExport.ts`): every
+account (with its salted key and recovery hashes, never a password),
+ratings, finished games, synced settings and archives, reports and held
+usernames. Sessions, failed sign-ins and request counts are left out. It
+keeps the newest 12 exports (about three months) and deletes older ones.
+
+The file holds password and recovery-code hashes, so the bucket must stay
+private. R2 buckets are private unless you turn on public access; never do
+that for this one.
+
+To turn it on:
+
+1. Create the bucket:
+   ```bash
+   npx wrangler r2 bucket create open-dam-backups
+   ```
+2. In `wrangler.jsonc`, uncomment the two lines under "The weekly accounts
+   export": `r2_buckets` and `triggers` (Mondays at 03:00 UTC).
+3. Deploy (`npm run deploy`).
+4. Check the first run. Either wait for Monday, or trigger it from the
+   dashboard (Workers & Pages → play → Settings → Trigger Events → the cron →
+   "Run"). Then look for it in the logs (`event = "backup-export"`, with the
+   file name and size) and in the bucket:
+   ```bash
+   npx wrangler r2 object get open-dam-backups/accounts/<YYYY-MM-DD>.json --remote --file latest-export.json
+   ```
+5. Keep a copy somewhere outside Cloudflare now and then (download the
+   newest file to your own computer), so an export survives losing the
+   account too.
+
+To check it locally without touching Cloudflare: copy `wrangler.jsonc` with
+both lines uncommented to a scratch config, run
+`npx wrangler dev --config <it> --port 8788 --test-scheduled`, sign up an
+account, then open `http://localhost:8788/cdn-cgi/handler/scheduled?cron=0+3+*+*+1`.
+The log shows `backup-export` and `npx wrangler r2 object get
+open-dam-backups/accounts/<date>.json --local --pipe --config <it>` prints
+the file.
+
+Restoring from an export is not automated: it is rows to put back into the
+tables of the same names, and `schemaVersion` says which table shapes they
+have. Until the bucket exists, each player can download everything kept for
+them (Settings → Your data).
 
 ## When something breaks
 
@@ -113,16 +152,43 @@ Nothing is sent to any third-party service. Everything goes to **Workers
 Logs** (Cloudflare dashboard → Workers & Pages → play → Logs, kept a few
 days on the free plan), one JSON line per event:
 
-| `event`            | Meaning                                                                                                                                                          |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `worker-error`     | An unexpected error in the Worker. The visitor got JSON `{ error, requestId }` with status 500; `requestId` is Cloudflare's Ray id for that request.             |
-| `client-error`     | The app crashed in someone's browser (`kind`: `render`, `error` or `unhandledrejection`), with the page's path and the message, and nothing about them.          |
-| `report-failed`    | A finished game could not reach the Accounts object; the match room retries it (1, 5, 30 minutes, then hourly).                                                  |
-| `housekeeping`     | (level `info`) The daily clean-up of the accounts database: how many expired sessions, old failure and request counts, and day-old sign-up addresses it removed. |
-| `report-abandoned` | A game's report was still failing when its room was cleaned up after 30 days; that game is not in anyone's history.                                              |
+| `event`                | Meaning                                                                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `worker-error`         | An unexpected error in the Worker. The visitor got JSON `{ error, requestId }` with status 500; `requestId` is Cloudflare's Ray id for that request.             |
+| `client-error`         | The app crashed in someone's browser (`kind`: `render`, `error` or `unhandledrejection`), with the page's path and the message, and nothing about them.          |
+| `report-failed`        | A finished game could not reach the Accounts object; the match room retries it (1, 5, 30 minutes, then hourly).                                                  |
+| `housekeeping`         | (level `info`) The daily clean-up of the accounts database: how many expired sessions, old failure and request counts, and day-old sign-up addresses it removed. |
+| `report-abandoned`     | A game's report was still failing when its room was cleaned up after 30 days; that game is not in anyone's history.                                              |
+| `backup-export`        | (level `info`) The weekly export ran: the file name, its size in bytes, and how many old exports it deleted.                                                     |
+| `backup-export-failed` | The weekly export could not be written; the run also shows as failed under Trigger Events. Run it again from there once the cause is fixed.                      |
 
 Filter on `level = "error"` to see all of them. A person who saw an error
 message with a request id can send it to you; search the logs for it.
+
+### Is it healthy? A five-minute check
+
+Once a week, or whenever someone says something is wrong:
+
+1. **The site opens:** https://play.open-dam.workers.dev loads, and
+   `curl -s $SITE/api/me` answers `{"user":null}` (JSON, not an error page).
+2. **Errors:** in Workers Logs, filter `level = "error"` for the last day.
+   A few `client-error` lines from old browsers are normal. Any
+   `worker-error`, more than a handful of `report-failed`, or any
+   `report-abandoned` or `backup-export-failed` needs a look.
+3. **Housekeeping ran:** one `housekeeping` line in the last 24 hours. None
+   means the Accounts object's daily alarm stopped; it is set again the
+   next time that object starts (an account request after a quiet spell).
+4. **Games finish and are rated:** open the leaderboard for a pool people
+   play; the newest games on a top player's profile should be from the last
+   few days if people are playing.
+5. **A real game:** `ONLINE_URL=$SITE npm run check:online` plays real games
+   against the live site with two throwaway accounts and deletes them again.
+6. **Backups:** with the export on, the newest file in the bucket is less
+   than eight days old.
+
+What to alert on, if you set up Cloudflare's notifications (dashboard →
+Notifications): Workers errors above a few per hour, and a failed cron
+trigger. Both key on what this page lists; nothing else needs watching.
 
 In the app, a page that crashes shows "Something went wrong" with Reload and
 Home instead of a blank page; a game in progress is saved after every move,
