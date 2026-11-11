@@ -307,7 +307,10 @@ so the server learns who they are and gives them their seats back.
    and is rated: the side whose clock ran out loses.
 2. **A report to retry.** When a game with accounts ends, the room writes a
    `pendingReport` to storage before calling `Accounts.recordGame`, and
-   deletes it only after that succeeds. A failure is logged
+   deletes it only after that succeeds. The retry alarm is set before each
+   call, not only when it fails, so a report cut off by the object restarting
+   mid-call (a deploy) is still retried; a woken room that finds a pending
+   report with no retry set gives it one. A failure is logged
    (`report-failed`) and retried after 1 minute, 5 minutes, 30 minutes, then
    hourly. `recordGame` is idempotent per game id, so a retry that races a
    slow success stores the game once. Ratings that arrive late are announced

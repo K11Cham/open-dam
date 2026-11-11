@@ -386,6 +386,103 @@ setup.reopenStorage = async (storage: FakeStorage, clock: { t: number }) => {
     )
 }
 
+describe('a report cut off by a restart', () => {
+  it('is retried by the alarm of a fresh object and lands exactly once', async () => {
+    const clock = { t: 1_000_000 }
+    const storage = new FakeStorage()
+    const db = new DatabaseSync(':memory:')
+    const sql: Sql = { exec: (query, ...bindings) => db.prepare(query).all(...bindings) as never }
+    const accounts = new AccountStore(sql, { now: () => clock.t, log: () => {} })
+    const here = { ip: '203.0.113.9', userAgent: '' }
+    const a = await accounts.signUp({ username: 'alice', key: KEY }, here)
+    const b = await accounts.signUp({ username: 'bob', key: KEY }, here)
+    if (!a.ok || !b.ok) throw new Error('sign-up failed')
+    const people = { player1: { ...alice, id: a.user.id }, player2: { ...bob, id: b.user.id } }
+
+    // The first object's call to Accounts never comes back: the object is restarted while it waits.
+    const calls: FinishedGame[] = []
+    let ids = 0
+    const hanging = await RoomCore.open({
+      storage,
+      recordGame: (game) => {
+        calls.push(game)
+        return new Promise<RatingChanges>(() => {})
+      },
+      now: () => clock.t,
+      newId: () => `h${ids++}`,
+      log: () => {},
+    })
+    const record = createRecord({
+      mode: 'online',
+      settings: makeSettings({ boardSize: 5, timeControl: { label: '1+0', initialMs: 60_000, incrementMs: 0 } }),
+      seats: { player1: { kind: 'remote', name: 'Alice' }, player2: { kind: 'remote', name: 'Bob' } },
+      createdAt: clock.t,
+    })
+    const matchId = record.config.id
+    await hanging.create(record, { rated: true, accounts: { player1: { ...people.player1 }, player2: { ...people.player2 } } })
+    const sockets = {
+      player1: await seat(hanging, matchId, 'player1', people.player1, clients.player1),
+      player2: await seat(hanging, matchId, 'player2', people.player2, clients.player2),
+    }
+    await move(hanging, storage, matchId, sockets, clients)
+    await move(hanging, storage, matchId, sockets, clients)
+    send(hanging, sockets.player1, {
+      matchId,
+      from: clients.player1,
+      type: 'intent',
+      seat: 'player1',
+      nonce: 'r',
+      intent: { type: 'engine', action: { type: 'resign', player: 'player1' } },
+    })
+    for (let i = 0; i < 10 && calls.length === 0; i++) await flush()
+    expect(calls).toHaveLength(1)
+    expect(await storage.get('pendingReport')).toMatchObject({ attempts: 0 })
+    // The retry was set before the call went out.
+    expect(storage.alarm).toBe(clock.t + REPORT_RETRY_MS[0])
+
+    // A fresh object on the same storage; the alarm rings.
+    const reports: FinishedGame[] = []
+    const fresh = await (await setup.reopen(storage, accounts, reports, clock))()
+    clock.t = storage.alarm!
+    await fresh.alarm()
+    await flush()
+    expect(reports).toHaveLength(1)
+    expect(accounts.game(matchId)?.summary).toMatchObject({ rated: true, winner: 'player2' })
+    expect(accounts.ratingIn(people.player2.id, '5x5:1+0').games).toBe(1)
+    expect(await storage.get('pendingReport')).toBeUndefined()
+    expect(storage.data.get('deadlines')).toMatchObject({ reportAt: null })
+  })
+
+  it('gets a retry when the object stopped between writing the report down and setting its alarm', async () => {
+    const { clock, storage, accounts, reports, core, matchId } = await setup()
+    // As if the report had been written and the object had stopped before the deadline was saved.
+    await storage.put({
+      pendingReport: {
+        game: {
+          id: matchId,
+          pool: '5x5:1+0',
+          rated: false,
+          finishedAt: clock.t,
+          players: { player1: null, player2: null },
+          winner: null,
+          reason: 'draw-agreed',
+          plies: 0,
+          record: '{}',
+        },
+        attempts: 0,
+        accounts: { player1: null, player2: null },
+      },
+    })
+    void core
+    const fresh = await (await setup.reopen(storage, accounts, reports, clock))()
+    expect(storage.alarm).toBe(clock.t + REPORT_RETRY_MS[0])
+    clock.t = storage.alarm!
+    await fresh.alarm()
+    expect(reports).toHaveLength(1)
+    expect(await storage.get('pendingReport')).toBeUndefined()
+  })
+})
+
 describe('a room saved before rooms kept their deadlines', () => {
   it('keeps its clean-up time and works out its flag, so an abandoned game still ends', async () => {
     const { clock, storage, accounts, people, reports, core, matchId } = await setup()

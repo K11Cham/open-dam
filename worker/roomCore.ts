@@ -193,6 +193,11 @@ export class RoomCore {
     const saved = await storage.get<Deadlines>(DEADLINES_KEY)
     if (saved) core.deadlines = saved
     else if (core.record) await core.adoptOlderRoom()
+    // A report written down but never given a retry (the object stopped between the two): give it one now.
+    if (core.deadlines.reportAt === null && (await storage.get<PendingReport>(PENDING_KEY))) {
+      core.deadlines.reportAt = core.now() + REPORT_RETRY_MS[0]
+      await core.arm()
+    }
     const entries = sockets.flatMap((raw) => {
       const attachment = raw.attachment()
       if (!attachment) return []
@@ -352,8 +357,16 @@ export class RoomCore {
     return (await this.attempt(pending)) ?? undefined
   }
 
-  /** One try at reporting. On failure, schedule the next and throw, so the game is not shown as rated. */
+  /**
+   * One try at reporting. The retry is set before the call, not only when it
+   * fails: if the object is evicted or restarted while the call is in flight
+   * (a deploy), the alarm still comes back for the report. A retry racing a
+   * slow success is harmless, since `recordGame` stores a game once. On
+   * failure, schedule the next try and throw, so the game is not shown as rated.
+   */
   private async attempt(pending: PendingReport): Promise<SeatAccounts | null> {
+    this.deadlines.reportAt = this.now() + REPORT_RETRY_MS[Math.min(pending.attempts, REPORT_RETRY_MS.length - 1)]
+    await this.arm()
     let changes: RatingChanges
     try {
       changes = await this.recordGame(pending.game)
