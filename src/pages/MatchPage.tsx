@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import MatchScreen from '../components/game/MatchScreen'
 import AppShell from '../components/layout/AppShell'
-import { ButtonLink } from '../components/ui/Button'
+import { Button, ButtonLink } from '../components/ui/Button'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import Panel from '../components/ui/Panel'
 import { useToast } from '../components/ui/Toasts'
@@ -21,14 +21,14 @@ import type { MatchRecord } from '../match/types'
 const SIDES: PlayerId[] = ['player1', 'player2']
 
 /** A local game (pass and play, or against the computer) hosted on this device. */
-function LocalMatch({ record }: { record: MatchRecord }) {
+function LocalMatch({ record, onStale }: { record: MatchRecord; onStale: () => void }) {
   const navigate = useNavigate()
   const toast = useToast()
   const { theme } = useTheme()
   const sideNames = useSideNames()
   const sound = useSound()
   const [host] = useState(() => new MatchHost(record))
-  useMatchPersistence(host)
+  useMatchPersistence(host, onStale)
 
   const seats = record.config.seats
   const localSeats = SIDES.filter((side) => seats[side].kind === 'human')
@@ -73,10 +73,14 @@ function LocalMatch({ record }: { record: MatchRecord }) {
  */
 export default function MatchPage() {
   const { id = '' } = useParams()
-  return <SavedMatch key={id} id={id} />
+  // Bumped to read the saved game again, after another tab moved it on.
+  const [reads, setReads] = useState(0)
+  return <SavedMatch key={`${id}:${reads}`} id={id} onReload={() => setReads((n) => n + 1)} />
 }
 
-function SavedMatch({ id }: { id: string }) {
+function SavedMatch({ id, onReload }: { id: string; onReload: () => void }) {
+  const navigate = useNavigate()
+  const [stale, setStale] = useState(false)
   const [loaded] = useState(() => {
     const active = loadActiveMatch()
     if (!active || active.record.config.id !== id || active.record.config.mode !== 'local') return null
@@ -106,9 +110,38 @@ function SavedMatch({ id }: { id: string }) {
     )
   }
 
+  if (stale) {
+    // Open whatever the other tab saved: this game further on, or a new game. If it is neither, this route says so.
+    const openLatest = () => {
+      const latest = loadActiveMatch()
+      if (latest && latest.record.config.mode === 'local' && latest.record.config.id !== id)
+        navigate(`/match/${latest.record.config.id}`)
+      else onReload()
+    }
+    return (
+      <AppShell>
+        <div className="page page--narrow">
+          <Panel>
+            <h1 className="panel__title">This game moved on in another tab</h1>
+            <p className="panel__text">
+              Open Dam is open in another tab or window, and a game was saved there. This tab has stopped so it cannot write an
+              older copy over it.
+            </p>
+            <div className="panel__actions">
+              <Button variant="primary" onClick={openLatest}>
+                Open the latest game
+              </Button>
+              <ButtonLink to="/">Home</ButtonLink>
+            </div>
+          </Panel>
+        </div>
+      </AppShell>
+    )
+  }
+
   return (
     <AppShell wide>
-      <LocalMatch key={loaded.config.id} record={loaded} />
+      <LocalMatch key={loaded.config.id} record={loaded} onStale={() => setStale(true)} />
     </AppShell>
   )
 }

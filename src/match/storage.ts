@@ -85,8 +85,30 @@ export function parseRecord(value: unknown): { record: MatchRecord; state: Match
   }
 }
 
-export function saveActiveMatch(record: MatchRecord, now = Date.now()) {
+/**
+ * Save the unfinished game. Returns the slot's new stamp (see
+ * `activeMatchStamp`), so the tab that wrote it can tell later whether
+ * another tab has written since.
+ */
+export function saveActiveMatch(record: MatchRecord, now = Date.now()): string {
   storage.set<SavedActive>(ACTIVE_KEY, { record, savedAt: now })
+  return stampOf(record, now)
+}
+
+const stampOf = (record: MatchRecord, savedAt: number) => `${record.config.id}|${record.actions.length}|${savedAt}`
+
+/**
+ * Something that changes with every write of the active slot, or null when it
+ * is empty. Two tabs can host the same saved game, and each write replaces the
+ * whole slot, so a tab compares this with the stamp of its own last write
+ * before saving again: if they differ, another tab has moved on and this
+ * tab's copy is out of date.
+ */
+export function activeMatchStamp(): string | null {
+  const saved = storage.get<SavedActive>(ACTIVE_KEY)
+  if (!isObject(saved) || !isObject(saved.record) || !isObject(saved.record.config) || !Array.isArray(saved.record.actions))
+    return null
+  return `${String(saved.record.config.id)}|${saved.record.actions.length}|${String(saved.savedAt)}`
 }
 
 export function clearActiveMatch() {

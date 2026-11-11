@@ -429,7 +429,23 @@ and publishes. Every local game is a `MatchHost`.
 - `saveActiveMatch` / `loadActiveMatch` keep the one unfinished game in
   localStorage. Loading **validates** the shape and replays it; anything that
   doesn't replay is discarded rather than trusted.
-- `archiveMatch` keeps the last 20 finished games for "Recent games" and review.
+- `archiveMatch` keeps the last 50 finished games for "Recent games" and review.
+- **Two tabs, one slot.** Every tab of the app shares that one active-game
+  slot, and each save replaces it whole. Until 2026-11 a tab left open on a
+  game could write an older copy back over a newer one: open the game twice,
+  play on in one tab, then close the other, and the closing tab's last save
+  undid your moves. Worse, a tab whose clock ran out cleared the slot, deleting
+  a new game started elsewhere. Now `saveActiveMatch` returns a _stamp_ of what
+  it wrote (game id, number of actions, time), `activeMatchStamp` reads the
+  slot's current one, and `useMatchPersistence` writes only while the slot
+  still holds its own last stamp. When another tab has saved (it hears the
+  browser's `storage` event, or notices just before its next write), it stops
+  writing for good and the page shows "This game moved on in another tab" with
+  a button to open the latest game. This is an _optimistic_ check: no lock,
+  just "is it still what I last wrote?", which is enough because
+  localStorage calls in one tab run to completion before another tab's can
+  change anything we read in between. `src/test/tabs.test.tsx` plays the other
+  tab by writing localStorage directly.
 - `setup.ts` describes the New Game form's result and its URL form, so the
   Home page's quick-play cards are plain links like
   `/match/new?vs=club&size=5`.
@@ -525,7 +541,8 @@ Hooks are where pure logic meets React's rendering.
   that moment cancels it, since calling is usually worth more.
 - **`useAIPlayer`** plays a seat for the computer (Part 2, step 7).
 - **`useMatchPersistence`** saves after every action, archives finished
-  games, and pauses or resumes the clock when you leave or return.
+  games, and pauses or resumes the clock when you leave or return. It stops
+  saving once another tab has saved the game (Part 5, "Two tabs, one slot").
 - **`useBoardAnimations`** turns engine events into short-lived animation
   entries (a piece travelling, a captured piece shrinking away, a crowning). A travelling piece hides the real one only
   until it lands, or after 1.5 s at the latest: a page in the background runs
