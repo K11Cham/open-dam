@@ -666,6 +666,15 @@ and whether sound is on. `npm run sounds` renders them all to WAV files to
 listen to. `docs/SOUNDS.md` explains the recipes and which recorded sounds may
 replace them.
 
+**Vibration.** Every cue is also _felt_ on a phone that can vibrate:
+`src/audio/haptics.ts` maps each cue to a `navigator.vibrate` pattern (a
+move is an 8 ms tick, a capture 22 ms, a call two 30 ms taps so it is never
+mistaken for a move; no pattern lasts more than 200 ms). `useSound().play`
+buzzes as well as sounding, while the Vibration preference is on (Settings,
+on by default), and buzzes even with the sound off, because feeling a capture
+is most useful when you cannot hear it. iPhones have no vibration API, so
+there it does nothing; Settings says so.
+
 ### The logo
 
 The mark is four sticks against four stones on a 3×3 grid with the centre

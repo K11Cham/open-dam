@@ -435,3 +435,27 @@ describe('sound', () => {
     expect(toggle).toHaveAttribute('aria-pressed', String(before))
   })
 })
+
+describe('vibration', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'vibrate')
+  })
+
+  test('a move is felt on a phone, and Settings turns it off', async () => {
+    const vibrate = vi.fn(() => true)
+    Object.defineProperty(navigator, 'vibrate', { configurable: true, value: vibrate })
+    const user = userEvent.setup()
+    const game = renderAt('/match/new?vs=hotseat&size=5')
+    await screen.findByRole('grid')
+    tap(square('d3'))
+    fireEvent.click(square('c3'))
+    expect(vibrate).toHaveBeenCalledWith([8])
+    game.unmount()
+
+    renderAt('/settings')
+    const toggle = await screen.findByRole('switch', { name: /Vibration/ })
+    expect(toggle).toBeChecked()
+    await user.click(toggle)
+    expect(storage.get<{ haptics: boolean }>(STORAGE_KEYS.prefs)?.haptics).toBe(false)
+  })
+})
