@@ -237,6 +237,28 @@ describe('lobby', () => {
     lobby.close()
   })
 
+  test('a lobby that slept keeps each connection’s network, so a seek made after waking is still kept apart', async () => {
+    const lobby = lobbyWith({ requireAccount: true })
+    const inbox: LobbyReply[] = []
+    const socket = { send: (text: string) => inbox.push(JSON.parse(text) as LobbyReply), close: () => {} }
+    // A connection that was not seeking when the lobby slept: its network is all it had kept.
+    const [woken] = lobby.resume([{ socket, accountId: 'acct-a', seek: null, network: 'home' }])
+    const other = lobby.accept({ send: () => {}, close: () => {} }, 'acct-b', 'home')
+    const seek = (connection: ServerConnection) =>
+      connection.receive(
+        JSON.stringify({ v: PROTOCOL_VERSION, channel: 'lobby', from: 'tab', type: 'seek', settings: { boardSize: 7 } }),
+      )
+    seek(other)
+    seek(woken)
+    await flush()
+    clock += 60_000
+    lobby.sweep()
+    await flush()
+    expect(made).toEqual([])
+    expect(lobby.waiting).toBe(2)
+    lobby.close()
+  })
+
   test('with a clock required, an untimed seek is refused with a reason and a timed one waits', () => {
     const lobby = lobbyWith({ requireAccount: true, requireClock: true })
     const a = connect(lobby, 'acct-a')
