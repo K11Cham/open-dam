@@ -6,8 +6,8 @@ import { DIFFICULTIES, DIFFICULTY_IDS } from '../ai/difficulty'
 import { AppProviders, AppRoutes, PageLoading } from '../App'
 import BoardView from '../components/board/BoardView'
 import { ConfirmDialog } from '../components/ui/Dialog'
-import { createInitialState, resign } from '../game/engine'
-import { makeSettings } from '../game/settings'
+import { applyAction, createInitialState, legalActions, resign } from '../game/engine'
+import { TIME_CONTROLS, makeSettings } from '../game/settings'
 import type { Coord } from '../game/types'
 import { createRecord } from '../match/session'
 import { PROTOCOL_VERSION } from '../net/protocol'
@@ -486,5 +486,31 @@ describe('loading a page', () => {
     expect(screen.getByText('Loading…')).toHaveAttribute('role', 'status')
     expect(screen.getByRole('navigation', { name: 'Footer' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Skip to content' })).toBeInTheDocument()
+  })
+})
+
+describe('clock warnings', () => {
+  test('a screen reader hears once when your clock drops under twenty seconds', async () => {
+    // A 1+0 game against the computer in which both sides have moved and Red, to move, has about ten seconds left.
+    const record = createRecord({
+      mode: 'local',
+      settings: makeSettings({ boardSize: 5, timeControl: TIME_CONTROLS[0] }),
+      seats: { player1: { kind: 'human', name: '' }, player2: { kind: 'ai', name: 'Döff', difficulty: 'doff' } },
+    })
+    const now = Date.now()
+    const since = now - 50_000
+    let state = createInitialState(record.config.settings)
+    for (const [by, at] of [
+      ['player1', since - 2],
+      ['player2', since],
+    ] as const) {
+      const action = legalActions(state).find((a) => a.type === 'move')!
+      state = applyAction(state, action).state
+      record.actions.push({ seq: record.actions.length + 1, at, by, intent: { type: 'engine', action } })
+    }
+    storage.set(STORAGE_KEYS.activeMatch, { record, savedAt: now })
+    renderAt(`/match/${record.config.id}`)
+    await screen.findByRole('grid')
+    expect(await screen.findByText('Under 20 seconds left on your clock.')).toBeInTheDocument()
   })
 })

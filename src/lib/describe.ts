@@ -148,6 +148,14 @@ export function noticeText(notice: MatchNotice, names: Names, local: PlayerId[])
 export const timeControlLabel = (settings: RuleSettings) => settings.timeControl?.label ?? 'Untimed'
 
 /** "1 move", "3 moves": a count with its noun in the right number. */
+/**
+ * The spoken warning when a clock played on this device runs low. `name` is
+ * null for the player's own clock (one local side), else the side's name
+ * (pass and play, where both clocks belong to people here).
+ */
+export const lowClockWarning = (name: string | null): string =>
+  name === null ? 'Under 20 seconds left on your clock.' : `${name} has under 20 seconds left.`
+
 export const countOf = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 /** "3 minutes ago", "yesterday", "on 4 March", for lists of games and devices. */

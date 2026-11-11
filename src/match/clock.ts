@@ -60,6 +60,12 @@ export const pauseClock = (clock: MatchClock, at: number): MatchClock =>
 export const resumeClock = (clock: MatchClock, at: number): MatchClock =>
   clock.paused ? { ...clock, paused: false, since: clock.running ? at : null } : clock
 
+/**
+ * Under this much time a clock counts as low: it turns red, and a person
+ * using a screen reader is told once, since a timer is not read out by itself.
+ */
+export const LOW_CLOCK_MS = 20_000
+
 /** Time left for `player` at wall time `now`. */
 export const remainingAt = (clock: MatchClock, player: PlayerId, now: number): number => {
   const base = clock.remaining[player]

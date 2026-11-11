@@ -6,8 +6,9 @@ import { opponentOf } from '../../game/board'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
 import { useNow } from '../../hooks/useNow'
+import { LOW_CLOCK_MS, remainingAt } from '../../match/clock'
 import { usePreferences } from '../../services/preferences'
-import { outcomeReason, outcomeTitle, outcomeTone, timeControlLabel } from '../../lib/describe'
+import { lowClockWarning, outcomeReason, outcomeTitle, outcomeTone, timeControlLabel } from '../../lib/describe'
 import BoardView from '../board/BoardView'
 import { Button } from '../ui/Button'
 import { ConfirmDialog } from '../ui/Dialog'
@@ -59,6 +60,12 @@ export default function MatchScreen({
   const [endsHere] = useState(!over)
   const finishSplash = useCallback(() => setEnding('summary'), [])
   const now = useNow(!!state.clock?.running && !state.clock.paused && !over)
+  // Said once per turn: the text appears as the running clock of a side played here crosses the line, and clears when the turn passes.
+  const running = !over && state.clock && !state.clock.paused ? state.clock.running : null
+  const lowClock =
+    running && localSeats.includes(running) && remainingAt(state.clock!, running, now) <= LOW_CLOCK_MS
+      ? lowClockWarning(perspective === running ? null : names[running])
+      : ''
 
   // The side this device plays sits at the bottom; hot seat starts with Red there.
   const baseBottom: PlayerId = perspective ?? 'player1'
@@ -177,6 +184,9 @@ export default function MatchScreen({
       {/* Moves are announced for screen-reader users. */}
       <p className="visually-hidden" aria-live="polite">
         {controller.announcement}
+      </p>
+      <p className="visually-hidden" aria-live="assertive">
+        {lowClock}
       </p>
 
       <ConfirmDialog

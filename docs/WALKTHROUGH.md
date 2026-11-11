@@ -802,7 +802,13 @@ gets its own version for free.
 arrow keys move between squares, Enter or Space acts, Escape clears the
 selection. Each square has a spoken label such as "c3, Red piece, selected,
 can be called". After each move, a hidden live region announces it, for
-example "Blue: c4 jumps to c2, capturing".
+example "Blue: c4 jumps to c2, capturing". A clock is a `role="timer"`, which
+screen readers do not read out by themselves, so when a clock played on this
+device drops under 20 seconds (`LOW_CLOCK_MS` in `src/match/clock.ts`, the
+same line at which it turns red) a second, assertive live region says "Under
+20 seconds left on your clock." once per turn. The text is worked out during
+render, not in an effect: it appears when the line is crossed and clears when
+the turn passes, and a live region speaks when its text changes.
 
 **Checked automatically.** `src/test/a11y.test.tsx` runs axe-core on every
 main page (in the default theme, and the pages with a board in all four):
