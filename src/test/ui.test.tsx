@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { DIFFICULTIES, DIFFICULTY_IDS } from '../ai/difficulty'
-import { AppProviders, AppRoutes } from '../App'
+import { AppProviders, AppRoutes, PageLoading } from '../App'
 import BoardView from '../components/board/BoardView'
 import { ConfirmDialog } from '../components/ui/Dialog'
 import { createInitialState, resign } from '../game/engine'
@@ -471,5 +471,20 @@ describe('about Dam', () => {
       expect(screen.getByText(DIFFICULTIES[id].name)).toBeInTheDocument()
       expect(screen.getByText(new RegExp(DIFFICULTIES[id].meaning))).toBeInTheDocument()
     }
+  })
+})
+
+describe('loading a page', () => {
+  test('keeps the top bar and footer up while a page arrives', () => {
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <PageLoading />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    expect(screen.getByText('Loading…')).toHaveAttribute('role', 'status')
+    expect(screen.getByRole('navigation', { name: 'Footer' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Skip to content' })).toBeInTheDocument()
   })
 })

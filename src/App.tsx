@@ -2,6 +2,7 @@ import { MotionConfig } from 'framer-motion'
 import { Suspense, lazy, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import AppShell from './components/layout/AppShell'
 import ErrorBoundary from './components/layout/ErrorBoundary'
 import { ToastProvider } from './components/ui/Toasts'
 import { AccountProvider } from './context/AccountContext'
@@ -29,12 +30,19 @@ const AboutPage = lazy(() => import('./pages/AboutPage'))
 const PrivacyPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.PrivacyPage })))
 const TermsPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.TermsPage })))
 
-/** Shown for the moment a lazily loaded page takes to arrive. */
-function PageLoading() {
+/**
+ * Shown for the moment a lazily loaded page takes to arrive. Inside the app's
+ * frame (AppShell is in the first download, with Home), so on a slow phone the
+ * top bar and footer stay put instead of the screen going blank; the word
+ * itself fades in only after a moment, so a quick load shows no flash.
+ */
+export function PageLoading() {
   return (
-    <p className="page-loading" role="status">
-      Loading…
-    </p>
+    <AppShell>
+      <p className="page-loading" role="status">
+        Loading…
+      </p>
+    </AppShell>
   )
 }
 

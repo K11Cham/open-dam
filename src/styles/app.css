@@ -1012,6 +1012,13 @@
   padding: var(--space-12) var(--gutter-right) var(--space-12) var(--gutter);
   text-align: center;
   color: var(--dam-ink-muted);
+  animation: page-loading-in 0.2s ease-out 0.35s both;
+}
+
+@keyframes page-loading-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .page {
