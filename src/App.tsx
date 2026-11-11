@@ -25,6 +25,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const ReviewPage = lazy(() => import('./pages/ReviewPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const TutorialPage = lazy(() => import('./pages/TutorialPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
 const PrivacyPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.PrivacyPage })))
 const TermsPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.TermsPage })))
 
@@ -63,6 +64,7 @@ function ScrollToTop() {
  *   /review/:id       a finished game saved on this device, read-only
  *   /game/:id         a finished online game, from the server
  *   /learn[/:id]      rules and tutorial chapters
+ *   /about            Dam in The Gambia
  *   /analysis         free board
  *   /leaderboards     rated players, by board size and clock
  *   /u/:username      a player's profile
@@ -86,6 +88,7 @@ export function AppRoutes() {
           <Route path="/game/:id" element={<OnlineGamePage />} />
           <Route path="/learn" element={<TutorialPage />} />
           <Route path="/learn/:chapterId" element={<TutorialPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/analysis" element={<AnalysisPage />} />
           <Route path="/leaderboards" element={<LeaderboardsPage />} />
           <Route path="/u/:username" element={<ProfilePage />} />

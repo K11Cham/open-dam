@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { DIFFICULTIES, DIFFICULTY_IDS } from '../ai/difficulty'
 import { AppProviders, AppRoutes } from '../App'
 import BoardView from '../components/board/BoardView'
 import { ConfirmDialog } from '../components/ui/Dialog'
@@ -457,5 +458,18 @@ describe('vibration', () => {
     expect(toggle).toBeChecked()
     await user.click(toggle)
     expect(storage.get<{ haptics: boolean }>(STORAGE_KEYS.prefs)?.haptics).toBe(false)
+  })
+})
+
+describe('about Dam', () => {
+  test('Home links to the page about the game, which names every computer player and what the name means', async () => {
+    const user = userEvent.setup()
+    renderAt('/')
+    await user.click(screen.getByRole('link', { name: 'More about Dam in The Gambia' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dam in The Gambia' })).toBeInTheDocument()
+    for (const id of DIFFICULTY_IDS) {
+      expect(screen.getByText(DIFFICULTIES[id].name)).toBeInTheDocument()
+      expect(screen.getByText(new RegExp(DIFFICULTIES[id].meaning))).toBeInTheDocument()
+    }
   })
 })

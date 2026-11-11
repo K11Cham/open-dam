@@ -3514,15 +3514,17 @@
   padding-top: 48px;
 }
 
-/* The privacy notice and terms: plain reading text inside a panel. */
-.legal h2 {
+/* The privacy notice, the terms and the page about Dam: plain reading text inside a panel. */
+.legal h2,
+.about-dam h2 {
   margin: 24px 0 8px;
   font-family: var(--dam-font-display);
   font-size: 1.1rem;
 }
 
 .legal p,
-.legal li {
+.legal li,
+.about-dam p {
   line-height: 1.6;
   color: var(--dam-ink);
 }
@@ -3532,6 +3534,37 @@
   padding-left: 20px;
   display: grid;
   gap: 6px;
+}
+
+.about-dam__mark {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+}
+
+/* The Wolof names and their meanings, as a two-column list that stacks on a phone. */
+.about-dam__names {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.about-dam__name {
+  padding: 10px 12px;
+  border: var(--dam-border-width) solid var(--dam-border-soft);
+  border-radius: var(--dam-radius-sm);
+}
+
+.about-dam__name dt {
+  font-family: var(--dam-font-display);
+  font-size: 1.05rem;
+  color: var(--dam-ink);
+}
+
+.about-dam__name dd {
+  margin: 2px 0 0;
+  color: var(--dam-ink-muted);
 }
 
 /* A choice that cannot be made right now (offline, for example): dimmed, with the reason under it. */

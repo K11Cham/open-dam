@@ -305,6 +305,9 @@ export default function HomePage() {
             Bank Region, where children and adults played the 5×5 version drawn in the sand. It is open source, so the rules and
             the code are there for anyone to read and improve.
           </p>
+          <p>
+            <Link to="/about">More about Dam in The Gambia</Link>
+          </p>
         </section>
       </div>
 

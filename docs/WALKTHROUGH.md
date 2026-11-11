@@ -745,21 +745,22 @@ leaderboards.
 
 ## Part 9 — The screens (`src/pages`, `src/components`)
 
-| Route                  | Page               | Notes                                                                                                         |
-| ---------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `/`                    | `HomePage`         | Live demo game; Continue card; quick play with board previews; recent games.                                  |
-| `/play`                | `NewGamePage`      | Mode (computer, pass and play, online), then the opponent ladder or side, then rules. Asks before discarding. |
-| `/match/new?…`         | `NewMatchFromLink` | Builds a game from a link, then redirects to `/match/:id`.                                                    |
-| `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.              |
-| `/online/:id`          | `OnlinePage`       | Joins the game on the server in the seat from `?seat=`; invite bar while the opponent is away.                |
-| `/review/:id`          | `ReviewPage`       | A finished game saved on this device, read-only, steppable.                                                   |
-| `/game/:id`            | `OnlineGamePage`   | A finished online game from the server (in `ReviewPage.tsx`), named after its players' accounts.              |
-| `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eleven chapters with example boards and puzzles; solved puzzles are counted per chapter.   |
-| `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                         |
-| `/leaderboards`        | `LeaderboardsPage` | Rated players of one pool (board size and clock, from `?pool=`), best first, from the server.                 |
-| `/u/:username`         | `ProfilePage`      | A player's profile: totals, a rating per pool, online games (unless they keep them private).                  |
-| `/settings`            | `SettingsPage`     | Preferences for everyone; profile, sign-in details, devices and data for a signed-in player.                  |
-| `/signin` and others   | `AuthPage`         | Sign in, create an account (shows the recovery code once), or reset a password with the recovery code.        |
+| Route                  | Page               | Notes                                                                                                                                                    |
+| ---------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                    | `HomePage`         | Live demo game; Continue card; quick play with board previews; recent games.                                                                             |
+| `/play`                | `NewGamePage`      | Mode (computer, pass and play, online), then the opponent ladder or side, then rules. Asks before discarding.                                            |
+| `/match/new?…`         | `NewMatchFromLink` | Builds a game from a link, then redirects to `/match/:id`.                                                                                               |
+| `/match/:id`           | `MatchPage`        | Loads the saved game (keyed by id, so a rematch remounts); hosts it; attaches the AI and saving.                                                         |
+| `/online/:id`          | `OnlinePage`       | Joins the game on the server in the seat from `?seat=`; invite bar while the opponent is away.                                                           |
+| `/review/:id`          | `ReviewPage`       | A finished game saved on this device, read-only, steppable.                                                                                              |
+| `/game/:id`            | `OnlineGamePage`   | A finished online game from the server (in `ReviewPage.tsx`), named after its players' accounts.                                                         |
+| `/learn`, `/learn/:id` | `TutorialPage`     | Rules at a glance, eleven chapters with example boards and puzzles; solved puzzles are counted per chapter.                                              |
+| `/about`               | `AboutPage`        | Dam in The Gambia: the sand game, where this version comes from, the Wolof tier names. Owner-only sections stay hidden until written (`OWNER_SECTIONS`). |
+| `/analysis`            | `AnalysisPage`     | Set up and explore positions, with a move list for the line you play.                                                                                    |
+| `/leaderboards`        | `LeaderboardsPage` | Rated players of one pool (board size and clock, from `?pool=`), best first, from the server.                                                            |
+| `/u/:username`         | `ProfilePage`      | A player's profile: totals, a rating per pool, online games (unless they keep them private).                                                             |
+| `/settings`            | `SettingsPage`     | Preferences for everyone; profile, sign-in details, devices and data for a signed-in player.                                                             |
+| `/signin` and others   | `AuthPage`         | Sign in, create an account (shows the recovery code once), or reset a password with the recovery code.                                                   |
 
 The match screen (`components/game/MatchScreen.tsx`) is composed of:
 `PlayerCard` ×2 (name, pieces, turn, clock, Undo/Draw/Resign), `BoardView`,
