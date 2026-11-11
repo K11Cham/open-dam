@@ -12,6 +12,32 @@ by layer, Part 10 covers the tools, Part 11 is recipes for common changes, and
 Part 12 has exercises to check your understanding. File references look like
 `src/game/engine.ts` and are worth opening alongside the text.
 
+## What changed recently
+
+The latest round of work (November 2026), newest first. Each line points to
+where it is explained.
+
+- **A spoken warning when your clock runs low.** Under 20 seconds, a screen
+  reader now hears it once per turn (Part 9, "The board and accessibility").
+- **HSTS** is sent for a year, without `preload` (Part 6, "The server's
+  defences").
+- **A weekly backup of the accounts database** to an R2 bucket, written but
+  off until the bucket exists (Part 6, "Accounts", and OPERATIONS.md).
+- **The page keeps its top bar while loading** instead of going blank
+  (Part 8, "The installed app and offline play").
+- **An About page**, `/about`, on Dam in The Gambia (Part 9, the routes
+  table).
+- **Vibration** on phones with every move, capture and call, with a switch in
+  Settings (Part 8, "Sound").
+- **A local clock pauses while the page is hidden**, not only when it closes
+  (Part 5, "Clocks").
+- **Home counts moves like the result screen** (Part 3, "Notation").
+- **Two tabs can no longer overwrite each other's game** (Part 5, "Two tabs,
+  one slot"), the most serious bug of the round: closing an old tab could undo
+  the moves you had just played in another.
+- **Two new traces** to read alongside Part 2: the life of an online move and
+  the life of a sign-in (Part 6), and a section on the server's defences.
+
 ---
 
 ## Part 1 — The big picture
@@ -226,7 +252,7 @@ to count every chain leg and call as a move.
 
 Defaults with the reasoning for each subjective rule, the time controls, the
 labels the UI shows, the rules summary for the Learn page, and the matchmaking
-compatibility check that online play will use.
+compatibility check the lobby uses to pair two seeks.
 
 ---
 
@@ -299,13 +325,22 @@ person learns it. The names mean the fool, the child, the youngster
 (usually a teen), the elder and the master; the app shows each meaning beside the
 name.
 
-| Tier      | What it knows                                                                             |
-| --------- | ----------------------------------------------------------------------------------------- |
-| **Döff**  | Counts pieces, looks one move ahead, often forgets to call.                               |
-| **Khàlé** | Sees your reply, but not that a capture it skips will be called.                          |
-| **Ndö**   | Knows the calling rule cold; reads short exchanges. No deep sacrifices, no endgame plan.  |
-| **Màam**  | Deep search, every chain, sacrifices that win kings, lone-king hunting. Rare small slips. |
-| **Seriñ** | Everything, deepest, forced-reply extensions, full technique, no deliberate errors.       |
+| Tier      | Depth | Search budget | Pause at least | Shown strength | What it knows                                                                             |
+| --------- | ----- | ------------- | -------------- | -------------- | ----------------------------------------------------------------------------------------- |
+| **Döff**  | 1     | 0.1 s         | 0.35–0.75 s    | 500            | Counts pieces, looks one move ahead, often forgets to call.                               |
+| **Khàlé** | 2     | 0.25 s        | 0.4–0.85 s     | 850            | Sees your reply, but not that a capture it skips will be called.                          |
+| **Ndö**   | 4     | 0.6 s         | 0.45–0.95 s    | 1200           | Knows the calling rule cold; reads short exchanges. No deep sacrifices, no endgame plan.  |
+| **Màam**  | 10    | 1.2 s         | 0.5–1.1 s      | 1550           | Deep search, every chain, sacrifices that win kings, lone-king hunting. Rare small slips. |
+| **Seriñ** | 40    | 2.6 s         | 0.5–1.2 s      | 1900           | Everything, deepest, forced-reply extensions, full technique, no deliberate errors.       |
+
+The numbers come from `DIFFICULTIES` in `src/ai/difficulty.ts`. _Depth_ is the
+deepest the iterative deepening may go in plies; the _search budget_
+(`timeBudgetMs`) usually stops it first, so Seriñ's "40" really means "as deep
+as 2.6 seconds allow". _Pause at least_ (`thinkMs`) is the shortest time
+before a move appears, picked at random in that range, so an instant answer
+from a weak tier still feels like someone thinking; a search that takes longer
+is shown when it finishes. _Shown strength_ is the Elo-style number beside each name on the New
+game page; it is a guide, not measured against people.
 
 The weaker tiers make "near miss" mistakes: when they slip, they pick a move
 that scored almost as well, the way a person misjudges rather than throws a
@@ -456,7 +491,7 @@ and publishes. Every local game is a `MatchHost`.
   other tab by writing localStorage directly.
 - `setup.ts` describes the New Game form's result and its URL form, so the
   Home page's quick-play cards are plain links like
-  `/match/new?vs=club&size=5`.
+  `/match/new?vs=ndo&size=5` (old ids such as `club` still work).
 
 ---
 
@@ -492,7 +527,7 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
   ("Sleeping between moves", "One alarm, three deadlines") has the details
   and the deploy steps.
 - `matchmaking.ts` is the queue a server pairs players from, and
-  `src/match/rating.ts` the Elo arithmetic it would rate finished games with
+  `src/match/rating.ts` the Elo arithmetic finished games are rated with
   (through `MatchServer`'s `onFinished`). `lobby.ts` is the matchmaking
   counterpart of `server.ts`: players send a `seek` with the rules they want,
   the lobby looks up their rating itself, runs the queue, makes a game for
@@ -536,6 +571,164 @@ Read `docs/MULTIPLAYER.md` for the full design. In short:
 - In React, `AccountProvider` (src/context/AccountContext.tsx) asks who is
   signed in when the app opens and starts or stops the sync; `useAccount`
   reads it anywhere.
+
+### The life of an online move
+
+Part 2 followed a click in a game against the computer, where the page itself
+is the host. Online, the host is a Durable Object on Cloudflare, and the
+click crosses the internet twice before either board changes. Follow Red
+playing c2 to c3 against a friend:
+
+```mermaid
+sequenceDiagram
+  participant Red as Red's page (MatchGuest)
+  participant W as Worker (index.ts)
+  participant Room as MatchRoom and RoomCore
+  participant Host as MatchServer's MatchHost
+  participant Blue as Blue's page (MatchGuest)
+
+  Red->>W: intent (move c2 to c3) over the WebSocket
+  W-->>Room: the socket was handed to the room when it opened
+  Room->>Host: receive(text), hostLink, host.submit('player1', intent)
+  Host->>Host: stepMatch judges it, stamps seq and time, appends
+  Host-->>Room: save the record (Durable Object storage)
+  Host->>Red: action (seq 7)
+  Host->>Blue: action (seq 7)
+  Red->>Red: applyMatchAction, board updates and animates
+  Blue->>Blue: applyMatchAction, board updates and animates
+```
+
+1. **The drop.** Exactly as in Part 2, `BoardView` and `useMatchController`
+   turn the drop into an intent. The session is a `MatchGuest`
+   (`src/net/guest.ts`, created in `src/pages/OnlinePage.tsx:219`), so
+   `submit` (`guest.ts:178`) does not judge anything: it checks this page is
+   connected and sends `{ type: 'intent', seat, intent, nonce }`.
+2. **The wire.** `WebSocketTransport.send` (`src/net/websocket.ts:166`)
+   writes the JSON, or queues it while the socket is reconnecting.
+3. **The door.** The socket was opened earlier through
+   `/api/matches/:id/socket` (`worker/index.ts`, around line 496), which
+   turned the session cookie into an `Identity` and handed the socket to that
+   match's Durable Object. Each frame now arrives at
+   `MatchRoom.webSocketMessage` (`worker/room.ts:102`), which drops frames
+   that are too long and passes the rest to `RoomCore.message`.
+4. **The judge.** `RoomCore` gives the text to `MatchServer`'s connection
+   (`src/net/server.ts`, `receive` at line 509), whose room hands it to
+   `linkHost`. `hostLink.ts:118` checks the sender really holds Red's seat,
+   then calls `host.submit` (line 124): the same `stepMatch` as in a local
+   game. If it refuses, only the sender hears `rejected`.
+5. **Saved, then sent.** The host's subscriber saves the record
+   (`save` in `worker/roomCore.ts`), and `hostLink.ts:140` broadcasts
+   `{ type: 'action', action }` to every connection. Cloudflare holds back a
+   Durable Object's outgoing messages until its writes are safely stored, so
+   nobody ever sees a move the server could forget.
+6. **Both boards.** Each `MatchGuest.handle` (`guest.ts:101`) checks the
+   sequence number: the next one is applied with `applyMatchAction`; an older
+   one is ignored; a gap means a message was missed, so it asks to `join`
+   again and gets the whole record back.
+
+_Why not the obvious way (move the piece on Red's screen at once, then tell
+the server)?_ That is an **optimistic update**, and it would make Red's own
+moves feel instant. But the server might refuse (the clock ran out a moment
+earlier, Blue resigned), and then Red's board would have to jump back. A
+board game can afford the round trip, so the guest waits for the server's
+`action`, and the two boards can never disagree.
+
+**Sleeping between moves.** Between messages the room _hibernates_: Cloudflare
+keeps the sockets open but unloads the object, so a game that sits for an
+hour costs nothing. Each socket carries a small attachment (who it is, what
+it joined), so when the next frame wakes the room, `RoomCore.open` rebuilds
+every connection from those attachments and storage. Keepalive pings (every
+2 seconds, `HEARTBEAT_MS`) are answered by the runtime itself
+(`setWebSocketAutoResponse`, `room.ts:70`) without waking anything. A
+connection silent for 20 seconds (`SILENT_CONNECTION_MS`) no longer holds its
+seat against a newcomer. One alarm per room rings for whichever comes first:
+the running clock's flag, a retry of a failed result report (after 1, 5 and
+30 minutes, then hourly), or deleting a game nobody has opened for 30 days.
+MULTIPLAYER.md has the full story.
+
+**Reconnecting.** A dropped socket tries again after a delay that doubles from
+0.5 s up to 15 s, each wait picked at random between half and all of it
+(_jitter_, `websocket.ts:139`), so a server restart is not met by every
+player at the same instant. It also tries at once when the browser says the
+network is back.
+
+### Ratings and matchmaking, in numbers
+
+- Everyone starts at **1500** in each pool (a board size with a clock, such
+  as `7x7:5+0`). Ratings are **Elo**: the expected score against an opponent
+  `d` points stronger is 1 / (1 + 10^(d/400)), and a game moves a rating by
+  K × (actual − expected). **K is 40** for a player's first 20 games in a pool
+  (shown as provisional) and **20** after (`src/match/rating.ts`). Beating an
+  equal player gains 20 points while provisional, 10 after.
+- The lobby pairs two seekers whose ratings are within **100** points at
+  first, widening by **50** every **5 seconds** of waiting, up to **500**
+  (`ratingWindow` in `src/net/matchmaking.ts`). Two accounts on the same
+  network are never paired, so nobody can farm rating against their own
+  second account.
+- A result is rated **exactly once**. The room writes the result down as a
+  pending report before calling `Accounts.recordGame`, and crosses it off
+  only after success; `recordGame` itself looks the game id up first and
+  returns the stored changes if it already has it. Retrying is therefore
+  safe. That property is called **idempotency**.
+
+### The life of a sign-in
+
+1. **The form.** `AuthPage` (`src/pages/AuthPage.tsx:173`) calls
+   `account.signIn`, which is `AccountProvider`'s
+   (`src/context/AccountContext.tsx:82`).
+2. **The password never leaves.** `accountApi.signIn`
+   (`src/net/accountApi.ts:60`) first runs `stretchPassword`
+   (`src/net/account.ts:243`): **PBKDF2** with SHA-256, **210,000** rounds,
+   salted with `open-dam/v1/<username>`. That is slow on purpose, a fraction
+   of a second on a phone, and turns the password into a 64-character key.
+   Only the key is sent.
+3. **The door.** `POST /api/auth/signin` (`worker/index.ts:264`) checks the
+   network's limit (30 sign-ins or recoveries per 15 minutes), reads the body
+   (refused unread if it says it is too big), and calls the `Accounts` object.
+4. **The check.** `AccountStore.signIn` (`worker/accountStore.ts:801`) first
+   asks whether this name is locked for this network: **8** wrong passwords in
+   **15 minutes** from one network lock that network out of that account, and
+   **50** from all networks together lock it for everyone. Then it hashes
+   `salt:key` with SHA-256 (`keyHash`, line 499) and compares with the stored
+   hash in constant time. For an unknown name it hashes anyway, so the answer
+   takes as long and does not reveal which names exist.
+5. **The session.** On success `startSession` (line 549) makes a random
+   token and keeps only its hash, and the Worker sets the token as the
+   `od_session` cookie: `HttpOnly` (page scripts cannot read it),
+   `SameSite=Lax` (other sites' requests do not carry it), `Secure` on HTTPS,
+   for **60 days**, renewed as it is used.
+6. **Back in the app.** `enter` (`AccountContext.tsx:65`) keeps the user,
+   remembers them for opening offline, and starts `accountSync`, which pulls
+   the account's settings, puzzles and games down and pushes this device's
+   changes up.
+
+_Why stretch on the device and hash again on the server?_ Stretching is the
+slow part that makes guessing expensive. Doing it in the browser keeps the
+server cheap (no 210,000 rounds per sign-in on a free plan) and means the
+server never sees the password at all. The server's own salted hash of the key
+means a stolen database holds nothing that could be sent as a key. The rounds
+are due to rise to 600,000 (P2-3, a design waiting for the owner), which needs
+versioned salts so older accounts keep signing in.
+
+### The server's defences
+
+| What                      | Where                                          | The numbers                                                                                                                         |
+| ------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Rate limits per network   | `worker/rateLimit.ts`                          | New games 30/hour; sign-in and recovery 30/15 min; username checks 120/min; reports 10/hour; crash reports 20/hour; admin 30/15 min |
+| A cheap filter in front   | `RATE_LIMITER` in `wrangler.jsonc`             | 120 requests a minute per network, before the exact counts                                                                          |
+| Lockouts                  | `AccountStore.lockedFor`                       | 8 failures in 15 min per network and account; 50 from everyone                                                                      |
+| Body size                 | `worker/http.ts`                               | Refused by the declared length before reading, then by the bytes actually read                                                      |
+| Requests from other sites | `fromThisSite` in `worker/index.ts`            | A changing request with another site's `Origin` is refused (403); the cookie is `SameSite=Lax` too                                  |
+| Who is at a seat          | `withIdentity`, `worker/index.ts:161`          | Identity headers a browser sends are deleted; only the Worker sets them                                                             |
+| Security headers          | `worker/securityHeaders.ts`, `public/_headers` | CSP (scripts only from this site), no framing, nosniff, HSTS for a year                                                             |
+| Admin routes              | `worker/admin.ts`                              | 404 without the `ADMIN_TOKEN` secret, or with a wrong token, compared in constant time                                              |
+| Errors                    | `worker/errors.ts`                             | One JSON log line with a request id; the visitor gets `{ error, requestId }`, never a stack trace                                   |
+
+A **Content Security Policy** is a list the browser enforces: scripts may only
+come from this site, so even if someone got a `<script>` into a display name,
+the browser would refuse to run it. React already escapes every name, so the
+policy is the second wall, not the first. **HSTS** tells a browser to use
+HTTPS for this site for the next year, without trying plain HTTP first.
 
 ---
 
@@ -848,46 +1041,63 @@ blocking.
 
 ## Part 10 — Tools and tests
 
-| Command                  | What it runs                              |
-| ------------------------ | ----------------------------------------- |
-| `npm run dev`            | Vite dev server with hot reload           |
-| `npm test`               | Vitest: ~310 tests in a few seconds       |
-| `npm run typecheck`      | TypeScript in strict mode                 |
-| `npm run lint`           | ESLint                                    |
-| `npm run format`         | Prettier                                  |
-| `npm run verify`         | All of the above, then a production build |
-| `npm run check:ai`       | Tier-vs-tier matches (several minutes)    |
-| `npm run sounds`         | Render every theme's sounds to WAV        |
-| `npm run icons`          | Draw the favicon and app icons            |
-| `npm run build:static`   | A copy for any static host (hash routes)  |
-| `npm run check:endgames` | Endgame conversion from random starts     |
-| `npm run replay`         | Print one computer game ply by ply        |
-| `npm run openings`       | Measure every first move (the book)       |
-| `npm run review`         | Grade a finished game move by move        |
-| `npm run server`         | The online server locally, on port 8787   |
-| `npm run check:online`   | Real games and accounts against a server  |
-| `npm run deploy`         | `verify`, then publish to Cloudflare      |
+| Command                  | What it runs                                  |
+| ------------------------ | --------------------------------------------- |
+| `npm run dev`            | Vite dev server with hot reload               |
+| `npm test`               | Vitest: about 455 tests in about 15 seconds   |
+| `npm run typecheck`      | TypeScript in strict mode                     |
+| `npm run lint`           | ESLint                                        |
+| `npm run format`         | Prettier                                      |
+| `npm run verify`         | All of the above, then a production build     |
+| `npm run check:ai`       | Tier-vs-tier matches (several minutes)        |
+| `npm run sounds`         | Render every theme's sounds to WAV            |
+| `npm run icons`          | Draw the favicon and app icons                |
+| `npm run build:static`   | A copy for any static host (hash routes)      |
+| `npm run check:endgames` | Endgame conversion from random starts         |
+| `npm run replay`         | Print one computer game ply by ply            |
+| `npm run openings`       | Measure every first move (the book)           |
+| `npm run review`         | Grade a finished game move by move            |
+| `npm run server`         | The online server locally, on port 8787       |
+| `npm run check:online`   | Real games and accounts against a server      |
+| `npm run check:browser`  | Real Chrome: CSP, every page offline, updates |
+| `npm run deploy`         | `verify`, then publish to Cloudflare          |
 
 Where the tests are and what they protect:
 
-| File                                  | Protects                                                                                                            |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `src/game/engine.test.ts`             | Every rule branch                                                                                                   |
-| `src/ai/ai.test.ts`                   | Legal play for every tier, the opening book, sacrifices, lone-king finishes, missed calls, time budget, offers      |
-| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving, finished games arriving from another device                   |
-| `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                                  |
-| `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), seats owned by accounts  |
-| `src/net/lobby.test.ts`               | The matchmaking lobby: pairing, server-side ratings, checked settings, cancelling, spoofing, accounts only          |
-| `worker/accountStore.test.ts`         | Accounts on Node's SQLite: sign-up, sign-in, lockout, sessions, recovery, profiles, sync, ratings, leaderboards     |
-| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal; every puzzle's answers, mistakes and punishments replay and are judged correctly   |
-| `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                   |
-| `src/audio/audio.test.ts`             | Synth output, which sound a step makes, every theme has every sound                                                 |
-| `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs    |
-| `src/test/accounts.test.tsx`          | The account pages against a pretend server: sign-up, sign-in, sync, settings, leaderboards, profiles, finding games |
-| `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                    |
-| `scripts/online-server*.test.ts`      | A local or deployed server over real sockets, accounts and a rated game included (needs `npm run server`)           |
+| File                                  | Protects                                                                                                                    |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/game/engine.test.ts`             | Every rule branch                                                                                                           |
+| `src/ai/ai.test.ts`                   | Legal play for every tier, the opening book, sacrifices, lone-king finishes, missed calls, time budget, offers              |
+| `src/match/match.test.ts`             | Turn ownership, offers, undo, clocks, replay, saving, finished games arriving from another device                           |
+| `src/net/net.test.ts`                 | Joining, syncing both ways, refusals, seat ownership, reconnecting                                                          |
+| `src/net/server.test.ts`              | The match server end to end (sync, refusals, spoofed ids, dropped links, restarts, flags), seats owned by accounts          |
+| `src/net/lobby.test.ts`               | The matchmaking lobby: pairing, server-side ratings, checked settings, cancelling, spoofing, accounts only                  |
+| `worker/accountStore.test.ts`         | Accounts on Node's SQLite: sign-up, sign-in, lockout, sessions, recovery, profiles, sync, ratings, leaderboards             |
+| `src/pages/tutorial/tutorial.test.ts` | Every tutorial example is legal; every puzzle's answers, mistakes and punishments replay and are judged correctly           |
+| `src/lib/describe.test.ts`            | Wording and URL setup round trips                                                                                           |
+| `src/audio/audio.test.ts`             | Synth output, which sound a step makes, every theme has every sound                                                         |
+| `src/test/ui.test.tsx`                | The real screens: keyboard board and Tab stops, AI pieces, resign, rematch, house rules, analysis moves, dialogs            |
+| `src/test/accounts.test.tsx`          | The account pages against a pretend server: sign-up, sign-in, sync, settings, leaderboards, profiles, finding games         |
+| `scripts/ai-strength.test.ts`         | Stronger tiers beat weaker ones (slow, separate)                                                                            |
+| `scripts/online-server*.test.ts`      | A local or deployed server over real sockets, accounts and a rated game included (needs `npm run server`)                   |
+| `src/test/engine-properties.test.ts`  | Seeded random games on every board and rule set: legal moves accepted, others refused, no side gains pieces, records replay |
+| `src/test/persistence.test.tsx`       | A game open in two tabs never overwrites the newer one; hiding the page pauses a local clock                                |
+| `src/test/a11y.test.tsx`              | axe-core on every main page, the board pages in all four themes                                                             |
+| `src/themes/contrast.test.ts`         | WCAG contrast of every text and focus-ring token pair in every theme                                                        |
+| `worker/roomCore.test.ts`             | The match room on fake storage: hibernation, the alarm's deadlines, reports that fail and retry                             |
+| `worker/*.test.ts` (others)           | Rate limits, body limits, security headers, admin routes, error logging, the weekly export, static files                    |
+| `scripts/browser-check.test.ts`       | Real Chrome against a running server: no CSP violations, every page offline, the update flow                                |
 
-CI (`.github/workflows/ci.yml`) runs `verify` on every push and pull request.
+CI (`.github/workflows/ci.yml`) has two jobs on every push to `main` or a
+`feat/` branch and every pull request: `verify` (typecheck, lint, format,
+tests, build) and `online` (the server under `wrangler dev`, then
+`check:online` and `check:browser` in the runner's Chrome). A third job, the
+AI strength match, runs only when started by hand.
+
+**Mutation, the cheap way.** A test suite is only as good as the bugs it
+would notice. To find out, break one line on purpose and see whether any test
+fails: Part 12, question 9, walks through one. A line you can break with
+every test still passing is a line nothing protects.
 
 ---
 
@@ -959,34 +1169,241 @@ deployed together, so bump `PROTOCOL_VERSION` if old tabs could still be open.
 
 ## Part 12 — Check your understanding
 
-Try answering these before looking. Answers follow.
+Try answering each one before opening its answer. Some ask you to predict
+what a test will show and then run it: being wrong there is the useful part.
+
+**The foundations**
 
 1. Why can't you move the computer's pieces?
-2. Where would you change what a call removes?
-3. You reload in the middle of a timed game. Why doesn't your clock reset?
-4. Why does the AI run in a Web Worker?
-5. A guest tab misses one network message. What happens?
-6. Why does Atelier say "Black" and "White"?
-7. Where would a rule bug be caught first?
 
-**Answers.**
+   <details><summary>Answer</summary>
 
-1. `useMatchController` only allows input when it's a _local_ seat's turn
+   `useMatchController` only allows input when it's a _local_ seat's turn
    (`canAct`, `canDragFrom`), and even if a click got through, the reducer's
    `stepMatch` refuses a move whose `by` isn't the side to move.
-2. In the engine, `applyCall` in `src/game/engine.ts`, driven by
+
+   </details>
+
+2. Where would you change what a call removes?
+
+   <details><summary>Answer</summary>
+
+   In the engine, `applyCall` in `src/game/engine.ts`, driven by
    `settings.call.scope`.
-3. Because the clock is computed from timestamped actions in the saved
+
+   </details>
+
+3. You reload in the middle of a timed game. Why doesn't your clock reset?
+
+   <details><summary>Answer</summary>
+
+   Because the clock is computed from timestamped actions in the saved
    record, plus a pause when you left and a resume when you came back
    (`useMatchPersistence`, `resumeAfterGap`).
-4. So the page stays responsive while it thinks; the search can take over a
-   second.
-5. It notices a gap in sequence numbers, sends `join` again, and the host
+
+   </details>
+
+4. Why does the AI run in a Web Worker?
+
+   <details><summary>Answer</summary>
+
+   So the page stays responsive while it thinks; Seriñ's search may take 2.6
+   seconds.
+
+   </details>
+
+5. A guest tab misses one network message. What happens?
+
+   <details><summary>Answer</summary>
+
+   It notices a gap in sequence numbers, sends `join` again, and the host
    replies with a full `welcome` snapshot (`MatchGuest.handle`).
-6. Its pieces are black and white; each theme names its own sides in
+
+   </details>
+
+6. Why does Atelier say "Black" and "White"?
+
+   <details><summary>Answer</summary>
+
+   Its pieces are black and white; each theme names its own sides in
    `theme.ts`, and text reads them through `useSideNames()`.
-7. In `src/game/engine.test.ts`, which tests every rule branch with small text
-   positions; then by the tutorial test, whose examples replay real moves.
+
+   </details>
+
+7. Where would a rule bug be caught first?
+
+   <details><summary>Answer</summary>
+
+   In `src/game/engine.test.ts`, which tests every rule branch with small text
+   positions; then by the seeded random games in
+   `src/test/engine-properties.test.ts`, and by the tutorial test, whose
+   examples replay real moves.
+
+   </details>
+
+**Saving, tabs and clocks**
+
+8. You open the same game in two tabs, play three moves in the second, then
+   close the first. Before November 2026 your three moves were lost. Why,
+   and what stops it now?
+
+   <details><summary>Answer</summary>
+
+   Closing a tab runs `pagehide`, and the saving hook used to write that
+   tab's copy of the game, which was three moves behind, over the slot.
+   Now every write leaves a stamp, and `useMatchPersistence` only writes
+   while the slot still holds its own last stamp. The first tab saw the
+   second tab's write (a `storage` event), stopped, and its close writes
+   nothing.
+
+   </details>
+
+9. Predict, then check: in `src/test/persistence.test.tsx`, comment out the
+   line `if (!owned()) return` at the top of `write` in
+   `src/hooks/useMatchPersistence.ts` and run
+   `npx vitest run src/test/persistence.test.tsx`. Which tests fail, and with
+   what message?
+
+   <details><summary>Answer</summary>
+
+   "a move in a tab that missed the other tab's save is not written over it"
+   fails: the saved game's id is the old one, not the newer game's, which is
+   exactly the bug. The test with the `storage` event may still pass, because
+   the event alone already marked the tab stale before any write. Put the
+   line back afterwards.
+
+   </details>
+
+10. You are playing a 3+0 game against Seriñ on your phone and switch to
+    WhatsApp for a minute. What happens to your clock, and which line of code
+    decides it?
+
+    <details><summary>Answer</summary>
+
+    It pauses. The page becomes hidden, `visibilitychange` fires, and
+    `onVisibility` in `useMatchPersistence` submits a `pause` intent (the
+    `system` actor), which `pauseClock` in `src/match/clock.ts` records. When
+    you come back the page is visible again and a `resume` follows. An online
+    game is never paused this way: `timed()` is only true for local games.
+
+    </details>
+
+**Online**
+
+11. Red and Blue both press a square in the same instant. Who decides which
+    move happened, and why can't the two screens disagree?
+
+    <details><summary>Answer</summary>
+
+    The match's Durable Object. Both pages are `MatchGuest`s that only send
+    intents; the room's `MatchHost` judges them one at a time with
+    `stepMatch`, so the second is judged against the position after the
+    first (and refused if it is no longer legal). Both screens apply only the
+    `action`s the host broadcasts, in sequence order.
+
+    </details>
+
+12. A rated game ends just as Cloudflare restarts the Accounts object. The
+    report fails. How does the result still get rated, and why is it not
+    rated twice when the retry races a slow first attempt?
+
+    <details><summary>Answer</summary>
+
+    `RoomCore.report` wrote a pending report to storage before calling
+    `recordGame`, and set the alarm for a retry before the call too. The
+    alarm comes back after a minute and tries again. `recordGame` is
+    idempotent: it looks the game id up first and, if it already stored the
+    game, returns the stored rating changes instead of rating it again.
+
+    </details>
+
+13. Why does `withIdentity` delete the `X-Open-Dam-Identity` header before
+    setting it?
+
+    <details><summary>Answer</summary>
+
+    Because a browser can send any header it likes. If the Worker passed a
+    browser's own identity header through to the room, anyone could claim to
+    be any account. Only the Worker, which has checked the session cookie,
+    may vouch for who is at a seat.
+
+    </details>
+
+14. Predict, then check: the lobby starts pairing within 100 rating points
+    and widens by 50 every 5 seconds. How long must a 1500 player wait to be
+    paired with a 1800 player? Check with `ratingWindow` in
+    `src/net/matchmaking.ts`.
+
+    <details><summary>Answer</summary>
+
+    A gap of 300 needs a window of 300: 100 + 50 × 4, so four steps of 5
+    seconds, 20 seconds. Both seekers' windows must cover the gap
+    (`matchmaking.ts:115`), so both must have been waiting that long.
+
+    </details>
+
+**Accounts and the server**
+
+15. Someone steals a copy of the accounts database. Can they sign in as a
+    player with what they find?
+
+    <details><summary>Answer</summary>
+
+    Not directly. The table holds `key_hash`, the SHA-256 of a salt and the
+    key, and the server wants the key itself. To get a key they would have to
+    guess the password and run 210,000 rounds of PBKDF2 per guess. That
+    slowness is the point of stretching. Sessions are stored as hashes of
+    their tokens for the same reason.
+
+    </details>
+
+16. Why does `signIn` hash the key even when the username does not exist?
+
+    <details><summary>Answer</summary>
+
+    So a wrong name and a wrong password take the same time. Otherwise the
+    response time would reveal which usernames exist. This is a timing side
+    channel, and the fix is to make both paths do the same work.
+
+    </details>
+
+17. The weekly export is turned on. A player deletes their account on a
+    Tuesday. Where does their data still exist, and for how long?
+
+    <details><summary>Answer</summary>
+
+    In every weekly file written while the account existed, until the oldest
+    of those is pruned: up to 12 weeks (`KEEP_EXPORTS`). Also in Cloudflare's
+    own point-in-time history for 30 days. The privacy notice must say so
+    before the export is turned on (OPERATIONS.md, step 0).
+
+    </details>
+
+**Feel and accessibility**
+
+18. You turn sound off but leave Vibration on. What do you feel when the
+    computer calls one of your pieces, and where is that decided?
+
+    <details><summary>Answer</summary>
+
+    Two 30 ms taps with a 50 ms gap: `HAPTIC_PATTERNS.call` in
+    `src/audio/haptics.ts`. `useSound().play` vibrates whether or not sound is
+    on, because feeling a call matters most when you cannot hear it.
+
+    </details>
+
+19. A screen-reader user's clock goes from 21 s to 19 s. What do they hear,
+    and why is it said only once that turn?
+
+    <details><summary>Answer</summary>
+
+    "Under 20 seconds left on your clock." The text in the assertive live
+    region in `MatchScreen` goes from empty to that sentence when the line
+    is crossed, and a live region speaks when its text changes. It stays the
+    same while the clock keeps running, so it is not repeated, and it clears
+    when the turn passes.
+
+    </details>
 
 ---
 
@@ -994,21 +1411,40 @@ Try answering these before looking. Answers follow.
 
 - **Action / intent** — An intent is what someone asks for; an action is an
   accepted intent with a sequence number, time and author.
+- **Alarm (Durable Object)** — One wake-up time a Durable Object may set for itself; when it rings, `alarm()` runs even with nobody connected. A match room uses its one alarm for three deadlines.
 - **Alpha-beta** — Skipping search branches that can't change the decision.
+- **Backoff and jitter** — Waiting longer after each failed retry (backoff), and picking each wait at random within a range (jitter), so many clients do not retry at the same instant.
 - **Call** — Removing an opponent's piece that passed up a capture.
 - **Chain** — Several captures by one piece in one turn.
+- **Content Security Policy (CSP)** — A header listing where a page may load scripts, styles, images and connections from; the browser refuses everything else.
+- **CSRF (cross-site request forgery)** — Another site's page making your browser send a request to this site with your cookie. Stopped here by `SameSite=Lax` cookies and the `Origin` check.
+- **Durable Object** — A small, single-threaded server on Cloudflare with its own storage, addressed by name. One per match, one for all accounts, one for the lobby.
+- **Elo rating** — A rating where the expected score depends on the rating difference (1 / (1 + 10^(d/400))) and each game moves the rating by K × (actual − expected).
 - **Event** — A description of what changed (moved, captured, crowned), used
   for animation.
+- **Hibernation** — A Durable Object unloaded from memory while its WebSockets stay open; the next message wakes it.
 - **Host / guest** — The device that owns the game log / a device that mirrors it.
+- **HSTS** — `Strict-Transport-Security`: a header telling the browser to use only HTTPS for this site for a set time.
+- **Idempotent** — Safe to do more than once with the same result as doing it once. `recordGame` is, so a retried report never rates a game twice.
+- **Iterative deepening** — Searching depth 1, then 2, then 3… until time runs out, so there is always a best move from the last finished depth.
+- **Live region** — An element (`aria-live`) whose changes a screen reader reads out without the person moving to it.
 - **Negamax** — Game-tree search where scores are always from the side to
   move's point of view.
 - **Offender** — A piece that could have captured and didn't; it can be called.
+- **Optimistic concurrency** — Writing only if the data is still what you last read or wrote, instead of locking it. The saved-game stamp works this way.
+- **Optimistic update** — Showing a change before the server confirms it. Online moves here are deliberately not optimistic.
+- **PBKDF2** — A key-stretching function: a password hashed many times (210,000 here) so each guess is slow.
 - **Ply** — One player's move (a "move" in chess terms is two plies).
+- **Property-based test** — A test that checks a rule holds for many generated inputs (here, seeded random games) rather than a few hand-picked ones.
 - **Pure function** — Returns a result based only on its inputs, with no side
   effects.
+- **Quiescence search** — Continuing the search past its depth through captures only, so a position is never scored in the middle of an exchange.
 - **Reducer** — A function `(state, action) → state`.
 - **Replay** — Rebuilding a game's state by applying its log from the start.
+- **Service worker** — A script the browser runs beside the site that can answer its requests from a saved copy, which is how the app works offline.
 - **Session** — The live, observable form of a match that React watches.
 - **Token** — A named design value (a CSS custom property) that themes set.
-- **Transport** — The thing that carries network messages (BroadcastChannel
-  today, WebSocket later).
+- **Transport** — The thing that carries network messages: a WebSocket to the
+  server online, a BroadcastChannel between tabs, memory in tests.
+- **Transposition table** — A memory of positions already searched (keyed by a Zobrist hash), so the same position reached by different move orders is scored once.
+- **Zobrist hash** — A position's key made by XOR-ing a random number for each piece on each square; it updates cheaply as pieces move.
