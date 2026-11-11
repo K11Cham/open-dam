@@ -346,8 +346,11 @@ DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and a
 `Permissions-Policy` that turns off camera, microphone and location. Static
 files get them from `public/_headers`; the Worker's own `/api` answers get the
 same ones from `worker/securityHeaders.ts`, because Cloudflare does not apply
-`_headers` to responses a Worker makes. `/sw.js` is `no-cache`. HSTS is not
-sent: that is the owner's decision. `npm run check:browser` loads every page
+`_headers` to responses a Worker makes. `/sw.js` is `no-cache`. HSTS is sent
+for a year without `preload`: `.dev` addresses are HTTPS-only in browsers
+anyway (the whole top-level domain is preloaded), and Cloudflare answers
+plain `http://` here without redirecting, so the header covers other
+clients and commits to nothing new. `npm run check:browser` loads every page
 in real Chrome and fails on any policy violation.
 
 Why this host: a Durable Object is "one small server per game", which is
