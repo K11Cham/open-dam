@@ -1,13 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, test } from 'vitest'
 import { AppProviders, AppRoutes } from '../App'
-import { makeSettings } from '../game/settings'
-import { createRecord } from '../match/session'
+import { legalActions } from '../game/engine'
+import { TIME_CONTROLS, makeSettings } from '../game/settings'
+import { useMatchPersistence } from '../hooks/useMatchPersistence'
+import { MatchHost, createRecord } from '../match/session'
 import { STORAGE_KEYS } from '../services/storage'
 
 /**
- * One saved game, two tabs. jsdom has one document, so the "other tab" is
+ * Saving a game on this device. One saved game, two tabs: jsdom has one document, so the "other tab" is
  * played by writing localStorage directly, the way another tab's write
  * arrives: no in-page announcement, and a `storage` event only when we send one.
  */
@@ -81,5 +83,38 @@ describe('a game open in two tabs', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open the latest game' }))
     const grid = await screen.findByRole('grid')
     expect(grid).toHaveAccessibleName(/7 by 7/)
+  })
+})
+
+describe('leaving the page', () => {
+  /** A timed pass-and-play game in which both sides have moved, so the clock is running. */
+  const runningClock = () => {
+    const host = new MatchHost(
+      createRecord({
+        mode: 'local',
+        settings: makeSettings({ boardSize: 5, timeControl: TIME_CONTROLS[0] }),
+        seats: { player1: { kind: 'human', name: 'Red' }, player2: { kind: 'human', name: 'Blue' } },
+      }),
+    )
+    for (const by of ['player1', 'player2'] as const) {
+      const action = legalActions(host.getSnapshot().state.position).find((a) => a.type === 'move')!
+      host.submit(by, { type: 'engine', action })
+    }
+    return host
+  }
+
+  const setHidden = (hidden: boolean) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (hidden ? 'hidden' : 'visible') })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }
+
+  test('switching to another app pauses a local clock, and coming back resumes it', () => {
+    const host = runningClock()
+    expect(host.getSnapshot().state.clock?.running).toBe('player1')
+    renderHook(() => useMatchPersistence(host))
+    setHidden(true)
+    expect(host.getSnapshot().state.clock?.paused).toBe(true)
+    setHidden(false)
+    expect(host.getSnapshot().state.clock?.paused).toBe(false)
   })
 })

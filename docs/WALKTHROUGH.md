@@ -420,7 +420,10 @@ in the log, replaying a saved game reproduces the clocks exactly.
 
 Pause and resume exist for local games: when you close the app, the clock
 shouldn't keep eating your time, so the saving hook records a pause, and a
-resume when you come back.
+resume when you come back. "Leaving" is the page being _hidden_
+(`visibilitychange`), not only closed (`pagehide`): a phone switching to
+another app hides the page without closing it, and until 2026-11 a clock
+against the computer kept running while you answered a message.
 
 ### Sessions: `session.ts`
 
@@ -449,8 +452,8 @@ and publishes. Every local game is a `MatchHost`.
   a button to open the latest game. This is an _optimistic_ check: no lock,
   just "is it still what I last wrote?", which is enough because
   localStorage calls in one tab run to completion before another tab's can
-  change anything we read in between. `src/test/tabs.test.tsx` plays the other
-  tab by writing localStorage directly.
+  change anything we read in between. `src/test/persistence.test.tsx` plays the
+  other tab by writing localStorage directly.
 - `setup.ts` describes the New Game form's result and its URL form, so the
   Home page's quick-play cards are plain links like
   `/match/new?vs=club&size=5`.

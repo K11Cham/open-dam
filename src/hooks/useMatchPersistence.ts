@@ -8,8 +8,11 @@ import { STORAGE_KEYS } from '../services/storage'
  * Keeps a hosted match saved on this device:
  *  - every accepted action is written to the active-match slot;
  *  - a finished game moves to the archive and the slot is cleared;
- *  - for local games, leaving the page (closing it, navigating away, or the
- *    browser freezing it) pauses the clock, and coming back resumes it.
+ *  - for local games, leaving the page pauses the clock, and coming back
+ *    resumes it. Leaving means the page is hidden (another app or tab in
+ *    front, the screen locked) as well as closed or navigated away from: a
+ *    phone switching apps fires no `pagehide`, and a page is always hidden
+ *    before the browser freezes or discards it.
  *
  * The slot is shared by every tab of the app, and each write replaces it
  * whole. So this tab only writes while the slot still holds its own last
@@ -73,15 +76,22 @@ export function useMatchPersistence(host: MatchHost, onStale?: () => void) {
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) resume()
     }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') pause()
+      else resume()
+    }
     // Another tab wrote the slot (`key` is null when it cleared all storage).
     const onStorage = (event: StorageEvent) => {
       if (event.key === STORAGE_KEYS.activeMatch || event.key === null) owned()
     }
-    resume()
+    // A game opened in a background tab waits until it is looked at.
+    onVisibility()
     window.addEventListener('pagehide', pause)
     window.addEventListener('pageshow', onPageShow)
     window.addEventListener('storage', onStorage)
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
       unsubscribe()
       window.removeEventListener('pagehide', pause)
       window.removeEventListener('pageshow', onPageShow)
