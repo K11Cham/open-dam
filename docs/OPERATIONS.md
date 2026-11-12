@@ -115,11 +115,9 @@ that for this one.
 
 To turn it on:
 
-0. First update the privacy notice (`/privacy`, "How long"). It says a
-   deleted account "goes at once"; with the export on, a deleted account
-   stays in the weekly files for up to 12 weeks (and in Cloudflare's own
-   30-day restore history, which is already true today). Suggested wording
-   is in the local handover notes.
+0. The privacy notice (`/privacy`, "How long") already says backup copies
+   of a deleted account are gone within 12 weeks. If you change
+   `KEEP_EXPORTS` in `worker/backupExport.ts`, change that sentence too.
 1. Create the bucket:
    ```bash
    npx wrangler r2 bucket create open-dam-backups
