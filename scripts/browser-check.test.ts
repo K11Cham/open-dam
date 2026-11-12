@@ -20,12 +20,14 @@ import type { Browser, BrowserContext, Page } from 'playwright-core'
  *    the version in `dist/sw.js` for a moment (and puts it back), so it runs
  *    only against a server serving this checkout's `dist/`.
  *
- * Playwright's offline switch also cuts off the service worker in Chromium,
- * so "offline" here means every request to the site fails at the network,
- * which is what a phone without signal sees.
+ * Offline is Playwright's own switch (`context.setOffline`). Before it is
+ * thrown, the check waits until the service worker really has the app saved;
+ * against a slow server (the live site) that takes a few seconds.
  */
 
 const BASE = (process.env.BROWSER_URL ?? 'http://127.0.0.1:8787').replace(/\/$/, '')
+/** A server on this machine; against any other, the check only reads and changes nothing. */
+const LOCAL_SERVER = /^http:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(BASE)
 const CHROME =
   process.env.CHROME_PATH ??
   [
@@ -59,7 +61,10 @@ let browser: Browser
  * this (a cast only; nothing outside the function is captured).
  */
 interface Page$ {
-  caches: { keys(): Promise<string[]>; open(name: string): Promise<{ keys(): Promise<unknown[]> }> }
+  caches: {
+    keys(): Promise<string[]>
+    open(name: string): Promise<{ keys(): Promise<unknown[]>; match(url: string): Promise<unknown> }>
+  }
   navigator: { serviceWorker: { controller: unknown; getRegistration(): Promise<{ update(): Promise<unknown> } | undefined> } }
   document: { addEventListener(type: string, listener: (event: { violatedDirective: string; blockedURI: string }) => void): void }
 }
@@ -98,20 +103,31 @@ function watch(page: Page, problems: string[]) {
 
 const heading = (page: Page) => page.locator('h1').first().textContent({ timeout: 10_000 })
 
-/** Wait until the service worker controls the page and has saved the app. */
-async function waitForOffline(page: Page) {
-  await page.waitForFunction(
-    async () => {
+/**
+ * Wait until the service worker controls the page and has saved the app: its
+ * page (`/`) and more than ten other files. Polled from here, every 250 ms:
+ * `page.waitForFunction` does not wait on an async check (the promise it gets
+ * back counts as true at once), which let the offline test start before
+ * anything was saved whenever the server was slow.
+ */
+async function waitForOffline(page: Page, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const saved = await page.evaluate(async () => {
       const { navigator, caches } = globalThis as unknown as Page$
-      if (!navigator.serviceWorker.controller) return false
-      const names = await caches.keys()
-      if (names.length === 0) return false
-      const saved = await (await caches.open(names[0])).keys()
-      return saved.length > 10
-    },
-    undefined,
-    { timeout: 30_000, polling: 250 },
-  )
+      const controlled = !!navigator.serviceWorker.controller
+      for (const name of await caches.keys()) {
+        const cache = await caches.open(name)
+        const files = (await cache.keys()).length
+        if ((await cache.match('/')) && files > 10) return { controlled, files, shell: true }
+      }
+      return { controlled, files: 0, shell: false }
+    })
+    if (saved.controlled && saved.shell) return
+    if (Date.now() > deadline)
+      throw new Error(`The app was not saved for offline use within ${timeoutMs / 1000} s: ${JSON.stringify(saved)}`)
+    await page.waitForTimeout(250)
+  }
 }
 
 /** Start a game against the computer, playing second so the computer moves at once. */
@@ -123,9 +139,6 @@ async function playComputer(page: Page) {
   await page.waitForURL(/\/match\//)
   await page.locator('.piece-slot').first().waitFor({ timeout: 10_000 })
 }
-
-/** Every request to the site fails, as with no signal; the service worker answers from what it saved. */
-const goOffline = (context: BrowserContext) => context.route(`${BASE}/**`, (route) => route.abort('internetdisconnected'))
 
 describe(`in Chrome, against ${BASE}`, () => {
   test('no page breaks the Content Security Policy', async () => {
@@ -147,14 +160,17 @@ describe(`in Chrome, against ${BASE}`, () => {
     await page.waitForTimeout(1500)
     expect(workers.some((url) => url.includes('search.worker'))).toBe(true)
 
-    // An invite opens a socket to the match room.
-    await page.goto(`${BASE}/play`)
-    await page.getByRole('radio', { name: /^Online/ }).check()
-    await page.getByRole('radio', { name: /^Invite a friend/ }).check()
-    await page.getByRole('button', { name: 'Start game' }).click()
-    await page.waitForURL(/\/online\//)
-    await page.waitForTimeout(1500)
-    expect(sockets.some((url) => /\/api\/matches\/[^/]+\/socket$/.test(url))).toBe(true)
+    // An invite opens a socket to the match room. It makes a real game on the
+    // server, so against a deployed one it is left out: that run only reads.
+    if (LOCAL_SERVER) {
+      await page.goto(`${BASE}/play`)
+      await page.getByRole('radio', { name: /^Online/ }).check()
+      await page.getByRole('radio', { name: /^Invite a friend/ }).check()
+      await page.getByRole('button', { name: 'Start game' }).click()
+      await page.waitForURL(/\/online\//)
+      await page.waitForTimeout(1500)
+      expect(sockets.some((url) => /\/api\/matches\/[^/]+\/socket$/.test(url))).toBe(true)
+    }
 
     expect(problems).toEqual([])
     await context.close()
@@ -165,10 +181,7 @@ describe(`in Chrome, against ${BASE}`, () => {
     const page = await context.newPage()
     await page.goto(`${BASE}/`)
     await waitForOffline(page)
-    // One more load while online, so this page is one the worker answered, before the network goes.
-    await page.reload()
-    await waitForOffline(page)
-    await goOffline(context)
+    await context.setOffline(true)
     for (const path of PAGES) {
       await page.goto(`${BASE}${path}`)
       expect(await heading(page), `${path} offline`).toBeTruthy()
@@ -178,12 +191,12 @@ describe(`in Chrome, against ${BASE}`, () => {
     await playComputer(page)
     await page.waitForTimeout(1500)
     expect(workers.some((url) => url.includes('search.worker'))).toBe(true)
-    await context.unrouteAll()
+    await context.setOffline(false)
     expect(problems).toEqual([])
     await context.close()
   })
 
-  const local = /^http:\/\/(127\.0\.0\.1|localhost)/.test(BASE) && existsSync('dist/sw.js')
+  const local = LOCAL_SERVER && existsSync('dist/sw.js')
   test.runIf(local)('a new version waits for "Update now", then takes over and clears the old saved files', async () => {
     const { context, problems } = await freshContext()
     const page = await context.newPage()

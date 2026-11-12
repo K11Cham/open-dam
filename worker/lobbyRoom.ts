@@ -52,7 +52,12 @@ export class LobbyRoom extends DurableObject<Env> {
     const resumed = this.lobby.resume(
       sockets.map((ws) => {
         const attachment = this.attachmentOf(ws)
-        return { socket: this.wrap(ws), accountId: attachment?.identity?.id ?? null, seek: attachment?.seek ?? null }
+        return {
+          socket: this.wrap(ws),
+          accountId: attachment?.identity?.id ?? null,
+          seek: attachment?.seek ?? null,
+          network: attachment?.network ?? null,
+        }
       }),
     )
     sockets.forEach((ws, i) => this.connections.set(ws, resumed[i]))

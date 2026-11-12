@@ -14,8 +14,15 @@
  *  - nobody may frame the site (`frame-ancestors 'none'`, plus
  *    `X-Frame-Options` for old browsers), and plugins are off.
  *
- * HSTS is left to the owner: once sent with preload it cannot be taken back
- * quickly.
+ *
+ * HSTS (`Strict-Transport-Security`) says "only ever reach this site over
+ * HTTPS" for a year. On play.open-dam.workers.dev it changes nothing for
+ * browsers: the whole `.dev` top-level domain is on the browsers' built-in
+ * HSTS preload list, so they never use plain HTTP there. It covers clients
+ * without that list, since Cloudflare answers plain `http://` here with the
+ * page rather than a redirect. It does not ask to be preloaded (`preload`),
+ * the one form that is slow to take back, nor cover other subdomains. On a
+ * custom domain later, keep it: Cloudflare serves those over HTTPS too.
  */
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -38,6 +45,7 @@ export const SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000',
 }
 
 /** The same response with the security headers added. A WebSocket upgrade is passed through untouched. */

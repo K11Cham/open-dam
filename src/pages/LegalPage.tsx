@@ -9,7 +9,7 @@ import { usePageTitle } from '../lib/usePageTitle'
  */
 const OWNER_CONTACT: string | null = 'kylar11cham@gmail.com'
 
-const UPDATED = '8 November 2026'
+const UPDATED = '11 November 2026'
 
 function Contact() {
   return OWNER_CONTACT ? (
@@ -104,8 +104,9 @@ export function PrivacyPage() {
           <h2>How long</h2>
           <p>
             Account data is kept until you delete the account. Signed-in devices are forgotten 60 days after they were last used.
-            When you delete your account, everything above goes at once; your past online games stay in your opponents' histories
-            with your side shown as a deleted player.
+            When you delete your account, everything above is removed from the site at once; your past online games stay in your
+            opponents' histories with your side shown as a deleted player. Copies kept so the site can be restored after a failure
+            are deleted within 30 days, or within 12 weeks for the weekly backup, and are never used for anything else.
           </p>
 
           <h2>Your choices</h2>

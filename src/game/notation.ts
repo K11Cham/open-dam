@@ -120,6 +120,13 @@ export const toMoveRows = (moves: MoveRecord[]): MoveRow[] => {
   return rows
 }
 
+/**
+ * How many moves have been played, as a person counts them: each turn's move
+ * or capture once. The legs after a chain's first capture (`kind: 'chain'`)
+ * belong to that move, and calls, resignations and agreed draws are not moves.
+ */
+export const turnsPlayed = (moves: MoveRecord[]): number => moves.filter((m) => m.kind === 'move' || m.kind === 'capture').length
+
 /** `c2xc4` + `c4xe4` -> `c2xc4xe4`, keeping any trailing annotation. */
 const mergeChainNotation = (base: string, leg: string): string => {
   const legTail = leg.slice(leg.indexOf('x'))

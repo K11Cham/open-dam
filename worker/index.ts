@@ -5,6 +5,7 @@ import { MATCH_ID_PATTERN } from '../src/net/protocol'
 import type { Identity } from '../src/net/server'
 import { Accounts } from './accounts'
 import { handleAdmin } from './admin'
+import { runBackupExport } from './backupExport'
 import { BadRequest, readJson } from './http'
 import { clientErrorReport, internalError } from './errors'
 import type { RequestContext } from './accountStore'
@@ -27,6 +28,8 @@ export interface Env {
   ADMIN_TOKEN?: string
   /** The key network addresses are hashed with (`wrangler secret put IP_HASH_SECRET`). Unset: unkeyed, with a warning. */
   IP_HASH_SECRET?: string
+  /** The R2 bucket for the weekly accounts export (wrangler.jsonc `r2_buckets`). Unset: the export does not run. */
+  BACKUPS?: R2Bucket
 }
 
 /**
@@ -525,6 +528,27 @@ export default {
       if (error instanceof BadRequest) return secured(publicJson({ error: error.message }, error.status))
       // Anything else is a bug or an outage: logged with a request id, answered as JSON.
       return secured(internalError(error, request))
+    }
+  },
+
+  /**
+   * The weekly backup (wrangler.jsonc `triggers`, off until the owner turns
+   * it on). A failure is logged and thrown, so the run shows as failed in the
+   * dashboard as well as in the logs.
+   */
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    try {
+      const result = await runBackupExport({ bucket: env.BACKUPS, exportAll: () => accountsOf(env).exportAll() })
+      console.log(JSON.stringify({ level: 'info', event: 'backup-export', ...result }))
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          event: 'backup-export-failed',
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      )
+      throw error
     }
   },
 } satisfies ExportedHandler<Env>

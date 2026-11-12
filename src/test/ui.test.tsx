@@ -2,11 +2,12 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { AppProviders, AppRoutes } from '../App'
+import { DIFFICULTIES, DIFFICULTY_IDS } from '../ai/difficulty'
+import { AppProviders, AppRoutes, PageLoading } from '../App'
 import BoardView from '../components/board/BoardView'
 import { ConfirmDialog } from '../components/ui/Dialog'
-import { createInitialState, resign } from '../game/engine'
-import { makeSettings } from '../game/settings'
+import { applyAction, createInitialState, legalActions, resign } from '../game/engine'
+import { TIME_CONTROLS, makeSettings } from '../game/settings'
 import type { Coord } from '../game/types'
 import { createRecord } from '../match/session'
 import { PROTOCOL_VERSION } from '../net/protocol'
@@ -163,6 +164,7 @@ describe('saving', () => {
     renderAt('/')
     expect(await screen.findByRole('heading', { name: 'Your game is waiting' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Continue/ })).toBeInTheDocument()
+    expect(screen.getByText(/1 move played/)).toBeInTheDocument()
   })
 })
 
@@ -432,5 +434,83 @@ describe('sound', () => {
     expect(storage.get<{ enabled: boolean }>(STORAGE_KEYS.sound)?.enabled).toBe(!before)
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-pressed', String(before))
+  })
+})
+
+describe('vibration', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'vibrate')
+  })
+
+  test('a move is felt on a phone, and Settings turns it off', async () => {
+    const vibrate = vi.fn(() => true)
+    Object.defineProperty(navigator, 'vibrate', { configurable: true, value: vibrate })
+    const user = userEvent.setup()
+    const game = renderAt('/match/new?vs=hotseat&size=5')
+    await screen.findByRole('grid')
+    tap(square('d3'))
+    fireEvent.click(square('c3'))
+    expect(vibrate).toHaveBeenCalledWith([8])
+    game.unmount()
+
+    renderAt('/settings')
+    const toggle = await screen.findByRole('switch', { name: /Vibration/ })
+    expect(toggle).toBeChecked()
+    await user.click(toggle)
+    expect(storage.get<{ haptics: boolean }>(STORAGE_KEYS.prefs)?.haptics).toBe(false)
+  })
+})
+
+describe('about Dam', () => {
+  test('Home links to the page about the game, which names every computer player and what the name means', async () => {
+    const user = userEvent.setup()
+    renderAt('/')
+    await user.click(screen.getByRole('link', { name: 'More about Dam in The Gambia' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dam in The Gambia' })).toBeInTheDocument()
+    for (const id of DIFFICULTY_IDS) {
+      expect(screen.getByText(DIFFICULTIES[id].name)).toBeInTheDocument()
+      expect(screen.getByText(new RegExp(DIFFICULTIES[id].meaning))).toBeInTheDocument()
+    }
+  })
+})
+
+describe('loading a page', () => {
+  test('keeps the top bar and footer up while a page arrives', () => {
+    render(
+      <AppProviders>
+        <MemoryRouter>
+          <PageLoading />
+        </MemoryRouter>
+      </AppProviders>,
+    )
+    expect(screen.getByText('Loading…')).toHaveAttribute('role', 'status')
+    expect(screen.getByRole('navigation', { name: 'Footer' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Skip to content' })).toBeInTheDocument()
+  })
+})
+
+describe('clock warnings', () => {
+  test('a screen reader hears once when your clock drops under twenty seconds', async () => {
+    // A 1+0 game against the computer in which both sides have moved and Red, to move, has about ten seconds left.
+    const record = createRecord({
+      mode: 'local',
+      settings: makeSettings({ boardSize: 5, timeControl: TIME_CONTROLS[0] }),
+      seats: { player1: { kind: 'human', name: '' }, player2: { kind: 'ai', name: 'Döff', difficulty: 'doff' } },
+    })
+    const now = Date.now()
+    const since = now - 50_000
+    let state = createInitialState(record.config.settings)
+    for (const [by, at] of [
+      ['player1', since - 2],
+      ['player2', since],
+    ] as const) {
+      const action = legalActions(state).find((a) => a.type === 'move')!
+      state = applyAction(state, action).state
+      record.actions.push({ seq: record.actions.length + 1, at, by, intent: { type: 'engine', action } })
+    }
+    storage.set(STORAGE_KEYS.activeMatch, { record, savedAt: now })
+    renderAt(`/match/${record.config.id}`)
+    await screen.findByRole('grid')
+    expect(await screen.findByText('Under 20 seconds left on your clock.')).toBeInTheDocument()
   })
 })

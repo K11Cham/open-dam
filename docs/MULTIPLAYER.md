@@ -307,7 +307,10 @@ so the server learns who they are and gives them their seats back.
    and is rated: the side whose clock ran out loses.
 2. **A report to retry.** When a game with accounts ends, the room writes a
    `pendingReport` to storage before calling `Accounts.recordGame`, and
-   deletes it only after that succeeds. A failure is logged
+   deletes it only after that succeeds. The retry alarm is set before each
+   call, not only when it fails, so a report cut off by the object restarting
+   mid-call (a deploy) is still retried; a woken room that finds a pending
+   report with no retry set gives it one. A failure is logged
    (`report-failed`) and retried after 1 minute, 5 minutes, 30 minutes, then
    hourly. `recordGame` is idempotent per game id, so a retry that races a
    slow success stores the game once. Ratings that arrive late are announced
@@ -343,8 +346,11 @@ DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and a
 `Permissions-Policy` that turns off camera, microphone and location. Static
 files get them from `public/_headers`; the Worker's own `/api` answers get the
 same ones from `worker/securityHeaders.ts`, because Cloudflare does not apply
-`_headers` to responses a Worker makes. `/sw.js` is `no-cache`. HSTS is not
-sent: that is the owner's decision. `npm run check:browser` loads every page
+`_headers` to responses a Worker makes. `/sw.js` is `no-cache`. HSTS is sent
+for a year without `preload`: `.dev` addresses are HTTPS-only in browsers
+anyway (the whole top-level domain is preloaded), and Cloudflare answers
+plain `http://` here without redirecting, so the header covers other
+clients and commits to nothing new. `npm run check:browser` loads every page
 in real Chrome and fails on any policy violation.
 
 Why this host: a Durable Object is "one small server per game", which is

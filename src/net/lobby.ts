@@ -108,13 +108,17 @@ export class Lobby {
    * from hibernation). Each waiting seek goes back on the queue as it was,
    * keeping its place and its widened window.
    */
-  resume(entries: Array<{ socket: LobbySocket; accountId: string | null; seek: Seek | null }>): ServerConnection[] {
-    const connections = entries.map(({ socket, accountId, seek }) => {
+  resume(
+    entries: Array<{ socket: LobbySocket; accountId: string | null; seek: Seek | null; network?: string | null }>,
+  ): ServerConnection[] {
+    const connections = entries.map(({ socket, accountId, seek, network }) => {
       if (seek) {
         this.queue.restore(seek)
         this.sockets.set(seek.playerId, socket)
       }
-      return this.connect(socket, accountId, accountId ?? seek?.playerId ?? null, seek?.network ?? null)
+      // The connection's own network, kept with its socket, so a seek made after waking is still kept apart from
+      // the same network's other accounts; a waiting seek carries it too, for an older socket without it.
+      return this.connect(socket, accountId, accountId ?? seek?.playerId ?? null, network ?? seek?.network ?? null)
     })
     this.scheduleSweep()
     return connections

@@ -2,6 +2,7 @@ import { Cloud, CloudOff, Download, LogOut, Monitor, RefreshCw, Share, Trash2 } 
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { buzz, canBuzz } from '../audio/haptics'
 import { soundPlayer, soundSettings } from '../audio/player'
 import Avatar from '../components/account/Avatar'
 import AppShell from '../components/layout/AppShell'
@@ -122,6 +123,20 @@ function PreferencesSection({ signedIn }: { signedIn: boolean }) {
             />
           )}
         </Field>
+        <Switch
+          checked={prefs.haptics}
+          onChange={(haptics) => {
+            preferences.set({ haptics })
+            // Turning it on is a tap, so the browser lets this sample buzz through.
+            if (haptics) buzz('capture')
+          }}
+          label="Vibration"
+          description={
+            canBuzz()
+              ? 'A short buzz with each move, capture and call, so you feel them with the sound off.'
+              : 'A short buzz with each move, capture and call, on phones that can vibrate. This browser cannot (iPhones and computers do not), so here it does nothing.'
+          }
+        />
         <Segmented<'system' | 'reduce'>
           label="Motion"
           value={prefs.motion}

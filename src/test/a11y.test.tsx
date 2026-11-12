@@ -18,6 +18,7 @@ const PAGES = [
   '/play',
   '/match/new?vs=ndo&side=player1&size=5',
   '/learn',
+  '/about',
   '/analysis',
   '/leaderboards',
   '/settings',

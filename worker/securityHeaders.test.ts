@@ -31,6 +31,12 @@ describe('security headers', () => {
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/)
   })
 
+  it('tell browsers to use HTTPS for a year, without asking to be preloaded', () => {
+    const hsts = SECURITY_HEADERS['Strict-Transport-Security']
+    expect(hsts).toBe('max-age=31536000')
+    expect(hsts).not.toContain('preload')
+  })
+
   it('are the same on static files and on the Worker’s own responses', () => {
     expect(rules.get('/*')).toEqual(SECURITY_HEADERS)
   })

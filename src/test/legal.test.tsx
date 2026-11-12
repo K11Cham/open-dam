@@ -27,6 +27,13 @@ describe('privacy and terms', () => {
     )
   })
 
+  test('the privacy notice says how long backup copies keep a deleted account', async () => {
+    renderAt('/privacy')
+    expect(await screen.findByText(/Copies kept so the site can be restored after a failure/)).toBeInTheDocument()
+    expect(screen.getByText(/within 12 weeks/)).toBeInTheDocument()
+    expect(screen.queryByText(/everything above goes at once/)).not.toBeInTheDocument()
+  })
+
   test('the terms cover fair play, behaviour and the service as it is', async () => {
     renderAt('/terms')
     expect(await screen.findByRole('heading', { level: 1, name: 'Terms' })).toBeInTheDocument()

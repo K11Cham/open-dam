@@ -2,6 +2,7 @@ import { MotionConfig } from 'framer-motion'
 import { Suspense, lazy, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import AppShell from './components/layout/AppShell'
 import ErrorBoundary from './components/layout/ErrorBoundary'
 import { ToastProvider } from './components/ui/Toasts'
 import { AccountProvider } from './context/AccountContext'
@@ -25,15 +26,23 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const ReviewPage = lazy(() => import('./pages/ReviewPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const TutorialPage = lazy(() => import('./pages/TutorialPage'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
 const PrivacyPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.PrivacyPage })))
 const TermsPage = lazy(() => import('./pages/LegalPage').then((page) => ({ default: page.TermsPage })))
 
-/** Shown for the moment a lazily loaded page takes to arrive. */
-function PageLoading() {
+/**
+ * Shown for the moment a lazily loaded page takes to arrive. Inside the app's
+ * frame (AppShell is in the first download, with Home), so on a slow phone the
+ * top bar and footer stay put instead of the screen going blank; the word
+ * itself fades in only after a moment, so a quick load shows no flash.
+ */
+export function PageLoading() {
   return (
-    <p className="page-loading" role="status">
-      Loading…
-    </p>
+    <AppShell>
+      <p className="page-loading" role="status">
+        Loading…
+      </p>
+    </AppShell>
   )
 }
 
@@ -63,6 +72,7 @@ function ScrollToTop() {
  *   /review/:id       a finished game saved on this device, read-only
  *   /game/:id         a finished online game, from the server
  *   /learn[/:id]      rules and tutorial chapters
+ *   /about            Dam in The Gambia
  *   /analysis         free board
  *   /leaderboards     rated players, by board size and clock
  *   /u/:username      a player's profile
@@ -86,6 +96,7 @@ export function AppRoutes() {
           <Route path="/game/:id" element={<OnlineGamePage />} />
           <Route path="/learn" element={<TutorialPage />} />
           <Route path="/learn/:chapterId" element={<TutorialPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/analysis" element={<AnalysisPage />} />
           <Route path="/leaderboards" element={<LeaderboardsPage />} />
           <Route path="/u/:username" element={<ProfilePage />} />

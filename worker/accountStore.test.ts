@@ -570,3 +570,27 @@ describe('usernames given up', () => {
     expect(store.me(user.id)?.username).toBe('player_7')
   })
 })
+
+describe('the weekly backup export', () => {
+  it('holds every table needed to rebuild accounts, and nothing that only lives for a session', async () => {
+    const { store } = makeStore()
+    const { user } = await signUp(store, 'Kylar')
+    const other = await signUp(store, 'Awa', OTHER_KEY, '203.0.113.2')
+    store.recordGame(finished({ id: 'g1', players: { player1: user.id, player2: other.user.id } }))
+    const dump = store.exportAll()
+    expect(dump).toMatchObject({ format: 'open-dam/accounts-export', version: 1, schemaVersion: MIGRATIONS.length })
+    expect(Object.keys(dump.tables).sort()).toEqual([
+      'archive',
+      'games',
+      'ratings',
+      'released_names',
+      'reports',
+      'user_data',
+      'users',
+    ])
+    expect(dump.tables.users.map((row) => row.username)).toEqual(expect.arrayContaining(['Kylar', 'Awa']))
+    expect(dump.tables.games).toHaveLength(1)
+    expect(dump.tables.ratings.length).toBeGreaterThan(0)
+    expect(JSON.stringify(dump)).not.toContain('token_hash')
+  })
+})

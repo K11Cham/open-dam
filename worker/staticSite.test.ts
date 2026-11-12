@@ -30,7 +30,7 @@ describe('link previews and crawlers', () => {
     expect(robots).toMatch(/^Disallow: \/api\/$/m)
     expect(robots).toMatch(/^Sitemap: https:\/\/.+\/sitemap\.xml$/m)
     const sitemap = file('public/sitemap.xml').toString()
-    for (const path of ['/', '/play', '/learn', '/leaderboards', '/privacy', '/terms']) {
+    for (const path of ['/', '/play', '/learn', '/about', '/leaderboards', '/privacy', '/terms']) {
       expect(sitemap).toContain(`<loc>https://play.open-dam.workers.dev${path}</loc>`)
     }
   })

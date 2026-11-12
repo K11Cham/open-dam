@@ -423,6 +423,19 @@ export interface Profile {
   recent: GameSummary[] | null
 }
 
+/** The tables a backup export holds, by name; see `exportAll`. */
+export const EXPORTED_TABLES = ['users', 'ratings', 'games', 'user_data', 'archive', 'reports', 'released_names'] as const
+
+/** The weekly backup's contents: every exported table's rows, as SQLite returns them. */
+export interface AccountsExport {
+  format: 'open-dam/accounts-export'
+  version: 1
+  /** How many migrations the database had run, so a restore knows which table shapes these rows have. */
+  schemaVersion: number
+  exportedAt: number
+  tables: Record<(typeof EXPORTED_TABLES)[number], Array<Record<string, unknown>>>
+}
+
 export class AccountStore {
   private readonly sql: Sql
   private readonly now: () => number
@@ -1392,6 +1405,22 @@ export class AccountStore {
     this.sql.exec('UPDATE users SET suspended_at = ? WHERE id = ?', suspended ? this.now() : null, row.id)
     if (suspended) this.sql.exec('DELETE FROM sessions WHERE user_id = ?', row.id)
     return true
+  }
+
+  /**
+   * The whole accounts database as one JSON-ready value, for the weekly
+   * backup (worker/backupExport.ts). It keeps what rebuilding the site would
+   * need: accounts (with their salted key and recovery hashes, never a
+   * password), ratings, finished games, synced settings and archives,
+   * reports and held usernames. It leaves out what only matters for a day:
+   * sessions (everyone signs in again after a rebuild), failed sign-ins and
+   * request counts.
+   */
+  exportAll(): AccountsExport {
+    const tables = Object.fromEntries(
+      EXPORTED_TABLES.map((table) => [table, this.sql.exec<Record<string, unknown>>(`SELECT * FROM ${table}`)]),
+    ) as AccountsExport['tables']
+    return { format: 'open-dam/accounts-export', version: 1, schemaVersion: this.schemaVersion, exportedAt: this.now(), tables }
   }
 
   /** Everything kept for one account, for the "download my data" button. */

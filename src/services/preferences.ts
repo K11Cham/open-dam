@@ -15,20 +15,33 @@ export interface Preferences {
   resultSplash: boolean
   /** Show where the selected piece can go. */
   moveHints: boolean
+  /** Vibrate with each sound cue, on phones that can (src/audio/haptics.ts). */
+  haptics: boolean
 }
 
-export const DEFAULT_PREFERENCES: Preferences = { motion: 'system', premoves: true, resultSplash: true, moveHints: true }
+export const DEFAULT_PREFERENCES: Preferences = {
+  motion: 'system',
+  premoves: true,
+  resultSplash: true,
+  moveHints: true,
+  haptics: true,
+}
 
-/** Saved preferences are untrusted (old versions, other devices): each field is checked and defaulted. */
+/**
+ * Saved preferences are untrusted (old versions, other devices): each field is
+ * checked and defaulted, so a copy saved before a field existed (haptics, say)
+ * reads as that field's default.
+ */
 export const readPreferences = (value: unknown): Preferences => {
   const saved = (typeof value === 'object' && value !== null ? value : {}) as Partial<Record<keyof Preferences, unknown>>
-  const flag = (key: 'premoves' | 'resultSplash' | 'moveHints') =>
+  const flag = (key: 'premoves' | 'resultSplash' | 'moveHints' | 'haptics') =>
     typeof saved[key] === 'boolean' ? (saved[key] as boolean) : DEFAULT_PREFERENCES[key]
   return {
     motion: saved.motion === 'reduce' ? 'reduce' : 'system',
     premoves: flag('premoves'),
     resultSplash: flag('resultSplash'),
     moveHints: flag('moveHints'),
+    haptics: flag('haptics'),
   }
 }
 
