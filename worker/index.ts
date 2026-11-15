@@ -44,9 +44,10 @@ export interface Env {
  * Accounts (accountStore.ts)
  *   POST   /api/auth/signup | signin | signout | recover
  *   GET    /api/auth/username?name=        why a name cannot be used, or null
+ *   GET    /api/auth/params?username=      { version } to make the password's key at
  *   GET    /api/me                         the signed-in account, or null
  *   PATCH  /api/me                         profile
- *   DELETE /api/me                         { key } delete the account
+ *   DELETE /api/me                         { key, keyVersion } delete the account
  *   POST   /api/me/password | username | recovery-code
  *   GET    /api/me/sessions                signed-in devices
  *   DELETE /api/me/sessions/:id            sign one out
@@ -228,6 +229,9 @@ const signedIn =
   async (request, env, viewer, params) =>
     viewer ? handler(request, env, viewer, params) : fail(401, 'Sign in first.')
 
+/** The current password as a request carries it (accountStore.ts: KeyProof), and nothing else from the body. */
+const proofOf = (body: Record<string, unknown>) => ({ key: body.key, keyVersion: body.keyVersion, upgradeKey: body.upgradeKey })
+
 const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicRoute?: boolean }> = [
   {
     method: 'GET',
@@ -245,12 +249,23 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     },
   },
   {
+    // Asked before every sign-in, so it shares the username check's allowance: enough for people, not for listing accounts.
+    method: 'GET',
+    pattern: /^\/api\/auth\/params$/,
+    handler: async (request, env) => {
+      const refused = await limited(request, env, 'username')
+      if (refused) return refused
+      const username = new URL(request.url).searchParams.get('username') ?? ''
+      return json(await accountsOf(env).keyParams(username))
+    },
+  },
+  {
     method: 'POST',
     pattern: /^\/api\/auth\/signup$/,
     handler: async (request, env) => {
       const body = await readJson(request)
       const result = await accountsOf(env).signUp(
-        { username: body.username, key: body.key, displayName: body.displayName },
+        { username: body.username, key: body.key, newKeyVersion: body.newKeyVersion, displayName: body.displayName },
         contextOf(request),
       )
       if (!result.ok) return answer(result)
@@ -266,7 +281,7 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
       const refused = await limited(request, env, 'signin')
       if (refused) return refused
       const body = await readJson(request)
-      const result = await accountsOf(env).signIn({ username: body.username, key: body.key }, contextOf(request))
+      const result = await accountsOf(env).signIn({ username: body.username, ...proofOf(body) }, contextOf(request))
       if (!result.ok) return answer(result)
       return json({ user: result.user }, 200, { 'Set-Cookie': sessionCookie(request, result.token) })
     },
@@ -287,7 +302,7 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
       if (refused) return refused
       const body = await readJson(request)
       const result = await accountsOf(env).recover(
-        { username: body.username, recoveryCode: body.recoveryCode, key: body.key },
+        { username: body.username, recoveryCode: body.recoveryCode, key: body.key, newKeyVersion: body.newKeyVersion },
         contextOf(request),
       )
       if (!result.ok) return answer(result)
@@ -308,7 +323,7 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     pattern: /^\/api\/me$/,
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
-      const result = await accountsOf(env).deleteAccount(viewer.user.id, body.key, contextOf(request))
+      const result = await accountsOf(env).deleteAccount(viewer.user.id, proofOf(body), contextOf(request))
       return answer(result, result.ok ? { 'Set-Cookie': sessionCookie(request, null) } : {})
     }),
   },
@@ -318,7 +333,12 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
       return answer(
-        await accountsOf(env).changePassword(viewer.user.id, viewer.sessionId, body.key, body.newKey, contextOf(request)),
+        await accountsOf(env).changePassword(
+          viewer.user.id,
+          viewer.sessionId,
+          { ...proofOf(body), newKey: body.newKey, newKeyVersion: body.newKeyVersion },
+          contextOf(request),
+        ),
       )
     }),
   },
@@ -328,7 +348,11 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
       return answer(
-        await accountsOf(env).changeUsername(viewer.user.id, body.key, body.newUsername, body.newKey, contextOf(request)),
+        await accountsOf(env).changeUsername(
+          viewer.user.id,
+          { ...proofOf(body), newUsername: body.newUsername, newKey: body.newKey, newKeyVersion: body.newKeyVersion },
+          contextOf(request),
+        ),
       )
     }),
   },
@@ -337,7 +361,7 @@ const routes: Array<{ method: string; pattern: RegExp; handler: Handler; publicR
     pattern: /^\/api\/me\/recovery-code$/,
     handler: signedIn(async (request, env, viewer) => {
       const body = await readJson(request)
-      return answer(await accountsOf(env).replaceRecoveryCode(viewer.user.id, body.key, contextOf(request)))
+      return answer(await accountsOf(env).replaceRecoveryCode(viewer.user.id, proofOf(body), contextOf(request)))
     }),
   },
   {

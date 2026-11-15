@@ -144,8 +144,11 @@ so `worker/accountStore.test.ts` runs it on Node's own SQLite.
 
 - **Signing in.** A username and a password; no email. The browser never
   sends the password: `stretchPassword` (`src/net/account.ts`) turns it into a
-  key with PBKDF2 (210,000 rounds, salted with the username), and the server
-  stores a salted SHA-256 of that key. The slow part runs in the browser
+  key with PBKDF2 (600,000 rounds, salted with the username and the key
+  version), and the server stores a salted SHA-256 of that key. Accounts made
+  before November 2026 hold 210,000-round (v1) keys; the browser asks
+  `/api/auth/params` for the account's version first, and a v1 account moves
+  to v2 the next time it signs in. The slow part runs in the browser
   because a free Worker has only milliseconds of CPU; a stolen database still
   costs an attacker the full PBKDF2 work per guess. Eight wrong passwords
   from one network lock that network out of that username for 15 minutes,

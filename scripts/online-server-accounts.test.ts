@@ -77,7 +77,7 @@ async function signUp(name: string): Promise<Person> {
   const response = await fetch(`${BASE}/api/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username: name, key }),
+    body: JSON.stringify({ username: name, key, newKeyVersion: 2 }),
   })
   expect(response.status).toBe(201)
   const cookie = (response.headers.get('Set-Cookie') ?? '').split(';')[0]
@@ -106,7 +106,7 @@ function lobby(cookie: string, ip?: string) {
 }
 
 afterAll(async () => {
-  for (const person of people) await person.api('/api/me', { method: 'DELETE', body: { key: person.key } })
+  for (const person of people) await person.api('/api/me', { method: 'DELETE', body: { key: person.key, keyVersion: 2 } })
 })
 
 describe(`accounts at ${BASE}`, () => {
@@ -116,10 +116,16 @@ describe(`accounts at ${BASE}`, () => {
     expect((await me.api('/api/me')).body.user.username).toBe(`check-${run}-a`)
     expect((await client('')('/api/me')).body.user).toBeNull()
 
-    const wrong = await client('')('/api/auth/signin', { method: 'POST', body: { username: me.user.username, key: randomKey() } })
-    expect(wrong.status).toBe(401)
-    const again = await client('')('/api/auth/signin', { method: 'POST', body: { username: me.user.username, key: me.key } })
-    expect(again.status).toBe(200)
+    // Every sign-in first asks which version to make the key at: v2 for a new account, and for a name nobody has.
+    expect((await client('')(`/api/auth/params?username=${me.user.username}`)).body).toEqual({ version: 2 })
+    expect((await client('')(`/api/auth/params?username=nobody-${run}`)).body).toEqual({ version: 2 })
+    const signIn = (body: Json) => client('')('/api/auth/signin', { method: 'POST', body })
+    expect((await signIn({ username: me.user.username, key: randomKey(), keyVersion: 2 })).status).toBe(401)
+    expect((await signIn({ username: me.user.username, key: me.key, keyVersion: 2 })).status).toBe(200)
+    // An app from before key versions sends no version; for a v2 account it is told to update, not that the password is wrong.
+    const old = await signIn({ username: me.user.username, key: me.key })
+    expect(old.status).toBe(409)
+    expect(old.body.error).toMatch(/^Update the app to sign in/)
 
     expect((await me.api('/api/me', { method: 'PATCH', body: { bio: 'x' }, origin: 'https://elsewhere.example' })).status).toBe(
       403,

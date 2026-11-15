@@ -230,8 +230,34 @@ export const poolBoardSize = (pool: string): number => Number(pool.match(POOL_PA
 
 // -- Password stretching --------------------------------------------------------
 
-/** Slow on purpose: about a quarter of a second in a browser, once per sign-in. */
-export const STRETCH_ITERATIONS = 210_000
+/**
+ * How a password becomes a key, by version. Each version has its own salt
+ * (`open-dam/v<n>/<username>`) and number of PBKDF2 rounds, so a key made at
+ * one version never matches an account kept at another.
+ *
+ *  - v1, 210,000 rounds: every account made before v2. Never change it, or
+ *    those accounts are locked out.
+ *  - v2, 600,000 rounds (OWASP's figure for PBKDF2-SHA256): about 0.5 to 1.5
+ *    seconds on a mid-range phone, once per sign-in.
+ *
+ * The server keeps each account's version (`users.key_version`) and says it
+ * before a sign-in (`GET /api/auth/params`). A v1 account moves to v2 the
+ * first time it signs in: the browser sends its v1 key to prove the password
+ * and a v2 key to keep instead. Every key the server stores is v2.
+ */
+export const KEY_ITERATIONS = { 1: 210_000, 2: 600_000 } as const
+export type KeyVersion = keyof typeof KEY_ITERATIONS
+/** The version every new key is made at. */
+export const CURRENT_KEY_VERSION: KeyVersion = 2
+
+export const isKeyVersion = (value: unknown): value is KeyVersion => value === 1 || value === 2
+
+/**
+ * What the server answers an app too old to make the version an account
+ * needs (one the service worker has kept since before v2, until "Update now").
+ */
+export const updateTheApp = (toDo: string): string =>
+  `Update the app to ${toDo}. This version is out of date: choose Update now, or close every Open Dam tab and open it again.`
 
 const hex = (bytes: ArrayBuffer | Uint8Array): string =>
   [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('')
@@ -239,14 +265,20 @@ const hex = (bytes: ArrayBuffer | Uint8Array): string =>
 /**
  * The key sent in place of a password. Salted with the username, so the same
  * password gives a different key on every account and on no other site.
+ * `iterations` is for tests only; real keys use the version's own number.
  */
-export async function stretchPassword(username: string, password: string, iterations = STRETCH_ITERATIONS): Promise<string> {
+export async function stretchPassword(
+  username: string,
+  password: string,
+  version: KeyVersion = CURRENT_KEY_VERSION,
+  iterations: number = KEY_ITERATIONS[version],
+): Promise<string> {
   const encoder = new TextEncoder()
   const material = await crypto.subtle.importKey('raw', encoder.encode(password.normalize('NFKC')), 'PBKDF2', false, [
     'deriveBits',
   ])
   const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(`open-dam/v1/${usernameKey(username)}`), iterations },
+    { name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(`open-dam/v${version}/${usernameKey(username)}`), iterations },
     material,
     256,
   )

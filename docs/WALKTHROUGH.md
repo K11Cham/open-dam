@@ -17,6 +17,9 @@ Part 12 has exercises to check your understanding. File references look like
 The latest round of work (November 2026), newest first. Each line points to
 where it is explained.
 
+- **Stronger password keys.** New keys take 600,000 PBKDF2 rounds instead of
+  210,000, and older accounts move up the next time they sign in (Part 6,
+  "The life of a sign-in").
 - **A spoken warning when your clock runs low.** Under 20 seconds, a screen
   reader now hears it once per turn (Part 9, "The board and accessibility").
 - **HSTS** is sent for a year, without `preload` (Part 6, "The server's
@@ -676,39 +679,68 @@ network is back.
 1. **The form.** `AuthPage` (`src/pages/AuthPage.tsx:173`) calls
    `account.signIn`, which is `AccountProvider`'s
    (`src/context/AccountContext.tsx:82`).
-2. **The password never leaves.** `accountApi.signIn`
-   (`src/net/accountApi.ts:60`) first runs `stretchPassword`
-   (`src/net/account.ts:243`): **PBKDF2** with SHA-256, **210,000** rounds,
-   salted with `open-dam/v1/<username>`. That is slow on purpose, a fraction
-   of a second on a phone, and turns the password into a 64-character key.
-   Only the key is sent.
-3. **The door.** `POST /api/auth/signin` (`worker/index.ts:264`) checks the
+2. **Which strength?** `accountApi.signIn` (`src/net/accountApi.ts:93`)
+   asks `proof` (line 65), which first asks the server
+   `GET /api/auth/params?username=` (`worker/index.ts:254`) which **key
+   version** the account is kept at. The answer is `{ version: 1 }` for an
+   account made before November 2026 that has not signed in since, and
+   `{ version: 2 }` for every other account and for a name nobody has. The
+   question counts toward the network's 120 username checks a minute.
+3. **The password never leaves.** `stretchPassword`
+   (`src/net/account.ts:270`) runs **PBKDF2** with SHA-256 at that version:
+   v1 is **210,000** rounds salted with `open-dam/v1/<username>`, v2 is
+   **600,000** rounds salted with `open-dam/v2/<username>`. That is slow on
+   purpose (v2 takes about a second on a mid-range phone) and turns the
+   password into a 64-character key. Only the key is sent, with
+   `keyVersion`. For a v1 account the browser also makes the v2 key at the
+   same time and sends it as `upgradeKey`.
+4. **The door.** `POST /api/auth/signin` (`worker/index.ts:279`) checks the
    network's limit (30 sign-ins or recoveries per 15 minutes), reads the body
    (refused unread if it says it is too big), and calls the `Accounts` object.
-4. **The check.** `AccountStore.signIn` (`worker/accountStore.ts:801`) first
+5. **The check.** `AccountStore.signIn` (`worker/accountStore.ts:931`) first
    asks whether this name is locked for this network: **8** wrong passwords in
    **15 minutes** from one network lock that network out of that account, and
-   **50** from all networks together lock it for everyone. Then it hashes
-   `salt:key` with SHA-256 (`keyHash`, line 499) and compares with the stored
-   hash in constant time. For an unknown name it hashes anyway, so the answer
-   takes as long and does not reveal which names exist.
-5. **The session.** On success `startSession` (line 549) makes a random
+   **50** from all networks together lock it for everyone. Then `checkProof`
+   (line 894) compares the key's version with the account's `key_version`,
+   hashes `salt:key` with SHA-256 (`keyHash`, line 568) and compares with the
+   stored hash in constant time. For an unknown name it hashes anyway, so the
+   answer takes as long and does not reveal which names exist.
+6. **The upgrade.** If the account was v1 and the v1 key matched,
+   `keepUpgrade` (line 918) stores the hash of `upgradeKey` with
+   `key_version = 2`, in the same synchronous block as the check. From then
+   on the account signs in at v2 only. The update only applies over the very
+   key just checked, so if another device upgraded the account first, its
+   key stays.
+7. **The session.** On success `startSession` (line 618) makes a random
    token and keeps only its hash, and the Worker sets the token as the
    `od_session` cookie: `HttpOnly` (page scripts cannot read it),
    `SameSite=Lax` (other sites' requests do not carry it), `Secure` on HTTPS,
    for **60 days**, renewed as it is used.
-6. **Back in the app.** `enter` (`AccountContext.tsx:65`) keeps the user,
+8. **Back in the app.** `enter` (`AccountContext.tsx:65`) keeps the user,
    remembers them for opening offline, and starts `accountSync`, which pulls
    the account's settings, puzzles and games down and pushes this device's
    changes up.
 
 _Why stretch on the device and hash again on the server?_ Stretching is the
 slow part that makes guessing expensive. Doing it in the browser keeps the
-server cheap (no 210,000 rounds per sign-in on a free plan) and means the
+server cheap (no 600,000 rounds per sign-in on a free plan) and means the
 server never sees the password at all. The server's own salted hash of the key
-means a stolen database holds nothing that could be sent as a key. The rounds
-are due to rise to 600,000 (P2-3, a design waiting for the owner), which needs
-versioned salts so older accounts keep signing in.
+means a stolen database holds nothing that could be sent as a key.
+
+_Why versions, and why a separate salt for each?_ Raising the rounds changes
+every key, so an account kept at the old number could not sign in with the
+new one. Each account therefore remembers its version, the browser asks for
+it first, and an account moves up the first time its password is typed, the
+only moment the password is at hand. A different salt per version means a key
+made at one version can never pass for a key at another. Every key written
+anywhere (sign-up, password change, username change, recovery) is v2 and
+must say so (`newKeyVersion: 2`); the server refuses a write without it.
+
+_And an app from before versions?_ An installed copy keeps running until the
+person chooses Update now. It sends a v1 key with no version. For a v1
+account that still works. For a v2 account the server answers 409, "Update
+the app to sign in", and does not count it as a wrong password, so it never
+locks anyone out.
 
 ### The server's defences
 
@@ -1351,7 +1383,8 @@ what a test will show and then run it: being wrong there is the useful part.
 
     Not directly. The table holds `key_hash`, the SHA-256 of a salt and the
     key, and the server wants the key itself. To get a key they would have to
-    guess the password and run 210,000 rounds of PBKDF2 per guess. That
+    guess the password and run 600,000 rounds of PBKDF2 per guess (210,000
+    for an account that has not signed in since key versions came in). That
     slowness is the point of stretching. Sessions are stored as hashes of
     their tokens for the same reason.
 
@@ -1433,7 +1466,8 @@ what a test will show and then run it: being wrong there is the useful part.
 - **Offender** — A piece that could have captured and didn't; it can be called.
 - **Optimistic concurrency** — Writing only if the data is still what you last read or wrote, instead of locking it. The saved-game stamp works this way.
 - **Optimistic update** — Showing a change before the server confirms it. Online moves here are deliberately not optimistic.
-- **PBKDF2** — A key-stretching function: a password hashed many times (210,000 here) so each guess is slow.
+- **Key version** — Which way a password was made into a key: v1 is 210,000 PBKDF2 rounds, v2 is 600,000, each with its own salt. Each account keeps its version in `users.key_version`, and a v1 account becomes v2 at its next sign-in.
+- **PBKDF2** — A key-stretching function: a password hashed many times (600,000 here, 210,000 for older keys) so each guess is slow.
 - **Ply** — One player's move (a "move" in chess terms is two plies).
 - **Property-based test** — A test that checks a rule holds for many generated inputs (here, seeded random games) rather than a few hand-picked ones.
 - **Pure function** — Returns a result based only on its inputs, with no side

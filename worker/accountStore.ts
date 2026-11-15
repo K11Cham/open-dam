@@ -2,17 +2,21 @@ import {
   checkUsername,
   cleanBio,
   cleanDisplayName,
+  CURRENT_KEY_VERSION,
   displayNameProblem,
   isAvatarColour,
   isKey,
+  isKeyVersion,
   normaliseRecoveryCode,
   RECOVERY_ALPHABET,
+  updateTheApp,
   usernameKey,
 } from '../src/net/account'
 import type {
   AvatarColour,
   GamePlayer,
   GameSummary,
+  KeyVersion,
   LeaderboardEntry,
   PoolRating,
   PrivateUser,
@@ -76,6 +80,67 @@ const RECENTLY_USED = 'That username was in use until recently. It is held for i
 
 /** For calls with no request behind them (tests, maintenance): one shared, unnamed network. */
 const NO_CONTEXT = { ip: '', userAgent: '' }
+
+// -- Password keys and their versions (P2-3) ----------------------------------------
+// The browser makes keys at a version (src/net/account.ts: KEY_ITERATIONS). These are
+// the server's half: which version an account is kept at, and what it accepts.
+
+/**
+ * What a browser sends to prove it knows the password: the key and the
+ * version it made it at. For a v1 account a new app also sends `upgradeKey`,
+ * the same password made at v2, which is kept in place of the v1 key once the
+ * v1 key is checked. Apps made before v2 send `key` alone; all their keys are v1.
+ */
+export interface KeyProof {
+  key: unknown
+  keyVersion?: unknown
+  upgradeKey?: unknown
+}
+
+/** A key to keep. It must say it is made at the current version, so an old app cannot quietly store a v1 key again. */
+export interface NewKey {
+  newKey: unknown
+  newKeyVersion?: unknown
+}
+
+interface Proof {
+  key: string
+  version: KeyVersion
+  upgradeKey: string | null
+}
+
+/** The proof in a request, or null if it cannot be read. */
+function readProof(input: KeyProof): Proof | null {
+  if (!isKey(input.key)) return null
+  const version = input.keyVersion === undefined ? 1 : input.keyVersion
+  if (!isKeyVersion(version)) return null
+  if (input.upgradeKey !== undefined && !isKey(input.upgradeKey)) return null
+  return { key: input.key, version, upgradeKey: input.upgradeKey ?? null }
+}
+
+/**
+ * Why a new key cannot be kept, or null. A missing or other version comes
+ * from an app older (or newer) than this server, which is told to update
+ * rather than left with a password it could not sign in with.
+ */
+function newKeyProblem(key: unknown, version: unknown, toDo: string, unreadable: string): Refusal | null {
+  if (version !== CURRENT_KEY_VERSION) return refuse(409, updateTheApp(toDo))
+  if (!isKey(key)) return refuse(400, unreadable)
+  return null
+}
+
+/** Asked v1, but the account was moved to v2 another way by the time the key arrived (or a backup moved it back). Asking again fixes it. */
+const KEY_VERSION_CHANGED = 'Your account changed while you were signing in. Try again.'
+
+/**
+ * The outcome of checking a proof. `outdated` is an app too old to make the
+ * key the account needs, and `changed` a key made at a version the account
+ * is no longer kept at: neither says anything about the password, so neither
+ * counts toward the lockout.
+ */
+type Checked =
+  | { ok: true; row: UserRow; upgrade: { salt: string; hash: string } | null }
+  | { ok: false; why: 'outdated' | 'changed' | 'wrong' }
 
 /** Where a request came from, for throttling and the list of signed-in devices. */
 export interface RequestContext {
@@ -165,6 +230,8 @@ interface UserRow {
   created_at: number
   key_salt: string
   key_hash: string
+  /** The version the stored key was made at (KeyVersion). */
+  key_version: number
   recovery_hash: string
   recovery_issued_at: number
   suspended_at: number | null
@@ -331,6 +398,8 @@ export const MIGRATIONS: string[][] = [
       released_at INTEGER NOT NULL
     )`,
   ],
+  // 7: the version each account's password key is made at (P2-3). Every account before this one is v1.
+  [`ALTER TABLE users ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1`],
 ]
 
 // -- Helpers -------------------------------------------------------------------------
@@ -745,12 +814,19 @@ export class AccountStore {
   // -- Accounts ------------------------------------------------------------------
 
   async signUp(
-    input: { username: unknown; key: unknown; displayName?: unknown },
+    input: { username: unknown; key: unknown; newKeyVersion?: unknown; displayName?: unknown },
     context: RequestContext,
   ): Promise<Result<{ user: PrivateUser; token: string; recoveryCode: string }>> {
+    const keyProblem = newKeyProblem(
+      input.key,
+      input.newKeyVersion,
+      'make an account',
+      'The password could not be read. Reload the page and try again.',
+    )
+    if (keyProblem) return keyProblem
     const nameProblem = checkUsername(input.username)
     if (nameProblem) return refuse(400, nameProblem)
-    if (!isKey(input.key)) return refuse(400, 'The password could not be read. Reload the page and try again.')
+    const key = input.key as string
     const username = (input.username as string).trim()
     const named = input.displayName !== undefined && input.displayName !== ''
     const nameProblemShown = named ? displayNameProblem(input.displayName) : null
@@ -760,7 +836,7 @@ export class AccountStore {
     const salt = this.randomText(24)
     const recoveryCode = this.newRecoveryCode()
     const [keyHash, recoveryHash, ipHash] = await Promise.all([
-      this.keyHash(salt, input.key),
+      this.keyHash(salt, key),
       sha256(normaliseRecoveryCode(recoveryCode)),
       this.ipHash(context.ip),
     ])
@@ -780,8 +856,8 @@ export class AccountStore {
     const id = this.randomText(12)
     const avatars: AvatarColour[] = ['p1', 'p2', 'accent', 'highlight']
     this.sql.exec(
-      `INSERT INTO users (id, username, username_key, display_name, avatar, bio, show_games, created_at, key_salt, key_hash, recovery_hash, signup_ip, recovery_issued_at)
-       VALUES (?, ?, ?, ?, ?, '', 1, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (id, username, username_key, display_name, avatar, bio, show_games, created_at, key_salt, key_hash, key_version, recovery_hash, signup_ip, recovery_issued_at)
+       VALUES (?, ?, ?, ?, ?, '', 1, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       username,
       usernameKey(username),
@@ -790,6 +866,7 @@ export class AccountStore {
       this.now(),
       salt,
       keyHash,
+      CURRENT_KEY_VERSION,
       recoveryHash,
       ipHash,
       this.now(),
@@ -798,56 +875,129 @@ export class AccountStore {
     return { ok: true, user: privateUser(this.userById(id)!), token, recoveryCode }
   }
 
+  /**
+   * The version a sign-in should make its key at: the account's own, or the
+   * current one for a name nobody has, so a free name looks like any account
+   * made since v2. (Whether a name is taken is no secret: sign-up checks it
+   * and profiles are public.)
+   */
+  keyParams(username: unknown): { version: KeyVersion } {
+    const row = typeof username === 'string' ? this.userByName(username) : undefined
+    return { version: row && isKeyVersion(row.key_version) ? row.key_version : CURRENT_KEY_VERSION }
+  }
+
+  /**
+   * Check a proof against an account (or against nothing, for an unknown
+   * name, taking as long), and hash the v2 key to keep if it upgrades one.
+   * The caller stores that upgrade with `keepUpgrade` without awaiting first.
+   */
+  private async checkProof(row: UserRow | undefined, proof: Proof): Promise<Checked> {
+    const stored = row ? row.key_version : CURRENT_KEY_VERSION
+    let candidate = proof.key
+    if (proof.version !== stored) {
+      // Told v1, but another device moved the account to v2 meanwhile: the key this app made to keep is the one to check.
+      if (proof.version < stored && proof.upgradeKey) candidate = proof.upgradeKey
+      else return { ok: false, why: proof.version < stored ? 'outdated' : 'changed' }
+    }
+    const upgrading = row !== undefined && stored < CURRENT_KEY_VERSION && proof.upgradeKey !== null
+    const salt = upgrading ? this.randomText(24) : ''
+    const [hash, upgradeHash] = await Promise.all([
+      // Hash even for an unknown name, so the answer takes as long either way and does not reveal which names exist.
+      this.keyHash(row?.key_salt ?? 'no-such-user', candidate),
+      upgrading ? this.keyHash(salt, proof.upgradeKey!) : null,
+    ])
+    if (!row || !sameText(hash, row.key_hash)) return { ok: false, why: 'wrong' }
+    return { ok: true, row, upgrade: upgradeHash ? { salt, hash: upgradeHash } : null }
+  }
+
+  /**
+   * Keep the v2 key in place of the v1 key just checked. Only over that very
+   * key: if the account changed after it was read (another device upgraded
+   * it, or the password changed), the newer key stays.
+   */
+  private keepUpgrade(row: UserRow, upgrade: { salt: string; hash: string } | null) {
+    if (!upgrade) return
+    this.sql.exec(
+      'UPDATE users SET key_salt = ?, key_hash = ?, key_version = ? WHERE id = ? AND key_hash = ? AND key_version = ?',
+      upgrade.salt,
+      upgrade.hash,
+      CURRENT_KEY_VERSION,
+      row.id,
+      row.key_hash,
+      row.key_version,
+    )
+  }
+
   async signIn(
-    input: { username: unknown; key: unknown },
+    input: { username: unknown } & KeyProof,
     context: RequestContext,
   ): Promise<Result<{ user: PrivateUser; token: string }>> {
-    if (typeof input.username !== 'string' || !isKey(input.key)) return refuse(400, 'Enter your username and password.')
+    const proof = readProof(input)
+    if (typeof input.username !== 'string' || !proof) return refuse(400, 'Enter your username and password.')
     const ipHash = await this.ipHash(context.ip)
     const locked = this.lockedFor(input.username, ipHash)
     if (locked) return this.lockedRefusal(locked)
-    const row = this.userByName(input.username)
-    // Hash even for an unknown name, so the answer takes as long either way and does not reveal which names exist.
-    const hash = await this.keyHash(row?.key_salt ?? 'no-such-user', input.key)
-    if (!row || !sameText(hash, row.key_hash)) {
+    const checked = await this.checkProof(this.userByName(input.username), proof)
+    if (!checked.ok) {
+      if (checked.why === 'outdated') return refuse(409, updateTheApp('sign in'))
+      if (checked.why === 'changed') return refuse(409, KEY_VERSION_CHANGED)
       this.noteFailure(input.username, ipHash)
       return refuse(401, 'That username and password do not match.')
     }
+    const { row } = checked
     if (row.suspended_at) return refuse(403, SUSPENDED)
+    this.keepUpgrade(row, checked.upgrade)
     // This network's failures are forgiven; others' still count toward the backstop.
     this.sql.exec('DELETE FROM failures WHERE username_key = ? AND ip_hash = ?', usernameKey(input.username), ipHash)
     const token = await this.startSession(row.id, context)
     return { ok: true, user: privateUser(row), token }
   }
 
-  /** Check a signed-in person's password again before something that cannot be undone. */
-  private async confirmKey(row: UserRow, key: unknown, context: RequestContext = NO_CONTEXT): Promise<Refusal | null> {
-    if (!isKey(key)) return refuse(400, 'Enter your current password.')
+  /** Check a signed-in person's password again before something that cannot be undone, upgrading a v1 key on the way. */
+  private async confirmKey(row: UserRow, input: KeyProof, context: RequestContext = NO_CONTEXT): Promise<Refusal | null> {
+    const proof = readProof(input)
+    if (!proof) return refuse(400, 'Enter your current password.')
     const ipHash = await this.ipHash(context.ip)
     const locked = this.lockedFor(row.username, ipHash)
     if (locked) return this.lockedRefusal(locked)
-    if (!sameText(await this.keyHash(row.key_salt, key), row.key_hash)) {
+    const checked = await this.checkProof(row, proof)
+    if (!checked.ok) {
+      if (checked.why === 'outdated') return refuse(409, updateTheApp('do this'))
+      if (checked.why === 'changed') return refuse(409, KEY_VERSION_CHANGED)
       this.noteFailure(row.username, ipHash)
       return refuse(403, 'Your current password is not right.')
     }
+    this.keepUpgrade(row, checked.upgrade)
     return null
   }
 
   async changePassword(
     userId: string,
     sessionId: string,
-    key: unknown,
-    newKey: unknown,
+    input: KeyProof & NewKey,
     context: RequestContext = NO_CONTEXT,
   ): Promise<Result<object>> {
+    // Before the current password is checked, so an app that cannot make the new key changes nothing.
+    const keyProblem = newKeyProblem(
+      input.newKey,
+      input.newKeyVersion,
+      'change your password',
+      'The new password could not be read.',
+    )
+    if (keyProblem) return keyProblem
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key, context)
+    const wrong = await this.confirmKey(row, input, context)
     if (wrong) return wrong
-    if (!isKey(newKey)) return refuse(400, 'The new password could not be read.')
     const salt = this.randomText(24)
-    const hash = await this.keyHash(salt, newKey)
-    this.sql.exec('UPDATE users SET key_salt = ?, key_hash = ? WHERE id = ?', salt, hash, userId)
+    const hash = await this.keyHash(salt, input.newKey as string)
+    this.sql.exec(
+      'UPDATE users SET key_salt = ?, key_hash = ?, key_version = ? WHERE id = ?',
+      salt,
+      hash,
+      CURRENT_KEY_VERSION,
+      userId,
+    )
     // Anyone else who knew the old password is signed out everywhere but here.
     this.revokeOtherSessions(userId, sessionId)
     return { ok: true }
@@ -859,21 +1009,20 @@ export class AccountStore {
    */
   async changeUsername(
     userId: string,
-    key: unknown,
-    newUsername: unknown,
-    newKey: unknown,
+    input: KeyProof & NewKey & { newUsername: unknown },
     context: RequestContext = NO_CONTEXT,
   ): Promise<Result<{ user: PrivateUser }>> {
+    const keyProblem = newKeyProblem(input.newKey, input.newKeyVersion, 'change your username', 'The password could not be read.')
+    if (keyProblem) return keyProblem
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key, context)
+    const wrong = await this.confirmKey(row, input, context)
     if (wrong) return wrong
-    const problem = checkUsername(newUsername)
+    const problem = checkUsername(input.newUsername)
     if (problem) return refuse(400, problem)
-    if (!isKey(newKey)) return refuse(400, 'The password could not be read.')
-    const name = (newUsername as string).trim()
+    const name = (input.newUsername as string).trim()
     const salt = this.randomText(24)
-    const hash = await this.keyHash(salt, newKey)
+    const hash = await this.keyHash(salt, input.newKey as string)
     const holder = this.userByName(name)
     if (holder && holder.id !== userId) return refuse(409, 'That username is taken.')
     if (this.heldForSomeoneElse(name, userId)) return refuse(409, RECENTLY_USED)
@@ -882,12 +1031,13 @@ export class AccountStore {
     // Keeping the old display name only if the person had customised it; otherwise it follows the username.
     const displayName = row.display_name === row.username ? name : row.display_name
     this.sql.exec(
-      'UPDATE users SET username = ?, username_key = ?, display_name = ?, key_salt = ?, key_hash = ? WHERE id = ?',
+      'UPDATE users SET username = ?, username_key = ?, display_name = ?, key_salt = ?, key_hash = ?, key_version = ? WHERE id = ?',
       name,
       usernameKey(name),
       displayName,
       salt,
       hash,
+      CURRENT_KEY_VERSION,
       userId,
     )
     return { ok: true, user: privateUser(this.userById(userId)!) }
@@ -895,12 +1045,12 @@ export class AccountStore {
 
   async replaceRecoveryCode(
     userId: string,
-    key: unknown,
+    proof: KeyProof,
     context: RequestContext = NO_CONTEXT,
   ): Promise<Result<{ recoveryCode: string }>> {
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key, context)
+    const wrong = await this.confirmKey(row, proof, context)
     if (wrong) return wrong
     const recoveryCode = this.newRecoveryCode()
     this.sql.exec(
@@ -914,12 +1064,15 @@ export class AccountStore {
 
   /** A forgotten password: the recovery code proves who it is, and is used up. Every other device is signed out. */
   async recover(
-    input: { username: unknown; recoveryCode: unknown; key: unknown },
+    input: { username: unknown; recoveryCode: unknown; key: unknown; newKeyVersion?: unknown },
     context: RequestContext,
   ): Promise<Result<{ user: PrivateUser; token: string; recoveryCode: string }>> {
+    // Before the code is checked, so an app that cannot make the new key does not use the code up.
+    const keyProblem = newKeyProblem(input.key, input.newKeyVersion, 'reset your password', 'The new password could not be read.')
+    if (keyProblem) return keyProblem
     if (typeof input.username !== 'string' || typeof input.recoveryCode !== 'string')
       return refuse(400, 'Enter your username and recovery code.')
-    if (!isKey(input.key)) return refuse(400, 'The new password could not be read.')
+    const key = input.key as string
     const ipHash = await this.ipHash(context.ip)
     const locked = this.lockedFor(input.username, ipHash)
     if (locked) return this.lockedRefusal(locked)
@@ -932,11 +1085,12 @@ export class AccountStore {
     if (row.suspended_at) return refuse(403, SUSPENDED)
     const salt = this.randomText(24)
     const recoveryCode = this.newRecoveryCode()
-    const [hash, nextCodeHash] = await Promise.all([this.keyHash(salt, input.key), sha256(normaliseRecoveryCode(recoveryCode))])
+    const [hash, nextCodeHash] = await Promise.all([this.keyHash(salt, key), sha256(normaliseRecoveryCode(recoveryCode))])
     this.sql.exec(
-      'UPDATE users SET key_salt = ?, key_hash = ?, recovery_hash = ?, recovery_issued_at = ? WHERE id = ?',
+      'UPDATE users SET key_salt = ?, key_hash = ?, key_version = ?, recovery_hash = ?, recovery_issued_at = ? WHERE id = ?',
       salt,
       hash,
+      CURRENT_KEY_VERSION,
       nextCodeHash,
       this.now(),
       row.id,
@@ -987,10 +1141,10 @@ export class AccountStore {
    * Delete an account and everything kept for it. Finished games stay in the
    * opponent's history, with this side shown as a deleted player.
    */
-  async deleteAccount(userId: string, key: unknown, context: RequestContext = NO_CONTEXT): Promise<Result<object>> {
+  async deleteAccount(userId: string, proof: KeyProof, context: RequestContext = NO_CONTEXT): Promise<Result<object>> {
     const row = this.userById(userId)
     if (!row) return refuse(401, 'Sign in again.')
-    const wrong = await this.confirmKey(row, key, context)
+    const wrong = await this.confirmKey(row, proof, context)
     if (wrong) return wrong
     for (const table of ['sessions', 'ratings', 'user_data', 'archive']) {
       this.sql.exec(`DELETE FROM ${table} WHERE user_id = ?`, userId)

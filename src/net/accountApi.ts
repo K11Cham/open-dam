@@ -1,4 +1,4 @@
-import { stretchPassword } from './account'
+import { CURRENT_KEY_VERSION, isKeyVersion, stretchPassword, updateTheApp } from './account'
 import type { GameSummary, LeaderboardEntry, PoolRating, PrivateUser, PublicUser, SessionInfo } from './account'
 
 /**
@@ -52,21 +52,59 @@ export const fetchMe = () => call<{ user: PrivateUser | null }>('GET', '/api/me'
 export const usernameProblem = (name: string) =>
   call<{ problem: string | null }>('GET', `/api/auth/username?name=${encodeURIComponent(name)}`).then((r) => r.problem)
 
+/** The version the server keeps this account's key at (an unknown name answers the current one). */
+export const keyParams = (username: string) =>
+  call<{ version: unknown }>('GET', `/api/auth/params?username=${encodeURIComponent(username)}`)
+
+/**
+ * The current password, as the server checks it: the key at the version the
+ * account is kept at. For an account still at an older version, also the key
+ * at the current one, which the server keeps instead once the old key
+ * matches. Both are made at once, so the upgrade costs one stretch's time.
+ */
+async function proof(username: string, password: string) {
+  const { version } = await keyParams(username)
+  // A version this app does not know comes from a newer server.
+  if (!isKeyVersion(version)) throw new ApiError(409, updateTheApp('sign in'))
+  if (version === CURRENT_KEY_VERSION) return { key: await stretchPassword(username, password), keyVersion: version }
+  const [key, upgradeKey] = await Promise.all([
+    stretchPassword(username, password, version),
+    stretchPassword(username, password, CURRENT_KEY_VERSION),
+  ])
+  return { key, keyVersion: version, upgradeKey }
+}
+
+/** A key to keep, always made at the current version and saying so. */
+const newKeyFor = async (username: string, password: string) => ({
+  newKey: await stretchPassword(username, password),
+  newKeyVersion: CURRENT_KEY_VERSION,
+})
+
 export async function signUp(username: string, password: string, displayName: string) {
   const key = await stretchPassword(username, password)
-  return call<{ user: PrivateUser; recoveryCode: string }>('POST', '/api/auth/signup', { username, key, displayName })
+  return call<{ user: PrivateUser; recoveryCode: string }>('POST', '/api/auth/signup', {
+    username,
+    key,
+    newKeyVersion: CURRENT_KEY_VERSION,
+    displayName,
+  })
 }
 
 export async function signIn(username: string, password: string) {
-  const key = await stretchPassword(username, password)
-  return call<{ user: PrivateUser }>('POST', '/api/auth/signin', { username, key }).then((r) => r.user)
+  const current = await proof(username, password)
+  return call<{ user: PrivateUser }>('POST', '/api/auth/signin', { username, ...current }).then((r) => r.user)
 }
 
 export const signOut = () => call<object>('POST', '/api/auth/signout')
 
 export async function recover(username: string, recoveryCode: string, newPassword: string) {
   const key = await stretchPassword(username, newPassword)
-  return call<{ user: PrivateUser; recoveryCode: string }>('POST', '/api/auth/recover', { username, recoveryCode, key })
+  return call<{ user: PrivateUser; recoveryCode: string }>('POST', '/api/auth/recover', {
+    username,
+    recoveryCode,
+    key,
+    newKeyVersion: CURRENT_KEY_VERSION,
+  })
 }
 
 // -- The signed-in account ---------------------------------------------------------
@@ -82,19 +120,19 @@ export const updateProfile = (changes: ProfileChanges) =>
   call<{ user: PrivateUser }>('PATCH', '/api/me', changes).then((r) => r.user)
 
 export async function changePassword(username: string, current: string, next: string) {
-  const [key, newKey] = await Promise.all([stretchPassword(username, current), stretchPassword(username, next)])
-  await call<object>('POST', '/api/me/password', { key, newKey })
+  const [proven, kept] = await Promise.all([proof(username, current), newKeyFor(username, next)])
+  await call<object>('POST', '/api/me/password', { ...proven, ...kept })
 }
 
 /** The password is salted with the username, so a new name needs the key made for it too. */
 export async function changeUsername(username: string, password: string, newUsername: string) {
-  const [key, newKey] = await Promise.all([stretchPassword(username, password), stretchPassword(newUsername, password)])
-  return call<{ user: PrivateUser }>('POST', '/api/me/username', { key, newUsername, newKey }).then((r) => r.user)
+  const [proven, kept] = await Promise.all([proof(username, password), newKeyFor(newUsername, password)])
+  return call<{ user: PrivateUser }>('POST', '/api/me/username', { ...proven, newUsername, ...kept }).then((r) => r.user)
 }
 
 export async function newRecoveryCode(username: string, password: string) {
-  const key = await stretchPassword(username, password)
-  return call<{ recoveryCode: string }>('POST', '/api/me/recovery-code', { key }).then((r) => r.recoveryCode)
+  const proven = await proof(username, password)
+  return call<{ recoveryCode: string }>('POST', '/api/me/recovery-code', proven).then((r) => r.recoveryCode)
 }
 
 /** Report another player to the site's owner. */
@@ -102,8 +140,7 @@ export const reportPlayer = (username: string, reason: string) =>
   call<object>('POST', `/api/users/${encodeURIComponent(username)}/report`, { reason })
 
 export async function deleteAccount(username: string, password: string) {
-  const key = await stretchPassword(username, password)
-  await call<object>('DELETE', '/api/me', { key })
+  await call<object>('DELETE', '/api/me', await proof(username, password))
 }
 
 export const fetchSessions = () => call<{ sessions: SessionInfo[] }>('GET', '/api/me/sessions').then((r) => r.sessions)
