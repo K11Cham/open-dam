@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { createHash } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
 import { AccountStore, ARCHIVE_LIMIT, MIGRATIONS, describeDevice } from './accountStore'
@@ -16,10 +17,13 @@ function makeStore(start = 1_000_000) {
 
 const KEY = 'a'.repeat(64)
 const OTHER_KEY = 'b'.repeat(64)
+const V2_KEY = 'c'.repeat(64)
+/** What a browser sends to show it knows the password: the key, and the version it was made at. */
+const proof = (key: string, keyVersion = 2) => ({ key, keyVersion })
 const here = { ip: '203.0.113.1', userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0 Safari/537.36' }
 
 async function signUp(store: AccountStore, username: string, key = KEY, ip = here.ip) {
-  const result = await store.signUp({ username, key }, { ...here, ip })
+  const result = await store.signUp({ username, key, newKeyVersion: 2 }, { ...here, ip })
   if (!result.ok) throw new Error(result.error)
   return result
 }
@@ -49,11 +53,17 @@ describe('signing up and in', () => {
   it('treats usernames as one regardless of case, and refuses bad or reserved ones', async () => {
     const { store } = makeStore()
     await signUp(store, 'Kylar')
-    expect(await store.signUp({ username: 'kylar', key: KEY }, here)).toMatchObject({ ok: false, status: 409 })
-    expect(await store.signUp({ username: 'ab', key: KEY }, here)).toMatchObject({ ok: false, status: 400 })
-    expect(await store.signUp({ username: 'has space', key: KEY }, here)).toMatchObject({ ok: false, status: 400 })
-    expect(await store.signUp({ username: 'Serin', key: KEY }, here)).toMatchObject({ ok: false, status: 400 })
-    expect(await store.signUp({ username: 'fine_name', key: 'not a key' }, here)).toMatchObject({ ok: false, status: 400 })
+    expect(await store.signUp({ username: 'kylar', key: KEY, newKeyVersion: 2 }, here)).toMatchObject({ ok: false, status: 409 })
+    expect(await store.signUp({ username: 'ab', key: KEY, newKeyVersion: 2 }, here)).toMatchObject({ ok: false, status: 400 })
+    expect(await store.signUp({ username: 'has space', key: KEY, newKeyVersion: 2 }, here)).toMatchObject({
+      ok: false,
+      status: 400,
+    })
+    expect(await store.signUp({ username: 'Serin', key: KEY, newKeyVersion: 2 }, here)).toMatchObject({ ok: false, status: 400 })
+    expect(await store.signUp({ username: 'fine_name', key: 'not a key', newKeyVersion: 2 }, here)).toMatchObject({
+      ok: false,
+      status: 400,
+    })
     expect(store.usernameProblem('KYLAR')).toBe('That username is taken.')
     expect(store.usernameProblem('someone')).toBeNull()
   })
@@ -61,30 +71,33 @@ describe('signing up and in', () => {
   it('signs in with the right key only, under any case of the name', async () => {
     const { store } = makeStore()
     await signUp(store, 'Kylar')
-    expect(await store.signIn({ username: 'KYLAR', key: KEY }, here)).toMatchObject({ ok: true })
-    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY }, here)).toMatchObject({ ok: false, status: 401 })
-    expect(await store.signIn({ username: 'nobody', key: KEY }, here)).toMatchObject({ ok: false, status: 401 })
+    expect(await store.signIn({ username: 'KYLAR', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 2 }, here)).toMatchObject({
+      ok: false,
+      status: 401,
+    })
+    expect(await store.signIn({ username: 'nobody', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: false, status: 401 })
   })
 
   it('locks a username after repeated wrong passwords, then lets it try again', async () => {
     const { store, clock } = makeStore()
     await signUp(store, 'Kylar')
-    for (let i = 0; i < 8; i++) await store.signIn({ username: 'Kylar', key: OTHER_KEY }, here)
-    const locked = await store.signIn({ username: 'Kylar', key: KEY }, here)
+    for (let i = 0; i < 8; i++) await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 2 }, here)
+    const locked = await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)
     expect(locked).toMatchObject({ ok: false, status: 429 })
     clock.t += 16 * 60 * 1000
-    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
   })
 
   it('locks only the network that guessed wrong: the player can still sign in from their own', async () => {
     const { store } = makeStore()
     await signUp(store, 'Kylar')
     const attacker = { ...here, ip: '198.51.100.66' }
-    for (let i = 0; i < 8; i++) await store.signIn({ username: 'Kylar', key: OTHER_KEY }, attacker)
-    expect(await store.signIn({ username: 'Kylar', key: KEY }, attacker)).toMatchObject({ ok: false, status: 429 })
-    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    for (let i = 0; i < 8; i++) await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 2 }, attacker)
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, attacker)).toMatchObject({ ok: false, status: 429 })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
     // The owner's success does not clear the attacker's lock.
-    expect(await store.signIn({ username: 'Kylar', key: KEY }, attacker)).toMatchObject({ ok: false, status: 429 })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, attacker)).toMatchObject({ ok: false, status: 429 })
   })
 
   it('still locks a username when guesses come from many networks', async () => {
@@ -92,35 +105,41 @@ describe('signing up and in', () => {
     await signUp(store, 'Kylar')
     // 50 wrong guesses, 5 from each of 10 networks: no network reaches its own limit.
     for (let n = 0; n < 10; n++) {
-      for (let i = 0; i < 5; i++) await store.signIn({ username: 'Kylar', key: OTHER_KEY }, { ...here, ip: `198.51.100.${n}` })
+      for (let i = 0; i < 5; i++)
+        await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 2 }, { ...here, ip: `198.51.100.${n}` })
     }
-    const locked = await store.signIn({ username: 'Kylar', key: KEY }, here)
+    const locked = await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)
     expect(locked).toMatchObject({ ok: false, status: 429 })
     expect(locked.ok ? '' : locked.error).toMatch(/Try again in 15 minutes/)
     clock.t += 16 * 60 * 1000
-    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
   })
 
   it('counts wrong current passwords the same way when a signed-in person confirms one', async () => {
     const { store } = makeStore()
     const { user } = await signUp(store, 'Kylar')
     const thief = { ...here, ip: '198.51.100.77' }
-    for (let i = 0; i < 8; i++) await store.replaceRecoveryCode(user.id, OTHER_KEY, thief)
-    expect(await store.replaceRecoveryCode(user.id, KEY, thief)).toMatchObject({ ok: false, status: 429 })
-    expect(await store.replaceRecoveryCode(user.id, KEY, here)).toMatchObject({ ok: true })
+    for (let i = 0; i < 8; i++) await store.replaceRecoveryCode(user.id, proof(OTHER_KEY), thief)
+    expect(await store.replaceRecoveryCode(user.id, proof(KEY), thief)).toMatchObject({ ok: false, status: 429 })
+    expect(await store.replaceRecoveryCode(user.id, proof(KEY), here)).toMatchObject({ ok: true })
   })
 
   it('limits new accounts from one network', async () => {
     const { store } = makeStore()
     for (let i = 0; i < 5; i++) await signUp(store, `player${i}`)
-    expect(await store.signUp({ username: 'player9', key: KEY }, here)).toMatchObject({ ok: false, status: 429 })
-    expect(await store.signUp({ username: 'player9', key: KEY }, { ...here, ip: '198.51.100.7' })).toMatchObject({ ok: true })
+    expect(await store.signUp({ username: 'player9', key: KEY, newKeyVersion: 2 }, here)).toMatchObject({
+      ok: false,
+      status: 429,
+    })
+    expect(
+      await store.signUp({ username: 'player9', key: KEY, newKeyVersion: 2 }, { ...here, ip: '198.51.100.7' }),
+    ).toMatchObject({ ok: true })
   })
 
   it('ends sessions on sign-out and when they expire', async () => {
     const { store, clock } = makeStore()
     const { token } = await signUp(store, 'Kylar')
-    const second = await store.signIn({ username: 'Kylar', key: KEY }, here)
+    const second = await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)
     if (!second.ok) throw new Error(second.error)
     await store.signOut(token)
     expect(await store.authenticate(token)).toBeNull()
@@ -134,7 +153,7 @@ describe('signing up and in', () => {
     const { store } = makeStore()
     const first = await signUp(store, 'Kylar')
     const phone = await store.signIn(
-      { username: 'Kylar', key: KEY },
+      { username: 'Kylar', key: KEY, keyVersion: 2 },
       { ip: here.ip, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0) Version/18.0 Mobile Safari/604.1' },
     )
     if (!phone.ok) throw new Error(phone.error)
@@ -153,31 +172,48 @@ describe('changing what proves who you are', () => {
   it('changes the password and signs out every other device', async () => {
     const { store } = makeStore()
     const first = await signUp(store, 'Kylar')
-    const other = await store.signIn({ username: 'Kylar', key: KEY }, here)
+    const other = await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)
     if (!other.ok) throw new Error(other.error)
     const session = (await store.authenticate(first.token))!
-    expect(await store.changePassword(first.user.id, session.sessionId, OTHER_KEY, 'c'.repeat(64))).toMatchObject({
+    expect(
+      await store.changePassword(first.user.id, session.sessionId, {
+        ...proof(OTHER_KEY),
+        newKey: 'c'.repeat(64),
+        newKeyVersion: 2,
+      }),
+    ).toMatchObject({
       ok: false,
       status: 403,
     })
-    expect(await store.changePassword(first.user.id, session.sessionId, KEY, OTHER_KEY)).toMatchObject({ ok: true })
+    expect(
+      await store.changePassword(first.user.id, session.sessionId, { ...proof(KEY), newKey: OTHER_KEY, newKeyVersion: 2 }),
+    ).toMatchObject({ ok: true })
     expect(await store.authenticate(other.token)).toBeNull()
     expect(await store.authenticate(first.token)).not.toBeNull()
-    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: false })
-    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: false })
+    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
   })
 
   it('renames an account; the display name follows unless it was customised', async () => {
     const { store } = makeStore()
     const { user } = await signUp(store, 'Kylar')
     await signUp(store, 'taken', KEY, '198.51.100.1')
-    expect(await store.changeUsername(user.id, KEY, 'Taken', OTHER_KEY)).toMatchObject({ ok: false, status: 409 })
-    const renamed = await store.changeUsername(user.id, KEY, 'K11', OTHER_KEY)
+    expect(
+      await store.changeUsername(user.id, { ...proof(KEY), newUsername: 'Taken', newKey: OTHER_KEY, newKeyVersion: 2 }),
+    ).toMatchObject({ ok: false, status: 409 })
+    const renamed = await store.changeUsername(user.id, {
+      ...proof(KEY),
+      newUsername: 'K11',
+      newKey: OTHER_KEY,
+      newKeyVersion: 2,
+    })
     expect(renamed).toMatchObject({ ok: true, user: { username: 'K11', displayName: 'K11' } })
-    expect(await store.signIn({ username: 'K11', key: OTHER_KEY }, here)).toMatchObject({ ok: true })
-    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: false })
+    expect(await store.signIn({ username: 'K11', key: OTHER_KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: false })
     store.updateProfile(user.id, { displayName: 'Kylar C' })
-    expect(await store.changeUsername(user.id, OTHER_KEY, 'k12', KEY)).toMatchObject({ user: { displayName: 'Kylar C' } })
+    expect(
+      await store.changeUsername(user.id, { ...proof(OTHER_KEY), newUsername: 'k12', newKey: KEY, newKeyVersion: 2 }),
+    ).toMatchObject({ user: { displayName: 'Kylar C' } })
   })
 
   it('remembers when the current recovery code was made', async () => {
@@ -185,7 +221,7 @@ describe('changing what proves who you are', () => {
     const { user } = await signUp(store, 'Kylar')
     expect(user.recoveryIssuedAt).toBe(clock.t)
     clock.t += 60_000
-    await store.replaceRecoveryCode(user.id, KEY)
+    await store.replaceRecoveryCode(user.id, proof(KEY))
     expect(store.me(user.id)?.recoveryIssuedAt).toBe(clock.t)
   })
 
@@ -193,15 +229,20 @@ describe('changing what proves who you are', () => {
     const { store } = makeStore()
     const { recoveryCode, token } = await signUp(store, 'Kylar')
     const typed = recoveryCode.toLowerCase().replace(/-/g, ' ')
-    const reset = await store.recover({ username: 'kylar', recoveryCode: typed, key: OTHER_KEY }, here)
+    const reset = await store.recover({ username: 'kylar', recoveryCode: typed, key: OTHER_KEY, newKeyVersion: 2 }, here)
     if (!reset.ok) throw new Error(reset.error)
     expect(reset.recoveryCode).not.toBe(recoveryCode)
     expect(await store.authenticate(token)).toBeNull()
-    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY }, here)).toMatchObject({ ok: true })
-    expect(await store.recover({ username: 'Kylar', recoveryCode, key: KEY }, here)).toMatchObject({ ok: false, status: 401 })
-    const replaced = await store.replaceRecoveryCode(reset.user.id, OTHER_KEY)
+    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
+    expect(await store.recover({ username: 'Kylar', recoveryCode, key: KEY, newKeyVersion: 2 }, here)).toMatchObject({
+      ok: false,
+      status: 401,
+    })
+    const replaced = await store.replaceRecoveryCode(reset.user.id, proof(OTHER_KEY))
     if (!replaced.ok) throw new Error(replaced.error)
-    expect(await store.recover({ username: 'Kylar', recoveryCode: reset.recoveryCode, key: KEY }, here)).toMatchObject({
+    expect(
+      await store.recover({ username: 'Kylar', recoveryCode: reset.recoveryCode, key: KEY, newKeyVersion: 2 }, here),
+    ).toMatchObject({
       ok: false,
     })
   })
@@ -212,8 +253,8 @@ describe('changing what proves who you are', () => {
     const b = await signUp(store, 'bravo')
     store.putData(a.user.id, { theme: { value: 'sand', updatedAt: 1 } })
     store.recordGame(finished({ id: 'g1', players: { player1: a.user.id, player2: b.user.id } }))
-    expect(await store.deleteAccount(a.user.id, OTHER_KEY)).toMatchObject({ ok: false, status: 403 })
-    expect(await store.deleteAccount(a.user.id, KEY)).toMatchObject({ ok: true })
+    expect(await store.deleteAccount(a.user.id, proof(OTHER_KEY))).toMatchObject({ ok: false, status: 403 })
+    expect(await store.deleteAccount(a.user.id, proof(KEY))).toMatchObject({ ok: true })
     expect(await store.authenticate(a.token)).toBeNull()
     expect(store.me(a.user.id)).toBeNull()
     expect(store.data(a.user.id)).toEqual({})
@@ -375,14 +416,202 @@ describe('helpers', () => {
   })
 
   it('stretches a password into a key salted with the lower-cased username', async () => {
-    const one = await stretchPassword('Kylar', 'correct horse', 1000)
+    const one = await stretchPassword('Kylar', 'correct horse', 1, 1000)
     expect(one).toMatch(/^[0-9a-f]{64}$/)
-    expect(await stretchPassword('kylar', 'correct horse', 1000)).toBe(one)
-    expect(await stretchPassword('other', 'correct horse', 1000)).not.toBe(one)
+    expect(await stretchPassword('kylar', 'correct horse', 1, 1000)).toBe(one)
+    expect(await stretchPassword('other', 'correct horse', 1, 1000)).not.toBe(one)
+    // Each version has its own salt, so even at the same rounds the keys differ.
+    expect(await stretchPassword('kylar', 'correct horse', 2, 1000)).not.toBe(one)
+  })
+
+  it('makes the same v1 key as every account made before v2 holds, at the full 210,000 rounds', async () => {
+    // Worked out with Node's own PBKDF2 from the v1 recipe. If this changes, every v1 account is locked out.
+    expect(await stretchPassword('Kylar', 'correct horse', 1)).toBe(
+      '467ac4b5704078690e33b390589c3b96f1dfbc222634b2eceabe48a312d13506',
+    )
+  })
+
+  it('makes v2 keys by default: salt open-dam/v2/<name>, 600,000 rounds', async () => {
+    // Also worked out with Node's PBKDF2, so the recipe is pinned before any v2 account exists.
+    expect(await stretchPassword('Kylar', 'correct horse')).toBe(
+      '2bf93f564afb96726417c15f3600513aae2f203cedde08ad03e11f91b50dd523',
+    )
+  })
+})
+
+describe('password keys at two strengths (v1: 210,000 rounds, v2: 600,000)', () => {
+  /** An account as it was before v2: made the usual way, then marked v1. The stored hash does not depend on the version. */
+  async function v1Account(name: string, key = KEY) {
+    const made = makeStore()
+    const result = await signUp(made.store, name, key)
+    made.db.prepare('UPDATE users SET key_version = 1 WHERE id = ?').run(result.user.id)
+    return { ...made, ...result }
+  }
+  const versionOf = (db: DatabaseSync, id: string) =>
+    (db.prepare('SELECT key_version FROM users WHERE id = ?').get(id) as { key_version: number }).key_version
+
+  it('says which version to stretch at: the account’s own, or v2 for a name nobody has', async () => {
+    const { store, db, user } = await v1Account('Kylar')
+    expect(store.keyParams('kylar')).toEqual({ version: 1 })
+    expect(store.keyParams('nobody')).toEqual({ version: 2 })
+    expect(store.keyParams(42)).toEqual({ version: 2 })
+    const fresh = await signUp(store, 'Fresh', KEY, '198.51.100.2')
+    expect(store.keyParams('Fresh')).toEqual({ version: 2 })
+    expect(versionOf(db, fresh.user.id)).toBe(2)
+    expect(versionOf(db, user.id)).toBe(1)
+  })
+
+  it('a v1 account signs in once with both keys and is v2 afterwards: then the old key fails and the new one works', async () => {
+    const { store, db, user } = await v1Account('Kylar')
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 1, upgradeKey: V2_KEY }, here)).toMatchObject({
+      ok: true,
+    })
+    expect(versionOf(db, user.id)).toBe(2)
+    expect(store.keyParams('Kylar')).toEqual({ version: 2 })
+    expect(await store.signIn({ username: 'Kylar', ...proof(KEY) }, here)).toMatchObject({ ok: false, status: 401 })
+    expect(await store.signIn({ username: 'Kylar', ...proof(V2_KEY) }, here)).toMatchObject({ ok: true })
+  })
+
+  it('a wrong v1 key upgrades nothing', async () => {
+    const { store, db, user } = await v1Account('Kylar')
+    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 1, upgradeKey: V2_KEY }, here)).toMatchObject({
+      ok: false,
+      status: 401,
+    })
+    expect(versionOf(db, user.id)).toBe(1)
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 1 }, here)).toMatchObject({ ok: true })
+  })
+
+  it('a sign-in that asked before another device upgraded the account still lands, on the v2 key', async () => {
+    const { store } = await v1Account('Kylar')
+    // Both devices were told v1; the phone signs in first and upgrades the account.
+    await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 1, upgradeKey: V2_KEY }, here)
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 1, upgradeKey: V2_KEY }, here)).toMatchObject({
+      ok: true,
+    })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 1, upgradeKey: OTHER_KEY }, here)).toMatchObject({
+      ok: false,
+      status: 401,
+    })
+  })
+
+  it('an old app, sending only a v1 key, still signs in to a v1 account, which stays v1', async () => {
+    const { store, db, user } = await v1Account('Kylar')
+    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Kylar', key: OTHER_KEY }, here)).toMatchObject({ ok: false, status: 401 })
+    expect(versionOf(db, user.id)).toBe(1)
+    expect(await store.replaceRecoveryCode(user.id, { key: KEY })).toMatchObject({ ok: true })
+  })
+
+  it('an old app is told to update for a v2 account, and that is not counted as a wrong password', async () => {
+    const { store } = makeStore()
+    const { user } = await signUp(store, 'Kylar')
+    for (let i = 0; i < 10; i++) {
+      const old = await store.signIn({ username: 'Kylar', key: KEY }, here)
+      expect(old).toMatchObject({ ok: false, status: 409 })
+      expect(old.ok ? '' : old.error).toMatch(/^Update the app to sign in/)
+    }
+    expect(await store.replaceRecoveryCode(user.id, { key: KEY })).toMatchObject({ ok: false, status: 409 })
+    expect(await store.signIn({ username: 'Kylar', ...proof(KEY) }, here)).toMatchObject({ ok: true })
+  })
+
+  it('upgrades a v1 account when a signed-in player confirms the password', async () => {
+    const { store, db, user } = await v1Account('Kylar')
+    expect(await store.replaceRecoveryCode(user.id, { key: KEY, keyVersion: 1, upgradeKey: V2_KEY })).toMatchObject({ ok: true })
+    expect(versionOf(db, user.id)).toBe(2)
+    expect(await store.signIn({ username: 'Kylar', ...proof(V2_KEY) }, here)).toMatchObject({ ok: true })
+  })
+
+  it('refuses to store a key without a version, or at a version other than v2', async () => {
+    const { store, db, user, recoveryCode } = await v1Account('Kylar')
+    for (const newKeyVersion of [undefined, 1, 3, '2']) {
+      const made = await store.signUp({ username: 'Amadou', key: KEY, newKeyVersion }, { ...here, ip: '198.51.100.3' })
+      expect(made).toMatchObject({ ok: false, status: 409 })
+      expect(made.ok ? '' : made.error).toMatch(/^Update the app/)
+      expect(
+        await store.changePassword(user.id, '', { key: KEY, keyVersion: 1, newKey: OTHER_KEY, newKeyVersion }),
+      ).toMatchObject({ ok: false, status: 409 })
+      expect(
+        await store.changeUsername(user.id, { key: KEY, keyVersion: 1, newUsername: 'K11', newKey: OTHER_KEY, newKeyVersion }),
+      ).toMatchObject({ ok: false, status: 409 })
+      expect(await store.recover({ username: 'Kylar', recoveryCode, key: OTHER_KEY, newKeyVersion }, here)).toMatchObject({
+        ok: false,
+        status: 409,
+      })
+    }
+    // Nothing was written: no new account, the same password, name and version, and the recovery code still unused.
+    expect(store.usernameProblem('Amadou')).toBeNull()
+    expect(store.me(user.id)?.username).toBe('Kylar')
+    expect(versionOf(db, user.id)).toBe(1)
+    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    expect(await store.recover({ username: 'Kylar', recoveryCode, key: OTHER_KEY, newKeyVersion: 2 }, here)).toMatchObject({
+      ok: true,
+    })
+    expect(await store.signIn({ username: 'Kylar', key: KEY, keyVersion: 3 }, here)).toMatchObject({ ok: false, status: 400 })
+  })
+
+  it('every new key is stored as v2, even on a v1 account', async () => {
+    for (const change of ['password', 'username', 'recovery'] as const) {
+      const { store, db, user, recoveryCode } = await v1Account('Kylar')
+      const done =
+        change === 'password'
+          ? await store.changePassword(user.id, '', { key: KEY, keyVersion: 1, newKey: V2_KEY, newKeyVersion: 2 })
+          : change === 'username'
+            ? await store.changeUsername(user.id, {
+                key: KEY,
+                keyVersion: 1,
+                newUsername: 'K11',
+                newKey: V2_KEY,
+                newKeyVersion: 2,
+              })
+            : await store.recover({ username: 'Kylar', recoveryCode, key: V2_KEY, newKeyVersion: 2 }, here)
+      expect(done).toMatchObject({ ok: true })
+      expect(versionOf(db, user.id)).toBe(2)
+      const name = change === 'username' ? 'K11' : 'Kylar'
+      expect(await store.signIn({ username: name, ...proof(V2_KEY) }, here)).toMatchObject({ ok: true })
+      expect(await store.signIn({ username: name, key: KEY }, here)).toMatchObject({ ok: false, status: 409 })
+    }
   })
 })
 
 describe('schema migrations', () => {
+  it('moves a database from before key versions to them: every account is v1 and still signs in', async () => {
+    const db = new DatabaseSync(':memory:')
+    const sql: Sql = { exec: (query, ...bindings) => db.prepare(query).all(...bindings) as never }
+    // The six migrations deployed before key versions, and the count they left.
+    const BEFORE_KEY_VERSIONS = 6
+    for (const migration of MIGRATIONS.slice(0, BEFORE_KEY_VERSIONS)) for (const statement of migration) sql.exec(statement)
+    sql.exec('CREATE TABLE schema_version (id INTEGER PRIMARY KEY CHECK (id = 1), version INTEGER NOT NULL)')
+    sql.exec('INSERT INTO schema_version (id, version) VALUES (1, ?)', BEFORE_KEY_VERSIONS)
+    // An account as the deployed store wrote it: the salted SHA-256 of a v1 key.
+    const hash = createHash('sha256').update(`salt:${KEY}`).digest('hex')
+    for (const [id, name] of [
+      ['u1', 'Kylar'],
+      ['u2', 'Amadou'],
+    ])
+      sql.exec(
+        `INSERT INTO users (id, username, username_key, display_name, avatar, created_at, key_salt, key_hash, recovery_hash)
+         VALUES (?, ?, ?, ?, 'p1', 1, 'salt', ?, 'r')`,
+        id,
+        name,
+        name.toLowerCase(),
+        name,
+        hash,
+      )
+
+    const store = new AccountStore(sql)
+    expect(store.schemaVersion).toBe(MIGRATIONS.length)
+    expect(db.prepare('SELECT key_version FROM users ORDER BY id').all()).toEqual([{ key_version: 1 }, { key_version: 1 }])
+    expect(store.keyParams('Kylar')).toEqual({ version: 1 })
+    // An old app signs in as before; a new one signs in and upgrades.
+    expect(await store.signIn({ username: 'Kylar', key: KEY }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Amadou', key: KEY, keyVersion: 1, upgradeKey: V2_KEY }, here)).toMatchObject({
+      ok: true,
+    })
+    expect(store.keyParams('Kylar')).toEqual({ version: 1 })
+    expect(store.keyParams('Amadou')).toEqual({ version: 2 })
+  })
+
   it('brings a new database to the latest version', () => {
     const { store } = makeStore()
     expect(store.schemaVersion).toBe(MIGRATIONS.length)
@@ -424,7 +653,7 @@ describe('housekeeping', () => {
   it('clears expired sessions, old failures and request counts, and day-old sign-up addresses', async () => {
     const { store, clock, db } = makeStore()
     const { token } = await signUp(store, 'Kylar')
-    await store.signIn({ username: 'Kylar', key: OTHER_KEY }, here)
+    await store.signIn({ username: 'Kylar', key: OTHER_KEY, keyVersion: 2 }, here)
     await store.throttle('matches', here.ip, 30, 60 * 60 * 1000)
     const rows = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n
     const signupIp = () => (db.prepare('SELECT signup_ip FROM users').get() as { signup_ip: string }).signup_ip
@@ -450,7 +679,7 @@ describe('housekeeping', () => {
   it('hashes addresses with the secret key when there is one, and warns once when there is not', async () => {
     const keyed = new DatabaseSync(':memory:')
     const keyedStore = new AccountStore({ exec: (q, ...b) => keyed.prepare(q).all(...b) as never }, { ipSecret: 's'.repeat(32) })
-    await keyedStore.signUp({ username: 'Kylar', key: KEY }, here)
+    await keyedStore.signUp({ username: 'Kylar', key: KEY, newKeyVersion: 2 }, here)
     const keyedHash = (keyed.prepare('SELECT signup_ip FROM users').get() as { signup_ip: string }).signup_ip
     expect(keyedHash).toMatch(/^k:[0-9a-f]{64}$/)
 
@@ -460,8 +689,8 @@ describe('housekeeping', () => {
       { exec: (q, ...b) => plain.prepare(q).all(...b) as never },
       { log: (line) => warnings.push(line) },
     )
-    await plainStore.signUp({ username: 'Kylar', key: KEY }, here)
-    await plainStore.signUp({ username: 'Other', key: KEY }, here)
+    await plainStore.signUp({ username: 'Kylar', key: KEY, newKeyVersion: 2 }, here)
+    await plainStore.signUp({ username: 'Other', key: KEY, newKeyVersion: 2 }, here)
     const plainHash = (plain.prepare('SELECT signup_ip FROM users LIMIT 1').get() as { signup_ip: string }).signup_ip
     expect(plainHash).toMatch(/^[0-9a-f]{64}$/)
     expect(plainHash).not.toBe(keyedHash.slice(2))
@@ -479,7 +708,9 @@ describe('moderation', () => {
         error: 'That display name is reserved.',
       })
     }
-    expect(await store.signUp({ username: 'amadou', key: KEY, displayName: 'Serin' }, { ...here, ip: '1.2.3.4' })).toMatchObject({
+    expect(
+      await store.signUp({ username: 'amadou', key: KEY, newKeyVersion: 2, displayName: 'Serin' }, { ...here, ip: '1.2.3.4' }),
+    ).toMatchObject({
       ok: false,
       status: 400,
     })
@@ -529,14 +760,14 @@ describe('moderation', () => {
 
     expect(store.suspendUser('troll', true)).toBe(true)
     expect(await store.authenticate(b.token)).toBeNull()
-    expect(await store.signIn({ username: 'Troll', key: KEY }, here)).toMatchObject({ ok: false, status: 403 })
+    expect(await store.signIn({ username: 'Troll', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: false, status: 403 })
     expect(store.profile('Troll', null)).toBeNull()
     expect(store.leaderboard('5x5:untimed')).toMatchObject({ total: 1, entries: [expect.objectContaining({ rank: 1 })] })
     expect(store.pools([])).toEqual([{ pool: '5x5:untimed', players: 1 }])
     expect(store.reports()).toEqual([])
 
     expect(store.suspendUser('troll', false)).toBe(true)
-    expect(await store.signIn({ username: 'Troll', key: KEY }, here)).toMatchObject({ ok: true })
+    expect(await store.signIn({ username: 'Troll', key: KEY, keyVersion: 2 }, here)).toMatchObject({ ok: true })
     expect(store.leaderboard('5x5:untimed').total).toBe(2)
   })
 })
@@ -545,21 +776,27 @@ describe('usernames given up', () => {
   it('are held for 30 days for the person who had them, and nobody else', async () => {
     const { store, clock } = makeStore()
     const { user } = await signUp(store, 'Kylar')
-    expect(await store.changeUsername(user.id, KEY, 'kylar_c', OTHER_KEY)).toMatchObject({ ok: true })
+    expect(
+      await store.changeUsername(user.id, { ...proof(KEY), newUsername: 'kylar_c', newKey: OTHER_KEY, newKeyVersion: 2 }),
+    ).toMatchObject({ ok: true })
     expect(store.usernameProblem('Kylar')).toMatch(/in use until recently/)
-    expect(await store.signUp({ username: 'kylar', key: KEY }, { ...here, ip: '1.2.3.4' })).toMatchObject({
+    expect(await store.signUp({ username: 'kylar', key: KEY, newKeyVersion: 2 }, { ...here, ip: '1.2.3.4' })).toMatchObject({
       ok: false,
       status: 409,
     })
     // The person who gave it up may take it back.
-    expect(await store.changeUsername(user.id, OTHER_KEY, 'Kylar', KEY)).toMatchObject({ ok: true })
+    expect(
+      await store.changeUsername(user.id, { ...proof(OTHER_KEY), newUsername: 'Kylar', newKey: KEY, newKeyVersion: 2 }),
+    ).toMatchObject({ ok: true })
 
     // Given up again, and 30 days on, it is free for anyone.
-    await store.changeUsername(user.id, KEY, 'kylar_c', OTHER_KEY)
+    await store.changeUsername(user.id, { ...proof(KEY), newUsername: 'kylar_c', newKey: OTHER_KEY, newKeyVersion: 2 })
     clock.t += 30 * 24 * 60 * 60 * 1000 + 1
     expect(store.usernameProblem('Kylar')).toBeNull()
     store.housekeeping()
-    expect(await store.signUp({ username: 'Kylar', key: KEY }, { ...here, ip: '1.2.3.5' })).toMatchObject({ ok: true })
+    expect(await store.signUp({ username: 'Kylar', key: KEY, newKeyVersion: 2 }, { ...here, ip: '1.2.3.5' })).toMatchObject({
+      ok: true,
+    })
   })
 
   it('are held for nobody when the site’s owner renamed the account', async () => {

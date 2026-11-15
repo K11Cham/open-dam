@@ -88,8 +88,8 @@ async function setup(options: { failures?: number; timed?: boolean } = {}) {
   const sql: Sql = { exec: (query, ...bindings) => db.prepare(query).all(...bindings) as never }
   const accounts = new AccountStore(sql, { now: () => clock.t })
   const here = { ip: '203.0.113.9', userAgent: '' }
-  const a = await accounts.signUp({ username: 'alice', key: KEY }, here)
-  const b = await accounts.signUp({ username: 'bob', key: KEY }, here)
+  const a = await accounts.signUp({ username: 'alice', key: KEY, newKeyVersion: 2 }, here)
+  const b = await accounts.signUp({ username: 'bob', key: KEY, newKeyVersion: 2 }, here)
   if (!a.ok || !b.ok) throw new Error('sign-up failed')
   const people = { player1: { ...alice, id: a.user.id }, player2: { ...bob, id: b.user.id } }
 
@@ -394,8 +394,8 @@ describe('a report cut off by a restart', () => {
     const sql: Sql = { exec: (query, ...bindings) => db.prepare(query).all(...bindings) as never }
     const accounts = new AccountStore(sql, { now: () => clock.t, log: () => {} })
     const here = { ip: '203.0.113.9', userAgent: '' }
-    const a = await accounts.signUp({ username: 'alice', key: KEY }, here)
-    const b = await accounts.signUp({ username: 'bob', key: KEY }, here)
+    const a = await accounts.signUp({ username: 'alice', key: KEY, newKeyVersion: 2 }, here)
+    const b = await accounts.signUp({ username: 'bob', key: KEY, newKeyVersion: 2 }, here)
     if (!a.ok || !b.ok) throw new Error('sign-up failed')
     const people = { player1: { ...alice, id: a.user.id }, player2: { ...bob, id: b.user.id } }
 

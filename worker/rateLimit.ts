@@ -32,7 +32,7 @@ export const LIMITS: Record<LimitGroup, { limit: number; windowMs: number }> = {
   matches: { limit: 30, windowMs: 60 * 60 * 1000 },
   // Sign-in and recovery together: guessing passwords or codes across many usernames.
   signin: { limit: 30, windowMs: 15 * 60 * 1000 },
-  // The sign-up form checks a name as it is typed.
+  // The sign-up form checks a name as it is typed, and every sign-in first asks which key version to make (/api/auth/params).
   username: { limit: 120, windowMs: 60 * 1000 },
   reports: { limit: 10, windowMs: 60 * 60 * 1000 },
   'client-errors': { limit: 20, windowMs: 60 * 60 * 1000 },

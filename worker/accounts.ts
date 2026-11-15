@@ -94,6 +94,9 @@ export class Accounts extends DurableObject<Env> {
   revokeOtherSessions(...args: Parameters<AccountStore['revokeOtherSessions']>) {
     return this.store.revokeOtherSessions(...args)
   }
+  keyParams(...args: Parameters<AccountStore['keyParams']>) {
+    return this.store.keyParams(...args)
+  }
   signUp(...args: Parameters<AccountStore['signUp']>) {
     return this.store.signUp(...args)
   }

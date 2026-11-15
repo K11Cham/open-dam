@@ -51,6 +51,8 @@ interface FakeServer {
   calls: Array<{ method: string; path: string; body: unknown }>
   leaderboard: LeaderboardEntry[]
   games: GameSummary[]
+  /** The version each account's password key is made at (v2 when not listed), as the real server keeps it. */
+  keyVersions: Record<string, number>
 }
 
 let server: FakeServer
@@ -66,6 +68,8 @@ function fakeFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   switch (route) {
     case 'GET /api/me':
       return reply({ user: server.me })
+    case 'GET /api/auth/params':
+      return reply({ version: server.keyVersions[url.searchParams.get('username') ?? ''] ?? 2 })
     case 'GET /api/auth/username':
       return reply({ problem: url.searchParams.get('name') === 'taken' ? 'That username is taken.' : null })
     case 'POST /api/auth/signup':
@@ -77,9 +81,15 @@ function fakeFetch(input: RequestInfo | URL, init: RequestInit = {}) {
       }
       return reply({ user: server.me, recoveryCode: 'ABCDE-FGHJK-LMNPQ-RSTUV' }, 201)
     case 'POST /api/auth/signin':
+      if (body?.username === 'stale')
+        return reply({ error: 'Update the app to sign in. This version is out of date: choose Update now.' }, 409)
       if (body?.username !== 'kylar') return reply({ error: 'That username and password do not match.' }, 401)
+      // Like the real server: a v1 account that signs in with a v2 key too is v2 from then on.
+      if (body?.upgradeKey) server.keyVersions.kylar = 2
       server.me = kylar
       return reply({ user: kylar })
+    case 'POST /api/me/password':
+      return reply({})
     case 'POST /api/auth/signout':
       server.me = null
       return reply({})
@@ -116,7 +126,7 @@ function fakeFetch(input: RequestInfo | URL, init: RequestInit = {}) {
 }
 
 beforeEach(() => {
-  server = { me: null, data: {}, calls: [], leaderboard: [], games: [] }
+  server = { me: null, data: {}, calls: [], leaderboard: [], games: [], keyVersions: {} }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => fakeFetch(input, init)),
@@ -142,7 +152,7 @@ describe('signing up and in', () => {
     // The password itself never leaves the browser: only its stretched key does.
     const signup = server.calls.find((c) => c.path === '/api/auth/signup')!
     expect(JSON.stringify(signup.body)).not.toContain('sticks and stones')
-    expect(signup.body).toMatchObject({ username: 'amadou', key: expect.stringMatching(/^[0-9a-f]{64}$/) })
+    expect(signup.body).toMatchObject({ username: 'amadou', key: expect.stringMatching(/^[0-9a-f]{64}$/), newKeyVersion: 2 })
 
     await user.click(screen.getByRole('button', { name: 'I have saved it' }))
     expect(await screen.findByRole('button', { name: 'Account: Amadou B' })).toBeInTheDocument()
@@ -209,6 +219,44 @@ describe('signing up and in', () => {
     expect(screen.getByRole('button', { name: 'Account: Kylar' })).toBeInTheDocument()
   })
 
+  test('an account made before v2 sends its old key and a v2 key once; from then on it signs in with v2 alone', async () => {
+    const user = userEvent.setup()
+    server.keyVersions.kylar = 1
+    renderAt('/signin')
+    await user.type(await screen.findByLabelText('Username'), 'kylar')
+    await user.type(screen.getByLabelText('Password'), 'correct horse')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByRole('button', { name: 'Account: Kylar' })).toBeInTheDocument()
+    const first = server.calls.find((c) => c.path === '/api/auth/signin')!.body as Record<string, unknown>
+    // The v1 key is the one every account made before v2 holds (worker/accountStore.test.ts has it too).
+    expect(first).toMatchObject({
+      username: 'kylar',
+      key: '467ac4b5704078690e33b390589c3b96f1dfbc222634b2eceabe48a312d13506',
+      keyVersion: 1,
+      upgradeKey: expect.stringMatching(/^[0-9a-f]{64}$/),
+    })
+    expect(first.upgradeKey).not.toBe(first.key)
+
+    await user.click(screen.getByRole('button', { name: 'Account: Kylar' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }))
+    await user.click(await screen.findByRole('link', { name: 'Sign in' }))
+    await user.type(await screen.findByLabelText('Username'), 'kylar')
+    await user.type(screen.getByLabelText('Password'), 'correct horse')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByRole('button', { name: 'Account: Kylar' })).toBeInTheDocument()
+    const second = server.calls.filter((c) => c.path === '/api/auth/signin')[1].body as Record<string, unknown>
+    expect(second).toEqual({ username: 'kylar', key: first.upgradeKey, keyVersion: 2 })
+  })
+
+  test('an app too old for the account is told, in the form, to update', async () => {
+    const user = userEvent.setup()
+    renderAt('/signin')
+    await user.type(await screen.findByLabelText('Username'), 'stale')
+    await user.type(screen.getByLabelText('Password'), 'whatever123')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByText(/^Update the app to sign in/)).toBeInTheDocument()
+  })
+
   test('a link that would send someone off the site after signing in goes home instead', async () => {
     server.me = kylar
     renderAt('/signin?next=%2F%2Fevil.example')
@@ -253,6 +301,28 @@ describe('settings follow the account', () => {
     await user.click(screen.getByRole('button', { name: 'Save profile' }))
     await waitFor(() => expect(server.me?.displayName).toBe('K. Cham'))
     expect(await screen.findByRole('button', { name: 'Account: K. Cham' })).toBeInTheDocument()
+  })
+
+  test('changing the password proves the current one at its version and stores the new one as v2', async () => {
+    const user = userEvent.setup()
+    server.me = kylar
+    server.keyVersions.kylar = 1
+    renderAt('/settings')
+    await user.click(await screen.findByRole('button', { name: 'Change password' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Change your password' })
+    await user.type(within(dialog).getByLabelText('Current password'), 'correct horse')
+    await user.type(within(dialog).getByLabelText('New password'), 'battery staple')
+    await user.type(within(dialog).getByLabelText('Repeat the new password'), 'battery staple')
+    await user.click(within(dialog).getByRole('button', { name: 'Change password' }))
+    await waitFor(() => expect(server.calls.some((c) => c.path === '/api/me/password')).toBe(true))
+    const sent = server.calls.find((c) => c.path === '/api/me/password')!.body
+    expect(sent).toEqual({
+      key: '467ac4b5704078690e33b390589c3b96f1dfbc222634b2eceabe48a312d13506',
+      keyVersion: 1,
+      upgradeKey: expect.stringMatching(/^[0-9a-f]{64}$/),
+      newKey: expect.stringMatching(/^[0-9a-f]{64}$/),
+      newKeyVersion: 2,
+    })
   })
 
   test('Settings says when the recovery code was made, why it matters, and offers a new one', async () => {
