@@ -1,0 +1,22 @@
+<svg viewBox="34 40 954 954" width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+  <title>Level balance scale with red and blue counters</title>
+  <g stroke="#000000" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <g id="stand">
+      <path d="M487 594 L479 808 H545 L537 594" fill="none" />
+      <path d="M313 902 C320 846 365 808 422 808 H602 C659 808 704 846 711 902 Z" fill="#00FF00" />
+    </g>
+    <g id="level-beam" fill="none">
+      <path d="M200 548 V565 H822 V548" />
+    </g>
+    <g id="counters">
+      <circle cx="200" cy="391" r="128" fill="#FF0000" />
+      <circle cx="822" cy="391" r="128" fill="#0000FF" />
+    </g>
+    <g id="pans" fill="none">
+      <path d="M89 503 H311 C296 535 252 552 200 552 C148 552 104 535 89 503 Z" />
+      <path d="M711 503 H933 C918 535 874 552 822 552 C770 552 726 535 711 503 Z" />
+    </g>
+    <circle id="pivot" cx="512" cy="565" r="45" fill="#00FF00" />
+    <path id="star" d="M512 131 L546 203 L623 215 L570 270 L585 355 L512 316 L439 355 L454 270 L401 215 L478 203 Z" fill="#00FF00" />
+  </g>
+</svg>

@@ -53,6 +53,11 @@ const tokens: ThemeTokens = {
   '--dam-p2': '#FFFFFF',
   '--dam-p2-edge': '#1C1B19',
   '--dam-crown': '#8A6B2F',
+  // Ink, like everything else in this monochrome theme.
+  '--dam-art-accent': '#1C1B19',
+  // Pieces drawn as an outline only, in the pictures: Ink: a white piece drawn as a white outline would vanish on white.
+  '--dam-art-p1-line': '#1C1B19',
+  '--dam-art-p2-line': '#1C1B19',
 
   '--dam-font-display': "'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif",
   '--dam-font-body': "'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",

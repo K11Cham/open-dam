@@ -1,0 +1,22 @@
+<svg viewBox="157 162 710 710" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Crowned blue counter surrounded by three red counters</title>
+  <g id="grid" fill="none" stroke="#000000" stroke-width="4" stroke-linecap="square">
+    <path d="M184 850V184H840" />
+    <path d="M184 512H840M512 184V850M184 840H840M840 184V840" />
+  </g>
+  <g id="counters" stroke="#000000" stroke-width="14">
+    <circle cx="350" cy="352" r="123" fill="#0000FF" />
+    <circle cx="674" cy="352" r="123" fill="#FF0000" />
+    <circle cx="350" cy="676" r="123" fill="#FF0000" />
+    <circle cx="674" cy="676" r="123" fill="#FF0000" />
+  </g>
+  <g id="crown" fill="#00FF00">
+    <path d="M280 333L315 365L350 302L385 365L420 333L410 405H290Z" />
+    <circle cx="280" cy="330" r="16" />
+    <circle cx="350" cy="298" r="16" />
+    <circle cx="420" cy="330" r="16" />
+  </g>
+  <g id="encircling-net" fill="none" stroke="#00FF00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M310 208H714Q816 208 816 310V718Q816 816 714 816H310Q208 816 208 718V310Q208 208 310 208Z" stroke-dasharray="26 18" />
+  </g>
+</svg>

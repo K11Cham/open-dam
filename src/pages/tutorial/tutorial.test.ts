@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { CHAPTER_ART } from '../../art/chapters'
 import { legalActions } from '../../game/engine'
 import { getCaptures } from '../../game/moves'
 import { coordToNotation } from '../../game/notation'
@@ -114,4 +115,8 @@ test('every 5×5 first move is explained in the opening puzzle', () => {
 
 test('chapter ids are unique', () => {
   expect(new Set(CHAPTERS.map((c) => c.id)).size).toBe(CHAPTERS.length)
+})
+
+test('every chapter has a picture, and every picture a chapter', () => {
+  expect(Object.keys(CHAPTER_ART).sort()).toEqual(CHAPTERS.map((c) => c.id).sort())
 })

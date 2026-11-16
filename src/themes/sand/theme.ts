@@ -58,6 +58,11 @@ const tokens: ThemeTokens = {
   '--dam-p2': '#B07A48',
   '--dam-p2-edge': '#5A3818',
   '--dam-crown': '#C9962E',
+  // The indigo accent, like dyed cloth on sand.
+  '--dam-art-accent': '#2F4A7A',
+  // Pieces drawn as an outline only, in the pictures: Each side's own colour.
+  '--dam-art-p1-line': '#6A655E',
+  '--dam-art-p2-line': '#B07A48',
 
   '--dam-font-display': "'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif",
   '--dam-font-body': "'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif",

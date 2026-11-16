@@ -1,0 +1,22 @@
+<svg viewBox="60 65 905 905" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Grid game with a green route to a flag</title>
+  <g id="grid" fill="none" stroke="#000000">
+    <rect x="98" y="105" width="830" height="825" rx="49" stroke-width="24" />
+    <path d="M267 117V918M429 117V918M595 117V496M595 545V918M757 117V496M757 545V918M110 284H916M110 441H804M859 441H916M110 602H479M536 602H916M110 758H479M536 758H916" stroke-width="13" />
+  </g>
+  <g id="blue-counters" fill="#0000FF" stroke="#000000" stroke-width="13">
+    <circle cx="512" cy="363" r="57" />
+    <circle cx="348" cy="522" r="57" />
+    <circle cx="676" cy="680" r="57" />
+  </g>
+  <g id="route" fill="none" stroke="#00FF00" stroke-width="29" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M507 749V716M507 665V632M507 583V550M537 520H570M619 520H652M700 520H734M780 520H813M831 504V469M831 427V393M831 346V312" />
+  </g>
+  <g id="red-counter" fill="#FF0000" stroke="#000000" stroke-width="13">
+    <circle cx="512" cy="840" r="57" />
+  </g>
+  <g id="goal" fill="#00FF00" stroke="#000000" stroke-width="13" stroke-linejoin="round">
+    <path d="M820 148C847 138 858 164 897 146V193C871 216 847 194 820 199Z" />
+    <path d="M800 245V145C800 128 823 128 823 145V245C837 248 847 253 847 261C847 272 831 279 812 279C792 279 777 272 777 261C777 253 787 247 800 245Z" />
+  </g>
+</svg>

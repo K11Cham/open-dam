@@ -1,0 +1,27 @@
+<svg viewBox="29 -1 967 967" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Give one, take two</title>
+  <desc>A red counter is given away at the left of a small grid. Beside it, a red counter follows a straight row, jumping over two blue counters in two green-marked hops.</desc>
+  <g id="grid" fill="none" stroke="#000000">
+    <rect x="62" y="580" width="900" height="240" rx="24" stroke-width="12" />
+    <path d="M212 580V820 M362 580V820 M512 580V820 M662 580V820 M812 580V820" stroke-width="4" />
+  </g>
+  <g id="counters" stroke-width="14">
+    <circle cx="137" cy="700" r="59" fill="none" stroke="#FF0000" />
+    <circle cx="287" cy="700" r="59" fill="#FF0000" stroke="#000000" />
+    <circle cx="437" cy="700" r="59" fill="#0000FF" stroke="#000000" />
+    <circle cx="737" cy="700" r="59" fill="#0000FF" stroke="#000000" />
+  </g>
+  <g id="give-arrow" fill="#00FF00">
+    <path d="M179 305C105 391 118 506 118 618H96L137 677L178 618H156C156 503 142 406 208 330Z" />
+  </g>
+  <g id="given-counter">
+    <circle cx="237" cy="240" r="94" fill="#FF0000" stroke="#000000" stroke-width="16" />
+  </g>
+  <g id="two-hop-arrow" fill="none" stroke="#00FF00" stroke-width="25" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M287 639C319 422 550 422 587 639C624 422 855 422 887 639" />
+  </g>
+  <g id="hop-arrowheads" fill="#00FF00">
+    <path d="M551 610L587 669L614 605L585 621Z" />
+    <path d="M850 613L890 678L922 609Z" />
+  </g>
+</svg>

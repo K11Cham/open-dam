@@ -1,0 +1,11 @@
+<svg viewBox="75 95 869 869" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <g id="equals" fill="#00FF00" stroke="#000000" stroke-width="24">
+    <rect x="374" y="229" width="277" height="68" rx="34" />
+    <rect x="374" y="347" width="277" height="68" rx="34" />
+  </g>
+  <g id="counters" stroke="#000000" stroke-width="24">
+    <circle cx="292" cy="638" r="180" fill="#FF0000" />
+    <circle cx="728" cy="638" r="180" fill="#0000FF" />
+  </g>
+  <path id="level-line" d="M180 830H844" fill="none" stroke="#000000" stroke-width="24" stroke-linecap="round" />
+</svg>

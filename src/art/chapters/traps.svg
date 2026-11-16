@@ -1,0 +1,28 @@
+<svg viewBox="10 6 1005 1005" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Red counters breaking through a blue line</title>
+  <g id="grid" fill="none" stroke="#000000" stroke-width="3">
+    <path d="M40 398H984M40 538H984M40 398V538M180 398V538M320 398V538M446 398V538M576 398V538M712 398V538M848 398V538M984 398V538" />
+    <path d="M436 538V832H576V538M436 688H576M436 832H576" />
+  </g>
+  <g id="blue-counters" fill="#0000FF" stroke="#000000" stroke-width="11">
+    <circle cx="109" cy="468" r="63" />
+    <circle cx="249" cy="468" r="63" />
+    <circle cx="643" cy="468" r="63" />
+    <circle cx="779" cy="468" r="63" />
+    <circle cx="918" cy="468" r="63" />
+  </g>
+  <g id="red-counters" fill="#FF0000" stroke="#000000" stroke-width="11">
+    <circle cx="506" cy="618" r="65" />
+    <circle cx="506" cy="759" r="65" />
+  </g>
+  <g id="forward-arrows" fill="#00FF00">
+    <path d="M490 660V616H466L506 574L546 616H522V660Z" />
+    <path d="M490 801V757H466L506 715L546 757H522V801Z" />
+  </g>
+  <g id="break-accent" fill="#00FF00">
+    <path d="M337 387L432 338L462 372L500 346L537 372L578 339L669 386L584 372L534 423L502 389L447 430L418 376Z" />
+    <path d="M484 184H535L518 293H498Z" />
+    <path d="M365 239L400 214L447 310L433 321Z" />
+    <path d="M620 222L651 246L579 314L565 304Z" />
+  </g>
+</svg>

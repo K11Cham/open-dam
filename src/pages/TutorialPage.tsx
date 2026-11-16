@@ -1,6 +1,8 @@
 import { ArrowLeft, ArrowRight, Play } from 'lucide-react'
 import { Link, NavLink, Navigate, useParams } from 'react-router-dom'
+import { CHAPTER_ART } from '../art/chapters'
 import AppShell from '../components/layout/AppShell'
+import Art from '../components/ui/Art'
 import { ButtonLink } from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
 import { useSideNames } from '../context/useTheme'
@@ -77,6 +79,7 @@ function Overview() {
           <li key={chapter.id}>
             <Link className="card card--link" to={`/learn/${chapter.id}`}>
               <span className="card__head">
+                <Art svg={CHAPTER_ART[chapter.id]} className="card__art" />
                 <span className="card__badge">Chapter {index + 1}</span>
                 <PuzzleCount chapter={chapter} solved={solved} />
               </span>
@@ -97,6 +100,7 @@ function ChapterView({ chapter }: { chapter: Chapter }) {
   const next = CHAPTERS[index + 1]
   return (
     <article className="lesson" aria-labelledby="lesson-title">
+      <Art svg={CHAPTER_ART[chapter.id]} className="lesson__art" />
       <p className="eyebrow">Chapter {index + 1}</p>
       <h2 id="lesson-title" className="lesson__title">
         {chapter.title}

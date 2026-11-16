@@ -1,0 +1,36 @@
+<svg viewBox="-24 -21 1073 1073" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Red and blue counters on a five by five game grid</title>
+  <g id="board" fill="none" stroke="#000000" stroke-linejoin="round">
+    <path d="M104 95H920L1008 935H16Z" stroke-width="20" />
+    <path d="M267.2 95L214.4 935M430.4 95L412.8 935M593.6 95L611.2 935M756.8 95L809.6 935M86.4 263H937.6M68.8 431H955.2M51.2 599H972.8M33.6 767H990.4" stroke-width="12" />
+  </g>
+  <g id="blue-counters" fill="#0000FF" stroke="#000000" stroke-width="12">
+    <ellipse cx="178.56" cy="179" rx="61" ry="58" />
+    <ellipse cx="345.28" cy="179" rx="61" ry="58" />
+    <ellipse cx="512" cy="179" rx="61" ry="58" />
+    <ellipse cx="678.72" cy="179" rx="61" ry="58" />
+    <ellipse cx="845.44" cy="179" rx="61" ry="58" />
+    <ellipse cx="164.48" cy="347" rx="64" ry="60" />
+    <ellipse cx="338.24" cy="347" rx="64" ry="60" />
+    <ellipse cx="512" cy="347" rx="64" ry="60" />
+    <ellipse cx="685.76" cy="347" rx="64" ry="60" />
+    <ellipse cx="859.52" cy="347" rx="64" ry="60" />
+    <ellipse cx="150.4" cy="515" rx="66" ry="61" />
+    <ellipse cx="331.2" cy="515" rx="66" ry="61" />
+  </g>
+  <g id="red-counters" fill="#FF0000" stroke="#000000" stroke-width="12">
+    <ellipse cx="692.8" cy="515" rx="66" ry="61" />
+    <ellipse cx="873.6" cy="515" rx="66" ry="61" />
+    <ellipse cx="136.32" cy="683" rx="67" ry="60" />
+    <ellipse cx="324.16" cy="683" rx="67" ry="60" />
+    <ellipse cx="512" cy="683" rx="67" ry="60" />
+    <ellipse cx="699.84" cy="683" rx="67" ry="60" />
+    <ellipse cx="887.68" cy="683" rx="67" ry="60" />
+    <ellipse cx="122.24" cy="851" rx="68" ry="61" />
+    <ellipse cx="317.12" cy="851" rx="68" ry="61" />
+    <ellipse cx="512" cy="851" rx="68" ry="61" />
+    <ellipse cx="706.88" cy="851" rx="68" ry="61" />
+    <ellipse cx="901.76" cy="851" rx="68" ry="61" />
+  </g>
+  <circle id="center-dot" cx="512" cy="515" r="24" fill="#00FF00" stroke="#000000" stroke-width="12" />
+</svg>

@@ -54,6 +54,11 @@ const tokens: ThemeTokens = {
   '--dam-p2': '#4361EE',
   '--dam-p2-edge': '#111111',
   '--dam-crown': '#FFD23F',
+  // The lime accent vanishes as a thin line on white; a deeper green keeps arrows visible.
+  '--dam-art-accent': '#5E9A00',
+  // Pieces drawn as an outline only, in the pictures: Each side's own colour.
+  '--dam-art-p1-line': '#FF4D6D',
+  '--dam-art-p2-line': '#4361EE',
 
   // Fat 1970s poster type with quirky letters, in normal case: the usual heavy
   // grotesque in capitals read as a template.
