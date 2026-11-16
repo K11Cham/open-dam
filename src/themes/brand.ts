@@ -9,7 +9,6 @@
  * colours below for the favicon and the app icons, which have to look the
  * same whatever theme is chosen.
  */
-
 /** The mark is drawn on a 48-unit square. */
 export const MARK_SIZE = 48
 
@@ -79,27 +78,34 @@ export function brandSvg({ tile, scale = 1, size = MARK_SIZE }: BrandSvgOptions)
 export const SHARE_IMAGE = { width: 1200, height: 630 } as const
 
 /**
- * The picture a shared link shows: the mark, large, on sand, beside the name
- * and what the game is. The words use a system serif, since the picture is
- * drawn once by `npm run icons` and committed.
+ * The picture a shared link shows: the name and what the game is beside a
+ * photo of the real board, the Sand theme at the 5×5 starting position.
+ * `board` is that photo as a data URI, with its size in pixels; it is taken in
+ * Chrome by `scripts/render-share-board.test.ts`, since the Sand pieces are 3D
+ * layers in the page that nothing else can draw. The words use a system serif.
  */
-export function shareImageSvg(): string {
+export function shareImageSvg(board: { href: string; width: number; height: number }): string {
   const { width, height } = SHARE_IMAGE
   const { sand, groove, stone } = BRAND_COLOURS
-  const mark = 420
-  const markX = 110
-  const markY = (height - mark) / 2
+  const mark = 112
   const inner = brandSvg({ tile: 'rounded', size: mark })
     .replace(/^<svg[^>]*>/, '')
     .replace(/<\/svg>$/, '')
+  // The board fills the right-hand side, its shape kept: fitted into this box and centred in it.
+  const box = { x: 590, y: 40, width: 580, height: 550 }
+  const scale = Math.min(box.width / board.width, box.height / board.height)
+  const shown = { width: board.width * scale, height: board.height * scale }
+  const x = box.x + (box.width - shown.width) / 2
+  const y = box.y + (box.height - shown.height) / 2
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
     `<rect width="${width}" height="${height}" fill="${sand}"/>`,
+    `<image href="${board.href}" x="${x}" y="${y}" width="${shown.width}" height="${shown.height}"/>`,
     `<rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="28" fill="none" stroke="${groove}" stroke-width="4"/>`,
-    `<svg x="${markX}" y="${markY}" width="${mark}" height="${mark}" viewBox="0 0 ${MARK_SIZE} ${MARK_SIZE}">${inner}</svg>`,
-    `<text x="610" y="300" font-family="Georgia, 'DejaVu Serif', serif" font-size="96" font-weight="700" fill="${stone}">Open Dam</text>`,
-    `<text x="614" y="372" font-family="Georgia, 'DejaVu Serif', serif" font-size="38" fill="${stone}">The Gambian board game.</text>`,
-    `<text x="614" y="424" font-family="Georgia, 'DejaVu Serif', serif" font-size="38" fill="${stone}">Play online, free.</text>`,
+    `<svg x="96" y="118" width="${mark}" height="${mark}" viewBox="0 0 ${MARK_SIZE} ${MARK_SIZE}">${inner}</svg>`,
+    `<text x="90" y="350" font-family="Georgia, 'DejaVu Serif', serif" font-size="96" font-weight="700" fill="${stone}">Open Dam</text>`,
+    `<text x="94" y="418" font-family="Georgia, 'DejaVu Serif', serif" font-size="38" fill="${stone}">The Gambian board game.</text>`,
+    `<text x="94" y="470" font-family="Georgia, 'DejaVu Serif', serif" font-size="38" fill="${stone}">Play online, free.</text>`,
     '</svg>',
   ].join('')
 }

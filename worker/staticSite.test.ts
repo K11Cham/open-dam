@@ -23,6 +23,8 @@ describe('link previews and crawlers', () => {
     const png = file('public/og-image.png')
     expect(png.subarray(1, 4).toString()).toBe('PNG')
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630])
+    // WhatsApp shows no preview for a picture over about 300 KB (npm run share-board keeps it well under).
+    expect(png.length).toBeLessThan(300 * 1024)
   })
 
   it('robots.txt keeps crawlers out of the API and private pages, and points to the sitemap of public pages', () => {
