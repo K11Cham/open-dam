@@ -54,6 +54,11 @@ const tokens: ThemeTokens = {
   '--dam-p2': '#54C6F2',
   '--dam-p2-edge': '#1E7FA8',
   '--dam-crown': '#FFC93C',
+  // The marigold accent, bright on the night sky.
+  '--dam-art-accent': '#FFC93C',
+  // Pieces drawn as an outline only, in the pictures: Each side's own colour, bright on the night sky.
+  '--dam-art-p1-line': '#FF7A5C',
+  '--dam-art-p2-line': '#54C6F2',
 
   '--dam-font-display': "'Grandstander Variable', 'Grandstander', 'Trebuchet MS', system-ui, sans-serif",
   '--dam-font-body': "'Nunito Variable', 'Nunito', 'Trebuchet MS', system-ui, sans-serif",

@@ -1,0 +1,20 @@
+<svg viewBox="128 128 769 769" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>A red counter jumps over a blue counter</title>
+  <desc>A three by three game grid with a red counter on the middle right, an outline-only blue counter in the centre, and two blue counters in the lower corners. A curved green arrow shows a straight-row jump from the middle left to the middle right.</desc>
+  <g id="board" fill="none" stroke="#000000" stroke-width="5" stroke-linejoin="round">
+    <path d="M152 164H872V860H152Z" />
+    <path d="M392 164V860M632 164V860M152 396H872M152 628H872" />
+  </g>
+  <g id="counters" stroke-width="13">
+    <ellipse cx="272" cy="744" rx="77" ry="73" fill="#0000FF" stroke="#000000" />
+    <ellipse cx="752" cy="744" rx="77" ry="73" fill="#0000FF" stroke="#000000" />
+    <ellipse cx="512" cy="512" rx="77" ry="73" fill="none" stroke="#0000FF" stroke-width="10" stroke-dasharray="23 24" stroke-linecap="round" />
+    <ellipse cx="752" cy="512" rx="77" ry="73" fill="#FF0000" stroke="#000000" />
+  </g>
+  <g id="jump-arrow" fill="#00FF00">
+    <path d="M275 516C297 430 361 346 449 322C564 290 675 337 727 423L756 403Q765 397 764 409L757 477Q756 485 748 482L686 457Q675 453 685 447L703 436C652 363 562 331 476 350C389 369 323 435 286 519Q278 529 275 516Z" />
+    <g id="departure-accents" fill="none" stroke="#00FF00" stroke-width="15" stroke-linecap="round">
+      <path d="M253 460L249 426M228 478L204 457M220 507L187 503" />
+    </g>
+  </g>
+</svg>

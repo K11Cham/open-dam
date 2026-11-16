@@ -1,0 +1,14 @@
+<svg viewBox="36 22 927 927" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Tipped game counter with a small cloud</title>
+  <g id="cloud-and-drops" fill="#00FF00" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <path id="cloud" stroke-width="18" d="M407 138C422 89 467 56 510 57C558 56 598 85 613 126C654 111 693 136 705 171C720 212 697 256 659 264C638 269 617 265 599 254C576 283 545 297 510 297C476 297 447 283 427 258C404 278 375 283 349 273C312 260 296 231 305 194C315 150 360 122 407 138Z" />
+    <path id="drop-left" stroke-width="10" d="M415 309C404 322 389 340 389 353C389 369 400 380 415 380C430 380 441 369 441 353C441 339 426 321 415 309Z" />
+    <path id="drop-middle" stroke-width="10" d="M504 370C493 383 478 401 478 415C478 430 489 441 504 441C519 441 530 430 530 415C530 401 515 383 504 370Z" />
+    <path id="drop-right" stroke-width="10" d="M590 306C579 319 564 337 564 351C564 366 575 377 590 377C605 377 616 366 616 351C616 337 601 319 590 306Z" />
+  </g>
+  <g id="game-counter" stroke="#000000" stroke-linejoin="round">
+    <path id="counter-edge" fill="#FF0000" stroke-width="18" d="M356 504C331 534 292 567 283 611C268 684 314 768 380 833C449 901 539 934 601 899C624 886 651 860 678 830L356 504Z" />
+    <path id="blue-edge-detail" fill="#FF0000" stroke-width="5" d="M359 665L401 718L347 776C331 757 318 738 307 717Z" />
+    <ellipse id="counter-face" cx="526" cy="664" rx="145" ry="237" transform="rotate(-42 526 664)" fill="#FF0000" stroke-width="18" />
+  </g>
+</svg>

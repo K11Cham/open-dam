@@ -68,6 +68,11 @@ export interface ThemeTokens {
   '--dam-p2': string
   '--dam-p2-edge': string
   '--dam-crown': string
+  // illustrations (src/art): arrows and small accents, which are often thin lines
+  '--dam-art-accent': string
+  // a piece drawn as an outline only (a piece just captured, say), where the side's fill colour may not show
+  '--dam-art-p1-line': string
+  '--dam-art-p2-line': string
   // type
   '--dam-font-display': string
   '--dam-font-body': string

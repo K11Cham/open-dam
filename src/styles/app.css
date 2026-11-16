@@ -1126,6 +1126,22 @@
   letter-spacing: var(--dam-display-spacing);
 }
 
+/* Illustrations from src/art, coloured by the theme (components/ui/Art.tsx). */
+.art {
+  display: block;
+  flex: none;
+}
+
+.art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.card__art {
+  width: 64px;
+}
+
 .card__badge {
   margin-left: auto;
   font-family: var(--dam-font-mono);
@@ -2100,6 +2116,16 @@
   gap: var(--space-2);
 }
 
+.result__art {
+  width: 96px;
+  align-self: center;
+}
+
+.not-found__art {
+  width: min(200px, 60%);
+  margin: 0 auto var(--space-2);
+}
+
 .result__side {
   display: flex;
   flex-direction: column;
@@ -2685,6 +2711,23 @@
 
 .lesson__title {
   font-size: clamp(26px, 4vw, 34px);
+}
+
+/* The chapter's picture sits top right, beside the eyebrow and title. */
+.lesson {
+  position: relative;
+}
+
+.lesson__art {
+  position: absolute;
+  top: calc(var(--space-2) * -1);
+  right: 0;
+  width: clamp(64px, 12vw, 96px);
+}
+
+.lesson:has(> .lesson__art) > .eyebrow,
+.lesson:has(> .lesson__art) > .lesson__title {
+  padding-right: clamp(76px, 14vw, 112px);
 }
 
 .lesson__section {

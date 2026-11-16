@@ -1,0 +1,22 @@
+<svg viewBox="17 99 878 878" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>A game counter rolled off a grid</title>
+  <g id="grid" fill="none" stroke="#000000" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M190 250H710L565 695H45Z" />
+    <path d="M142 398H662M93 547H613" />
+    <path d="M363 250L218 695M537 250L392 695" />
+  </g>
+  <g id="counters" stroke="#000000" stroke-width="14">
+    <ellipse cx="349" cy="329" rx="61" ry="50" transform="rotate(-14 349 329)" fill="#FF0000" />
+    <ellipse cx="140" cy="466" rx="62" ry="50" transform="rotate(-14 140 466)" fill="#0000FF" />
+    <ellipse cx="466" cy="614" rx="67" ry="56" fill="#0000FF" />
+    <ellipse cx="778" cy="740" rx="86" ry="81" transform="rotate(-17 778 740)" fill="#FF0000" />
+  </g>
+  <g id="motion" fill="none" stroke="#000000" stroke-width="15" stroke-linecap="round">
+    <path d="M636 666L674 691" />
+    <path d="M631 711L663 740" />
+  </g>
+  <g id="question" fill="#00FF00">
+    <path d="M777 516C785 496 806 486 826 490C849 493 861 508 859 527C857 545 843 554 830 563C825 567 823 572 822 579C821 586 816 590 809 589C802 588 798 583 799 576C800 558 810 548 823 539C831 534 836 530 836 523C836 516 831 512 823 512C814 511 807 516 803 524C799 531 794 534 787 531C779 529 774 523 777 516Z" />
+    <circle cx="804" cy="614" r="14" />
+  </g>
+</svg>

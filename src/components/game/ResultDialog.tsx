@@ -1,10 +1,12 @@
 import { Eye, Plus, RotateCcw } from 'lucide-react'
+import { RESULT_ART } from '../../art/results'
 import { countPieces } from '../../game/board'
 import { formatClock } from '../../game/clock'
 import { turnsPlayed } from '../../game/notation'
 import type { PlayerId } from '../../game/types'
 import type { MatchController } from '../../hooks/useMatchController'
 import { countOf, outcomeReason, outcomeTitle, outcomeTone, signedChange, timeControlLabel } from '../../lib/describe'
+import Art from '../ui/Art'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 
@@ -53,6 +55,8 @@ export default function ResultDialog({ open, onClose, controller, perspective, o
       }
     >
       <div className={`result result--${tone}`}>
+        {/* The win and loss pictures show one piece: the viewer's, in their side's colour. */}
+        <Art svg={RESULT_ART[tone]} className="result__art" swapSides={perspective === 'player2'} />
         {(['player1', 'player2'] as PlayerId[]).map((player) => (
           <div key={player} className={`result__side ${winner === player ? 'is-winner' : ''}`}>
             <span className="result__name">

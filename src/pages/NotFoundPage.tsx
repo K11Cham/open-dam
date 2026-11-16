@@ -1,4 +1,6 @@
+import notFoundArt from '../art/not-found.svg?raw'
 import AppShell from '../components/layout/AppShell'
+import Art from '../components/ui/Art'
 import { ButtonLink } from '../components/ui/Button'
 import Panel from '../components/ui/Panel'
 import { usePageTitle } from '../lib/usePageTitle'
@@ -10,7 +12,8 @@ export default function NotFoundPage() {
       <div className="page page--narrow">
         {/* React puts this in <head>: an address that is not a page should not be indexed as one. */}
         <meta name="robots" content="noindex" />
-        <Panel>
+        <Panel className="not-found">
+          <Art svg={notFoundArt} className="not-found__art" />
           <h1 className="panel__title">Page not found</h1>
           <p className="panel__text">That address does not match anything in Open Dam.</p>
           <div className="panel__actions">

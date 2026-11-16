@@ -1,0 +1,24 @@
+<svg viewBox="155 145 714 714" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Two consecutive orthogonal hops over blue game counters</title>
+  <g id="board" fill="none" stroke="#000000">
+    <rect x="192" y="192" width="640" height="640" rx="12" stroke-width="12" />
+    <path d="M352 192V832M512 192V832M672 192V832M192 352H832M192 512H832M192 672H832" stroke-width="4" />
+  </g>
+  <g id="jumped-counters" fill="none" stroke="#0000FF" stroke-width="15">
+    <circle cx="272" cy="432" r="46" />
+    <circle cx="432" cy="272" r="46" />
+  </g>
+  <g id="red-counter-positions" fill="#FF0000" stroke="#000000" stroke-width="12">
+    <circle cx="272" cy="592" r="49" />
+    <circle cx="272" cy="272" r="49" />
+    <circle cx="592" cy="272" r="49" />
+  </g>
+  <g id="connected-hop-arrows" fill="none" stroke="#00FF00" stroke-width="23" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M250 545Q202 432 262 319" />
+    <path d="M310 237Q432 156 551 238" />
+  </g>
+  <g id="arrowheads" fill="#00FF00">
+    <path d="M272 305L230 343L286 357Z" />
+    <path d="M568 252L540 194L511 245Z" />
+  </g>
+</svg>

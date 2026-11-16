@@ -1,0 +1,25 @@
+<svg viewBox="23 31 921 921" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Stacked red game counters with a green crown</title>
+  <g id="sparkles" fill="none" stroke="#00FF00" stroke-width="30" stroke-linecap="round">
+    <path d="M512 142V72" />
+    <path d="M350 204L302 159" />
+    <path d="M674 204L722 159" />
+  </g>
+  <g id="crown" stroke="#000000" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M337 348L378 479Q512 448 646 479L687 348L592 393L512 293L432 393Z" fill="#00FF00" />
+    <circle cx="337" cy="332" r="32" fill="#00FF00" />
+    <circle cx="512" cy="272" r="33" fill="#00FF00" />
+    <circle cx="687" cy="332" r="32" fill="#00FF00" />
+    <circle cx="512" cy="402" r="34" fill="#0000FF" />
+  </g>
+  <g id="counters" fill="#FF0000" stroke="#000000" stroke-width="20" stroke-linejoin="round">
+    <g id="lower-counter">
+      <path d="M208 736V829C208 877 321 916 460 916C599 916 712 877 712 829V736Z" />
+      <ellipse cx="460" cy="736" rx="252" ry="78" />
+    </g>
+    <g id="upper-counter">
+      <path d="M256 582V679C256 728 369 767 508 767C647 767 760 728 760 679V582Z" />
+      <ellipse cx="508" cy="582" rx="252" ry="77" />
+    </g>
+  </g>
+</svg>

@@ -3,16 +3,17 @@
  *
  *   npm run icons
  *
- * Writes public/favicon.svg, public/favicon.ico, public/icons/*.png and the
- * link-preview picture public/og-image.png. The
+ * Writes public/favicon.svg, public/favicon.ico and public/icons/*.png. The
  * files are committed, so a build needs nothing but them; run this again
- * only after changing the mark or its colours.
+ * only after changing the mark or its colours. The link-preview picture,
+ * public/og-image.png, holds a photo of the real board and needs Chrome:
+ * `npm run share-board` (scripts/render-share-board.test.ts) draws it.
  */
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Resvg } from '@resvg/resvg-js'
 import { test } from 'vitest'
-import { SHARE_IMAGE, brandSvg, shareImageSvg } from '../src/themes/brand'
+import { brandSvg } from '../src/themes/brand'
 import type { BrandSvgOptions } from '../src/themes/brand'
 
 const PUBLIC = 'public'
@@ -49,10 +50,4 @@ test('render icons', () => {
   writeFileSync(join(ICONS, 'maskable-512.png'), png({ tile: 'square', scale: 0.74, size: 512 }))
   // iOS rounds the corners itself and shows any transparency as black.
   writeFileSync(join(ICONS, 'apple-touch-icon.png'), png({ tile: 'square', scale: 0.86, size: 180 }))
-  // What a shared link shows (index.html's og:image), with the words in a system serif.
-  const share = new Resvg(shareImageSvg(), {
-    fitTo: { mode: 'width', value: SHARE_IMAGE.width },
-    font: { loadSystemFonts: true, defaultFontFamily: 'Georgia' },
-  })
-  writeFileSync(join(PUBLIC, 'og-image.png'), share.render().asPng())
 })

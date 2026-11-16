@@ -1,0 +1,26 @@
+<svg viewBox="154 168 705 705" xmlns="http://www.w3.org/2000/svg" width="1024" height="1024">
+  <title>Hourglass and forward-moving game counters</title>
+  <g id="hourglass" stroke="#000000" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M220 290 C194 385 242 439 308 489 C338 512 338 540 308 563 C242 613 194 667 220 752 L448 752 C474 667 426 613 360 563 C330 540 330 512 360 489 C426 439 474 385 448 290 Z" fill="none" />
+    <g id="sand" fill="#00FF00" stroke="none">
+      <path d="M224 383 C268 356 303 384 340 391 C379 400 410 379 444 383 C429 425 394 452 355 483 C342 494 336 507 334 518 C332 507 326 494 313 483 C274 452 239 425 224 383 Z" />
+      <circle cx="334" cy="550" r="10" />
+      <circle cx="334" cy="582" r="10" />
+      <circle cx="334" cy="614" r="10" />
+      <path d="M222 742 Q334 602 446 742 Z" />
+    </g>
+    <rect x="183" y="250" width="302" height="42" rx="21" fill="#00FF00" />
+    <rect x="183" y="750" width="302" height="42" rx="21" fill="#00FF00" />
+  </g>
+  <g id="grid" fill="none" stroke="#000000" stroke-width="5" stroke-linejoin="round">
+    <rect x="541" y="330" width="142" height="462" />
+    <path d="M541 445 H683 M541 561 H683 M541 677 H683" />
+  </g>
+  <g id="counters" fill="#FF0000" stroke="#000000" stroke-width="8">
+    <circle cx="612" cy="503" r="47" />
+    <circle cx="612" cy="619" r="47" />
+    <circle cx="612" cy="735" r="47" />
+  </g>
+  <circle id="blue-detail" cx="612" cy="362" r="9" fill="#0000FF" />
+  <path id="forward-arrow" d="M762 738 L762 442 L728 442 Q721 442 726 435 L776 368 Q781 361 786 368 L836 435 Q841 442 834 442 L800 442 L800 738 Q800 757 781 757 Q762 757 762 738 Z" fill="#00FF00" />
+</svg>
